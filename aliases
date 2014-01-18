@@ -1,0 +1,25 @@
+[alias]
+        st = status
+        ci = commit
+        br = branch
+        co = checkout
+        df = diff
+        lg = log -p
+        who = shortlog -s --
+        push-upstream = !BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD) && git push -u origin $BRANCH_NAME
+        slow-merge = merge --no-commit --no-ff
+        single-push = !BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD) && git push origin $BRANCH_NAME
+        new-branch = checkout -b
+        delete-branch = branch -D
+        origin-info = remote show origin
+        log-oneline = log --pretty=oneline
+        log-withtime = log --pretty=format:'%h - %an, %ar : %s'
+        count-commits = shortlog -s -n
+        unstage = reset HEAD
+        compress = gc --prune=now
+        lasttag = describe --tags --abbrev=0 #ostatni tag
+        cm = checkout master
+        rh = reset --hard
+        cl = clean -d -f
+        la = config --get-regexp alias # la od 'list aliases'
+
