@@ -22,4 +22,4 @@
         rh = reset --hard
         cl = clean -d -f
         la = config --get-regexp alias # la od 'list aliases'
-
+        nb = "!f() {git checkout –b feature/$1-$2; git push –u origin feature/$1-$2;}; f"
