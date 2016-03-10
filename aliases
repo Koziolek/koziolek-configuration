@@ -21,6 +21,8 @@
         cm = checkout master
         rh = reset --hard
         cl = clean -d -f
+        ss = stash save
+        sa = stash apply
         la = config --get-regexp alias # la od 'list aliases'
         nb=!f() { P_NAME=`git config project.name`; git pull; git co -b feature/$P_NAME-$1 ; git push -u origin feature/$P_NAME-$1;}; f
         mrg=!f() { B_NAME=`git rev-parse --abbrev-ref HEAD`; git co $1; git pull; git co $B_NAME; git merge $1; }; f
