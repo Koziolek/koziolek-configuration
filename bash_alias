@@ -1,0 +1,5 @@
+# Lista aliasów do różnych poleceń
+alias g=git
+
+_completion_loader git
+complete -o bashdefault -o default -o nospace -F _git g
