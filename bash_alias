@@ -1,4 +1,6 @@
 # Lista aliasów do różnych poleceń
+source /usr/share/bash-completion/bash_completion
+
 alias g=git
 
 _completion_loader git
