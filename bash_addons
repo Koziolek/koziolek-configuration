@@ -1,0 +1,11 @@
+if command -v tmux>/dev/null; then
+  [[ ! $TERM =~ screen ]] && [ -z $TMUX ] && exec tmux
+fi
+
+use-java(){
+    export JAVA_HOME=~/jdk-$1
+    if [ "x-$2" != "x-" ] 
+    then
+       export JAVA_HOME=$JAVA_HOME-$2
+    fi
+}
