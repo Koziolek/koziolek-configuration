@@ -1,7 +1,10 @@
-# Lista aliasów do różnych poleceń
-source /usr/share/bash-completion/bash_completion
+# Additional aliases
+# KOZIOLEK – do not remove this line!
+
+# git with completion
 
 alias g=git
-
+source /usr/share/bash-completion/bash_completion
 _completion_loader git
 complete -o bashdefault -o default -o nospace -F _git g
+

@@ -1,15 +1,33 @@
-if command -v tmux>/dev/null; then
-  [[ ! $TERM =~ screen ]] && [ -z $TMUX ] && exec tmux
-fi
+# add ~/bin to path
 
 if [[ -d ~/bin ]]; then
     export PATH=~/bin/:$PATH
 fi
 
+# define additional functions that need to be run in the same shell
+
 use-java(){
     export JAVA_HOME=~/jdk-$1
-    if [ "x-$2" != "x-" ] 
+    if [ "x-$2" != "x-" ]
     then
        export JAVA_HOME=$JAVA_HOME-$2
     fi
 }
+
+parse_git_branch() {
+     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+
+# Setup branch highlight for dirs with git project
+
+export PS1="\u@\h \[\033[32m\]\w\[\033[33m\]\$(parse_git_branch)\[\033[00m\] $ "
+
+
+# setup xterm-256 color scheme BEFORE init tmux!
+
+[ -z "$TMUX" ] && export TERM=xterm-256color
+
+if command -v tmux>/dev/null; then
+  [[ ! $TERM =~ screen ]] && [ -z $TMUX ] && exec tmux
+fi
+

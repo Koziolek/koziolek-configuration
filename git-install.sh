@@ -47,5 +47,15 @@ else
 fi
 
 # 4. Installation of bash part
+
+if [[ -f ~/.koziolek-conf ]]; then
+    echo "already installed"
+    exit 1
+fi
+
+if [[ -f ~/.bash_aliases ]]; then
+    marker=`cat ~/.bash_aliases | grep "# KOZIOLEK"`
+fi
+
 # 5. Installation of git part
 
