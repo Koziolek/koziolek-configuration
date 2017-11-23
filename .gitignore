@@ -1,0 +1,14 @@
+# Created by .ignore support plugin (hsz.mobi)
+.project
+.settings/
+.classpath
+target/
+test-output/
+*.zip
+*.odp
+*.pdf
+*.ipr
+*.iws
+*.iml
+.idea/
+VAADIN/
