@@ -1,0 +1,10 @@
+[include]
+	path = ~/.git-configuration/git/aliases
+[user]
+	email = bjkuczynski@gmail.com
+	name = Koziolek
+[push]
+	default = simple
+[core]
+	autocrlf = input
+	editor = "vim "
