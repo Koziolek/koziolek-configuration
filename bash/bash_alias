@@ -1,7 +1,6 @@
 # Lista aliasów do różnych poleceń
-source /usr/share/bash-completion/bash_completion
-
 alias g=git
+alias git='hub'
+alias who_use_port='netstat -tulpn'
+alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K amem,\t%M mmem'"
 
-_completion_loader git
-complete -o bashdefault -o default -o nospace -F _git g
