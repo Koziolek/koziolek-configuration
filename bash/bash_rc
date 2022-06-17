@@ -20,12 +20,8 @@ source /usr/share/bash-completion/completions/git
 complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
   || complete -o default -o nospace -F __git_wrap__git_main g
 
-
-
 . $HOME/.asdf/asdf.sh
 . $HOME/.asdf/completions/asdf.bash
-
-
 
 parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
@@ -38,21 +34,22 @@ fi
 
 eval "$(thefuck --alias)"
 
-CURRENT_SIZE=$(echo $(xwininfo -id $(xdotool getactivewindow) -stats | egrep '(Width|Height):' | awk '{print $NF}') | sed -e 's/ /x/')
-#MAX_SIZE="1920x1080"
-MAX_SIZE=$(xrandr | egrep \\* | awk '{print $1}' | head -n 1)
-
-if [ "$CURRENT_SIZE" != "$MAX_SIZE" ]; then
-   xdotool key F11
-fi 
+if [ "$XDG_SESSION_TYPE" = "X11" ]; then
+  CURRENT_SIZE=$(echo $(xwininfo -id $(xdotool getactivewindow) -stats | egrep '(Width|Height):' | awk '{print $NF}') | sed -e 's/ /x/')
+  MAX_SIZE=$(xrandr | egrep \\* | awk '{print $1}' | head -n 1)
+  if [ "$CURRENT_SIZE" != "$MAX_SIZE" ]; then
+     xdotool key F11
+  fi
+fi
 
 neofetch --ascii $HOME/Obrazy/koziolekweb-logo-ascii-art.txt
 
 export PRINTER='L6170'
 
+source $MVND_HOME/bin/mvnd-bash-completion.bash
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
 [[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ]] && source "/home/koziolek/.sdkman/bin/sdkman-init.sh"
 
-source $MVND_HOME/bin/mvnd-bash-completion.bash
 

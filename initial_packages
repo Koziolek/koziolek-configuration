@@ -1,62 +1,53 @@
 #!/bin/bash
 
-sudo apt update
-sudo apt-get install -y thefuck xdotool neofetch tmux git hun curl gnupg2 apt-transport-https ca-certificates software-properties-common
+SUDO=''
+if (( $EUID != 0 )); then
+    SUDO='sudo'
+fi
 
-cd ~/
+$SUDO apt update
+$SUDO apt-get install -y vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa  libxcb-xtest0 libxcb-xinerama0
+
+cd ~/ || return
 
 git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.0
 curl -s "https://get.sdkman.io" | bash
 
 source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-
 sdk i java
 sdk i maven 
 sdk i mvnd
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+echo "deb http://packages.azlux.fr/debian/ buster main" | $SUDO tee /etc/apt/sources.list.d/azlux.list
+wget -qO - https://azlux.fr/repo.gpg.key | $SUDO apt-key add -
+curl -sS https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | $SUDO apt-key add -
+echo "deb http://repository.spotify.com stable non-free" | $SUDO tee /etc/apt/sources.list.d/spotify.list
 
-echo "deb http://packages.azlux.fr/debian/ buster main" | sudo tee /etc/apt/sources.list.d/azlux.list
-wget -qO - https://azlux.fr/repo.gpg.key | sudo apt-key add -
-
-
-sudo apt update
+$SUDO apt update
 apt-cache policy docker-ce
-sudo apt-get install -y docker-ce docker-compose docker-ctop
+$SUDO apt-get install -y docker-ce docker-compose docker-ctop
+$SUDO apt-get install spotify-client
 
-cd Pobrane
+cd ~/Pobrane/ || return
 
 wget https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
-
-sudo dpkg -i 1passord-latest.deb
-
 wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
-
-sudo dpkg -i zoom_amd64.deb
-
 wget https://packages.microsoft.com/repos/ms-teams/pool/main/t/teams/teams_1.5.00.10453_amd64.deb
-
-sudo dpkg -i teams_1.5.00.10453_amd64.deb
-
 wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
-sudo dpkg -i steam_latest.deb
 
+$SUDO apt-get ./1password-latest.deb ./zoom_amd64.deb ./teams_1.5.00.10453_amd64.deb ./steam_latest.deb
 
 wget https://download-cdn.jetbrains.com/idea/ideaIU-2022.1.2.tar.gz
 
 tar -xvf ideaUI-2022.1.2.tar.gz
 rm ideaUI-2022.1.2.tar.gz
-mv idea* ~/.
+mv idea-IU-221.5787.30 ~/.
 
-cd ..
+cd ~/ || return
 
 ln -s idea-IU-221.5787.30/ idea
-
-curl -sS https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | sudo apt-key add - 
-echo "deb http://repository.spotify.com stable non-free" | sudo tee /etc/apt/sources.list.d/spotify.list
-
-sudo apt-get update && sudo apt-get install spotify-client
 
 
