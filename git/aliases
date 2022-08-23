@@ -35,3 +35,4 @@
         mgo = "! f(){ B_NAME=`git rev-parse --abbrev-ref HEAD`; P_NAME=`git config project.name`; git co feature/$P_NAME-\"$1\" ; git merge --no-edit $B_NAME;}; f"
         fuck = reset --soft HEAD~
 	lsd = log --oneline --graph --decorate
+	pull = pull --prune

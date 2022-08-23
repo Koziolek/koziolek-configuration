@@ -23,6 +23,11 @@ complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/n
 . $HOME/.asdf/asdf.sh
 . $HOME/.asdf/completions/asdf.bash
 
+if command -f gigalixir &> /dev/null
+then
+  eval "$(_GIGALIXIR_COMPLETE=source gigalixir)"
+fi
+
 parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
 }
@@ -42,14 +47,36 @@ if [ "$XDG_SESSION_TYPE" = "X11" ]; then
   fi
 fi
 
-neofetch --ascii $HOME/Obrazy/koziolekweb-logo-ascii-art.txt
+neofetch --ascii $HOME/.git-configuration/logo-ascii-art.txt
 
 export PRINTER='L6170'
 
-source $MVND_HOME/bin/mvnd-bash-completion.bash
+
+function make_me_sudo () {
+  export SUDO=''
+  export RESET_SUDO=0
+  if (( $EUID != 0 )); then
+     SUDO='sudo'
+     RESET_SUDO=1
+  fi
+  return 0
+}
+
+function unmake_me_sudo () {
+  if (( $RESET_SUDO !=0 )); then
+      $SUDO -K
+  fi
+  unset SUDO
+  unset RESET_SUDO
+}
+
+export -f make_me_sudo
+export -f unmake_me_sudo
+
 
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
 [[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ]] && source "/home/koziolek/.sdkman/bin/sdkman-init.sh"
-
+source $HOME/.maven-bash-completion/bash_completion.bash
+source $MVND_HOME/bin/mvnd-bash-completion.bash
 
