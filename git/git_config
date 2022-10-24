@@ -9,3 +9,7 @@
 	autocrlf = input
 	editor = "vim "
 	excludesfile = /home/koziolek/.gitignore
+[color]
+	ui = auto
+[init]
+	defaultBranch = master
