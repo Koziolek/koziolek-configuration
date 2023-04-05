@@ -10,7 +10,7 @@ $SUDO apt-get install -y git vim thefuck xdotool neofetch tmux hub curl gnupg2 a
 
 cd ~/ || return
 
-git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.0
+git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.11.3
 curl -s "https://get.sdkman.io" | bash
 
 source "$HOME/.sdkman/bin/sdkman-init.sh"
