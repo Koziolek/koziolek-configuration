@@ -6,7 +6,7 @@ if (( $EUID != 0 )); then
 fi
 
 $SUDO apt update
-$SUDO apt-get install -y vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa  libxcb-xtest0 libxcb-xinerama0
+$SUDO apt-get install -y git vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa  libxcb-xtest0 libxcb-xinerama0
 
 cd ~/ || return
 
@@ -23,7 +23,7 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
 echo "deb http://packages.azlux.fr/debian/ buster main" | $SUDO tee /etc/apt/sources.list.d/azlux.list
 wget -qO - https://azlux.fr/repo.gpg.key | $SUDO apt-key add -
-curl -sS https://download.spotify.com/debian/pubkey_5E3C45D7B312C643.gpg | $SUDO apt-key add -
+curl -sS https://download.spotify.com/debian/pubkey_7A3A762FAFD4A51F.gpg | $SUDO gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
 echo "deb http://repository.spotify.com stable non-free" | $SUDO tee /etc/apt/sources.list.d/spotify.list
 
 $SUDO apt update
@@ -38,7 +38,7 @@ wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
 wget https://packages.microsoft.com/repos/ms-teams/pool/main/t/teams/teams_1.5.00.10453_amd64.deb
 wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
 
-$SUDO apt-get ./1password-latest.deb ./zoom_amd64.deb ./teams_1.5.00.10453_amd64.deb ./steam_latest.deb
+$SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./teams_1.5.00.10453_amd64.deb ./steam_latest.deb
 
 wget https://download-cdn.jetbrains.com/idea/ideaIU-2022.1.2.tar.gz
 

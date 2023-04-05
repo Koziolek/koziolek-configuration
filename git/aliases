@@ -6,6 +6,7 @@
         cl = clone
 	df = diff
         lg = log -p
+	rbc = rebase --continue
         who = shortlog -s --
         push-upstream = !BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD) && git push -u origin $BRANCH_NAME
         slow-merge = merge --no-commit --no-ff
@@ -36,3 +37,4 @@
         fuck = reset --soft HEAD~
 	lsd = log --oneline --graph --decorate
 	pull = pull --prune
+	p = pull --prune

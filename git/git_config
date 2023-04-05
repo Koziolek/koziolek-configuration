@@ -13,3 +13,5 @@
 	ui = auto
 [init]
 	defaultBranch = master
+[diff]
+	external = difft
