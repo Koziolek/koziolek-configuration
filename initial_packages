@@ -47,10 +47,4 @@ wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
 
 $SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./teams_1.5.00.10453_amd64.deb ./steam_latest.deb
 
-wget https://download-cdn.jetbrains.com/idea/ideaIU-2022.1.2.tar.gz
-
-tar -xvf ideaUI-2022.1.2.tar.gz
-rm ideaUI-2022.1.2.tar.gz
-mv idea-IU-221.5787.30 ~/.
-
 cd ~/ || return
