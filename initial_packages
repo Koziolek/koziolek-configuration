@@ -54,7 +54,3 @@ rm ideaUI-2022.1.2.tar.gz
 mv idea-IU-221.5787.30 ~/.
 
 cd ~/ || return
-
-ln -s idea-IU-221.5787.30/ idea
-
-
