@@ -1,8 +1,6 @@
-
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
-
 
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
@@ -51,7 +49,6 @@ neofetch --ascii $HOME/.git-configuration/logo-ascii-art.txt
 
 export PRINTER='L6170'
 
-
 function make_me_sudo () {
   export SUDO=''
   export RESET_SUDO=0
@@ -72,7 +69,6 @@ function unmake_me_sudo () {
 
 export -f make_me_sudo
 export -f unmake_me_sudo
-
 
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
