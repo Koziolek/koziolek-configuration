@@ -31,6 +31,7 @@ init() {
   echo 'In config'
 
   git checkout --track origin/feature/-split
+  cat setup.sh
 }
 
 check_git && init
