@@ -31,7 +31,10 @@ init() {
   echo 'In config'
 
   git checkout --track origin/feature/-split
-  cat setup.sh
+
+  echo 'On branch'
+  git rev-parse --abbrev-ref HEAD
+
 }
 
 check_git && init
