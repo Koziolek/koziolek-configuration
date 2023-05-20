@@ -59,7 +59,7 @@ verify_asdf() {
 }
 
 execute() {
- install_basics && asdf && install_asdf_plugins && install_asdf_shims
+ install_basics && asdf && install_asdf_plugins && install_asdf_shims && verify_asdf
 }
 
 execute
