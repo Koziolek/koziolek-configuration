@@ -33,7 +33,7 @@ asdf() {
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
-  ls ~/
+  ls -rtal ~/
 
   ln -s ~/workspace/asdf ~/.asdf
 
