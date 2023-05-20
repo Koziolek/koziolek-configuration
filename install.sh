@@ -29,24 +29,24 @@ workspace() {
 asdf() {
   workspace
 
+  ls -rtal .
+
   git clone https://github.com/asdf-vm/asdf.git
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
-  ls -rtal ~/
-
-  ln -s ~/workspace/asdf ~/.asdf
-
-  for i in "${languages[@]}"; do
-    echo $i
-  done
-
-  asdf plugin-add 'nodejs'
-  asdf plugin-add 'erlang'
-  asdf plugin-add 'elixir'
-  asdf plugin-add 'python'
-  asdf plugin-add 'golang'
-  asdf plugin-add 'rust'
+#  ln -s ~/workspace/asdf ~/.asdf
+#
+#  for i in "${languages[@]}"; do
+#    echo $i
+#  done
+#
+#  asdf plugin-add 'nodejs'
+#  asdf plugin-add 'erlang'
+#  asdf plugin-add 'elixir'
+#  asdf plugin-add 'python'
+#  asdf plugin-add 'golang'
+#  asdf plugin-add 'rust'
 }
 
 
