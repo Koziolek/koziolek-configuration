@@ -38,6 +38,8 @@ asdf() {
 }
 
 install_asdf_plugins() {
+  echo "INSTALLING asdf"
+
   chmod a+x ~/.asdf/asdf.sh
 
   for i in "${languages[@]}"; do
@@ -47,7 +49,7 @@ install_asdf_plugins() {
 }
 
 install_asdf_shims() {
-
+  echo "INSTALLING shims"
   for i in "${languages[@]}"; do
     ~/.asdf/asdf.sh install $i latest
   done
@@ -55,6 +57,7 @@ install_asdf_shims() {
 }
 
 verify_asdf() {
+  echo "VERFING asdf"
   ~/.asdf/asdf.sh list
 }
 
