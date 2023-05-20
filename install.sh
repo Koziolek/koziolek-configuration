@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euxo pipefail
+set -euo pipefail
 
 cd ~/ || return
 
@@ -38,6 +38,9 @@ asdf() {
 }
 
 install_asdf_shims() {
+
+  ls -rtla ~/.asdf/
+
   for i in "${languages[@]}"; do
     ~/.asdf/asdf.sh plugin add $i
   done
