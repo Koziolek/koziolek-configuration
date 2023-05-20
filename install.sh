@@ -39,7 +39,7 @@ asdf() {
 
 install_asdf_shims() {
 
-  ls -rtla ~/.asdf/
+  chmod a+x ~/.asdf/asdf.sh
 
   for i in "${languages[@]}"; do
     ~/.asdf/asdf.sh plugin add $i
