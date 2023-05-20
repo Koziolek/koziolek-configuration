@@ -43,7 +43,7 @@ install_asdf_plugins() {
   chmod a+x ~/.asdf/asdf.sh
 
   for i in "${languages[@]}"; do
-    ~/.asdf/asdf.sh plugin add $i
+    ~/.asdf/bin/asdf plugin add $i
   done
 
 }
@@ -51,15 +51,15 @@ install_asdf_plugins() {
 install_asdf_shims() {
   echo "INSTALLING shims"
   for i in "${languages[@]}"; do
-    echo "INSTALLING $i"
-    ~/.asdf/asdf.sh install $i latest
+    echo " - $i"
+    ~/.asdf/bin/asdf install $i latest
   done
 
 }
 
 verify_asdf() {
   echo "VERFING asdf"
-  ~/.asdf/asdf.sh list
+  ~/.asdf/bin/asdf list
 }
 
 execute() {
