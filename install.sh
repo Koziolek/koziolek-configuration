@@ -40,7 +40,8 @@ asdf() {
   echo '. "$HOME/.asdf/asdf.sh"' >> $HOME/.bashrc
   echo '. "$HOME/.asdf/completions/asdf.bash"' >> $HOME/.bashrc
 
-  . ~/.bashrc
+  . "$HOME/.asdf/asdf.sh"
+  . "$HOME/.asdf/completions/asdf.bash"
 }
 
 install_asdf_plugins() {
