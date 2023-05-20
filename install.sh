@@ -39,7 +39,7 @@ asdf() {
 
 install_asdf_shims() {
   for i in "${languages[@]}"; do
-    asdf plugin add $i
+    ~/.asdf/asdf.sh plugin add $i
   done
 #
 #  asdf plugin-add 'nodejs'
