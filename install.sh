@@ -29,19 +29,18 @@ workspace() {
 asdf() {
   workspace
 
-  ls -rtal .
-
   git clone https://github.com/asdf-vm/asdf.git
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
   ln -s ~/workspace/asdf ~/.asdf
 
-  ls -rtal ~/
-#
-#  for i in "${languages[@]}"; do
-#    echo $i
-#  done
+}
+
+install_asdf_shims() {
+  for i in "${languages[@]}"; do
+    echo $i
+  done
 #
 #  asdf plugin-add 'nodejs'
 #  asdf plugin-add 'erlang'
@@ -49,11 +48,11 @@ asdf() {
 #  asdf plugin-add 'python'
 #  asdf plugin-add 'golang'
 #  asdf plugin-add 'rust'
+
 }
 
-
 execute() {
- install_basics && asdf
+ install_basics && asdf && install_asdf_shims
 }
 
 execute
