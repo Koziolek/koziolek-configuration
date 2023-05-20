@@ -33,6 +33,8 @@ asdf() {
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
+  ls ~/
+
   ln -s ~/workspace/asdf ~/.asdf
 
   for i in "${languages[@]}"; do
@@ -46,8 +48,6 @@ asdf() {
   asdf plugin-add 'golang'
   asdf plugin-add 'rust'
 }
-
-
 
 
 execute() {
