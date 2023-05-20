@@ -37,25 +37,25 @@ asdf() {
 
 }
 
-install_asdf_shims() {
-
+install_asdf_plugins() {
   chmod a+x ~/.asdf/asdf.sh
 
   for i in "${languages[@]}"; do
     ~/.asdf/asdf.sh plugin add $i
   done
-#
-#  asdf plugin-add 'nodejs'
-#  asdf plugin-add 'erlang'
-#  asdf plugin-add 'elixir'
-#  asdf plugin-add 'python'
-#  asdf plugin-add 'golang'
-#  asdf plugin-add 'rust'
+
+}
+
+install_asdf_shims() {
+
+  for i in "${languages[@]}"; do
+    ~/.asdf/asdf.sh install $i latest
+  done
 
 }
 
 execute() {
- install_basics && asdf && install_asdf_shims
+ install_basics && asdf && install_asdf_plugins && install_asdf_shims
 }
 
 execute
