@@ -35,7 +35,7 @@ asdf() {
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
-#  ln -s ~/workspace/asdf ~/.asdf
+  ln -s ~/workspace/asdf ~/.asdf
 #
 #  for i in "${languages[@]}"; do
 #    echo $i
