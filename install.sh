@@ -54,6 +54,10 @@ install_asdf_shims() {
 
 }
 
+verify_asdf() {
+  ~/.asdf/asdf.sh list
+}
+
 execute() {
  install_basics && asdf && install_asdf_plugins && install_asdf_shims
 }
