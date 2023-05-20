@@ -35,7 +35,7 @@ asdf() {
 
   ln -s ~/workspace/asdf ~/.asdf
 
-  for i in $languages; do
+  for i in "${languages[@]}"; do
     echo $i
   done
 
