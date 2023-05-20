@@ -51,6 +51,7 @@ install_asdf_plugins() {
 install_asdf_shims() {
   echo "INSTALLING shims"
   for i in "${languages[@]}"; do
+    echo "INSTALLING $i"
     ~/.asdf/asdf.sh install $i latest
   done
 
