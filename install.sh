@@ -9,7 +9,7 @@ if (($EUID != 0)); then
   SUDO='sudo'
 fi
 
-languages={'nodejs', 'erlang', 'elixir', 'python', 'golang', 'rust'}
+languages=['nodejs', 'erlang', 'elixir', 'python', 'golang', 'rust']
 
 install_basics() {
   $SUDO apt update
