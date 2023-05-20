@@ -53,3 +53,5 @@ asdf() {
 execute() {
  install_basics && asdf
 }
+
+execute
