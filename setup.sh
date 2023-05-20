@@ -34,7 +34,8 @@ init() {
 
   echo 'On branch'
   echo `git rev-parse --abbrev-ref HEAD`
-
+  chmod +x install.sh
+  
   ./install.sh
 
 }
