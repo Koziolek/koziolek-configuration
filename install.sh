@@ -46,3 +46,10 @@ asdf() {
   asdf plugin-add 'golang'
   asdf plugin-add 'rust'
 }
+
+
+
+
+execute() {
+ install_basics && asdf
+}
