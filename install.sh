@@ -34,7 +34,6 @@ asdf() {
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
   ln -s ~/workspace/asdf ~/.asdf
-
 }
 
 install_asdf_plugins() {
@@ -60,6 +59,8 @@ install_asdf_shims() {
 verify_asdf() {
   echo "VERFING asdf"
   ~/.asdf/bin/asdf list
+
+  cat ~/.bashrc
 }
 
 execute() {
