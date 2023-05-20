@@ -16,7 +16,7 @@ install_basics() {
   $SUDO apt-get install -y vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates \
     software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
     libxcb-xtest0 libxcb-xinerama0 htop build-essential unzip libncurses5-dev libncursesw5-dev xsltproc fop \
-    libxml2-utils libssl-dev wx-common wx3.0-headers
+    libxml2-utils libssl-dev wx-common wx3.0-headers erlang-wx
   return $?
 }
 
@@ -24,6 +24,16 @@ workspace() {
   [ -d ~/workspace/ ] || mkdir workspace
   cd ~/workspace
   return $?
+}
+
+sdkman() {
+  curl -s "https://get.sdkman.io" | bash
+
+  source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+  sdk i java
+  sdk i maven
+  sdk i mvnd
 }
 
 asdf() {
@@ -68,7 +78,7 @@ verify_asdf() {
 }
 
 execute() {
- install_basics && asdf && install_asdf_plugins && install_asdf_shims && verify_asdf
+ install_basics && sdkman && asdf && install_asdf_plugins && install_asdf_shims && verify_asdf
 }
 
 execute
