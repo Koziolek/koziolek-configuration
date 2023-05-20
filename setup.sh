@@ -33,7 +33,9 @@ init() {
   git checkout --track origin/feature/-split
 
   echo 'On branch'
-  git rev-parse --abbrev-ref HEAD
+  echo `git rev-parse --abbrev-ref HEAD`
+
+  ./install.sh
 
 }
 

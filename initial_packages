@@ -15,9 +15,6 @@ cd ~/ || return
 [ -d ~/workspace/ ] || mkdir workspace
 cd workspace || return
 
-git clone https://github.com/Koziolek/git-configuration.git
-ln -s ~/workspace/git-configuration .git-configuration
-
 git clone https://github.com/asdf-vm/asdf.git
 cd asdf || return
 git tag -l --sort=committerdate| tail -1 | xargs git checkout -d
@@ -43,6 +40,8 @@ $SUDO apt update
 apt-cache policy docker-ce
 $SUDO apt-get install -y docker-ce docker-compose docker-ctop
 $SUDO snap install spotify
+
+git clone https://github.com/juven/maven-bash-completion.git ~/.maven-bash-completion
 
 cd ~/Pobrane/ || return
 
