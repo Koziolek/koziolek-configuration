@@ -37,8 +37,8 @@ asdf() {
 
   ln -s ~/workspace/asdf ~/.asdf
   chmod a+x ~/.asdf/asdf.sh
-  echo '. "$HOME/.asdf/asdf.sh"' >> ./bashrc
-  echo '. "$HOME/.asdf/completions/asdf.bash"' >> ./bashrc
+  echo '. "$HOME/.asdf/asdf.sh"' >> $HOME/.bashrc
+  echo '. "$HOME/.asdf/completions/asdf.bash"' >> $HOME/.bashrc
 
   . ~/.bashrc
 }
