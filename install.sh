@@ -29,17 +29,22 @@ workspace() {
 asdf() {
   workspace
 
+  echo "INSTALLING asdf"
+
   git clone https://github.com/asdf-vm/asdf.git
   cd asdf || return
   git tag -l --sort=committerdate | tail -1 | xargs git checkout -d
 
   ln -s ~/workspace/asdf ~/.asdf
+  chmod a+x ~/.asdf/asdf.sh
+  echo '. "$HOME/.asdf/asdf.sh"' >> ./bashrc
+  echo '. "$HOME/.asdf/completions/asdf.bash"' >> ./bashrc
+
+  . ~/.bashrc
 }
 
 install_asdf_plugins() {
-  echo "INSTALLING asdf"
-
-  chmod a+x ~/.asdf/asdf.sh
+  echo "INSTALLING asdf plugins"
 
   for i in "${languages[@]}"; do
     ~/.asdf/bin/asdf plugin add $i
@@ -59,8 +64,6 @@ install_asdf_shims() {
 verify_asdf() {
   echo "VERFING asdf"
   ~/.asdf/bin/asdf list
-
-  cat ~/.bashrc
 }
 
 execute() {
