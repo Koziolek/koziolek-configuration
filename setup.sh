@@ -5,7 +5,7 @@ set -euo pipefail
 cd ~/ || return
 
 SUDO=''
-if (( $EUID != 0 )); then
+if (( EUID )); then
     SUDO='sudo'
 fi
 
@@ -33,7 +33,7 @@ init() {
   git checkout --track origin/feature/-split
 
   echo 'On branch'
-  echo `git rev-parse --abbrev-ref HEAD`
+  git rev-parse --abbrev-ref HEAD
   chmod +x install.sh
 
   ./install.sh
