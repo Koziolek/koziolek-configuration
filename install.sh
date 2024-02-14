@@ -5,7 +5,7 @@
 cd ~/ || return
 
 SUDO=''
-if (($EUID != 0)); then
+if (( EUID )); then
   SUDO='sudo'
 fi
 
@@ -64,7 +64,7 @@ install_asdf_plugins() {
   echo "INSTALLING asdf plugins"
 
   for i in "${languages[@]}"; do
-    ~/.asdf/bin/asdf plugin add $i
+    ~/.asdf/bin/asdf plugin add "$i"
   done
 
 }
@@ -73,7 +73,7 @@ install_asdf_shims() {
   echo "INSTALLING shims"
   for i in "${languages[@]}"; do
     echo " - $i"
-    ~/.asdf/bin/asdf install $i latest
+    ~/.asdf/bin/asdf install "$i" latest
   done
 
 }
