@@ -17,3 +17,5 @@
 	external = difft
 [rerere]
 	enabled = true
+[credential]
+	helper = store
