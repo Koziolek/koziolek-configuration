@@ -37,3 +37,4 @@
     fuck = reset --soft HEAD~
     lsd = log --oneline --graph --decorate
     p = pull --prune
+    exterminatus = "! f() { LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}' | xargs git br -D;}; f"
