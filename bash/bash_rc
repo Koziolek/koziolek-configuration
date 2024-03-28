@@ -70,6 +70,12 @@ function unmake_me_sudo () {
 export -f make_me_sudo
 export -f unmake_me_sudo
 
+function order66 () {
+  ps aux | grep $1 | awk '{print $2}' | xargs kill -9
+}
+
+export -f order66
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
 [[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ]] && source "/home/koziolek/.sdkman/bin/sdkman-init.sh"
