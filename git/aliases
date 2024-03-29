@@ -37,7 +37,7 @@
     fuck = reset --soft HEAD~
     lsd = log --oneline --graph --decorate
     p = pull --prune
-    exterminatus = "! f() { LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}' | xargs git br -D;}; f"
+    exterminatus = "! f() { git p; LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}' | xargs git br -D;}; f"
     home = "! BRANCH_NAME=$(git rev-parse --abbrev-ref origin/HEAD | awk '{ split($0, arr, \"/\"); print arr[length(arr)]; }'); git co $BRANCH_NAME;"
     clean-home = "! git home && git exterminatus"
 
