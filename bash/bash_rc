@@ -76,6 +76,16 @@ function order66 () {
 
 export -f order66
 
+function heif_to_png () {
+  for i in *.heic
+  do
+     heif-convert $i $(basename -s .heic $i).png
+  done;
+}
+
+export -f heif_to_png
+
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
 [[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ]] && source "/home/koziolek/.sdkman/bin/sdkman-init.sh"

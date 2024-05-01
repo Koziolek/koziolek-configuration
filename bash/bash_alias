@@ -5,7 +5,7 @@ alias who_use_port='netstat -tulpn'
 alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K amem,\t%M mmem'"
 alias cozy="flatpak run com.github.geigi.cozy"
 alias workspace="cd ~/workspace"
-alias ll='ls -rtlF'
+alias ll='ls -rAlF'
 alias la='ls -lat'
 alias l='ls -CF'
 
