@@ -2,12 +2,15 @@
 alias g=git
 alias git='hub'
 alias who_use_port='netstat -tulpn'
-alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K amem,\t%M mmem'"
+alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K avg_mem,\t%M max_mem,\t%%I IO_ins\t%O IO_outs'"
 alias cozy="flatpak run com.github.geigi.cozy"
 alias workspace="cd ~/workspace"
 alias ll='ls -rAlF'
 alias la='ls -lat'
 alias l='ls -CF'
+alias in-window='xdg-open'
+alias ..="cd .."
+alias cd..="cd .."
 
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
