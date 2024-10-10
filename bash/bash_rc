@@ -37,7 +37,7 @@ fi
 
 eval "$(thefuck --alias)"
 
-if [ "$XDG_SESSION_TYPE" = "X11" ]; then
+if [ "$XDG_SESSION_TYPE" = "x11" ]; then
   CURRENT_SIZE=$(echo $(xwininfo -id $(xdotool getactivewindow) -stats | egrep '(Width|Height):' | awk '{print $NF}') | sed -e 's/ /x/')
   MAX_SIZE=$(xrandr | egrep \\* | awk '{print $1}' | head -n 1)
   if [ "$CURRENT_SIZE" != "$MAX_SIZE" ]; then
@@ -75,6 +75,12 @@ function order66 () {
 }
 
 export -f order66
+
+function exterminatus () {
+   ps aux | grep $1 | awk '{print $2}' | xargs kill -9
+}
+
+export -f exterminatus
 
 function heif_to_png () {
   for i in *.heic
