@@ -13,12 +13,14 @@ declare -a languages=('nodejs' 'erlang' 'elixir' 'python' 'golang' 'rust')
 
 install_basics() {
   $SUDO apt update
-  $SUDO apt-get install -y vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates \
-    software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
-    libxcb-xtest0 libxcb-xinerama0 htop build-essential unzip libncurses5-dev libncursesw5-dev xsltproc fop \
-    libxml2-utils libssl-dev ibwxbase3.0-0v5 ibwxbase3.0-dev unixodbc-dev \
-    ibwxgtk3.0-gtk3-0v5 libwxgtk3.0-gtk3-dev libwxgtk-webview3.0-gtk3-0v5 libwxgtk-webview3.0-gtk3-dev \
-    wx-common wx3.0-headers erlang-wx
+  for pkg in vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates \
+                 software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
+                 libxcb-xtest0 libxcb-xinerama0 htop build-essential unzip libncurses5-dev libncursesw5-dev xsltproc fop \
+                 libxml2-utils libssl-dev ibwxbase3.0-0v5 ibwxbase3.0-dev unixodbc-dev \
+                 ibwxgtk3.0-gtk3-0v5 libwxgtk3.0-gtk3-dev libwxgtk-webview3.0-gtk3-0v5 libwxgtk-webview3.0-gtk3-dev \
+                 wx-common wx3.0-headers erlang-wx; do
+          $SUDO apt-get install -y $pkg || echo "$pkg could not be installed"
+  done
 
   return $?
 }
