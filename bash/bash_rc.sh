@@ -1,19 +1,27 @@
-# this is my personal configuration of bashrc.
-# this is bash, but I use some POSIX stuff.
+# Personal bashrc configuration
+# This is Bash, though some POSIX features may be used.
 
-# lets define our "home"
-export BASH_CONFIGURATION_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd )";
-# Load helper function
+# Define and export our configuration directory
+export BASH_CONFIGURATION_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Load the primary helper functions
 if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
+    # shellcheck source=/dev/null
     . "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
-    source_if_exists "bash_history"
-    source_if_exists "bash_misc"
-    source_if_exists "bash_colors"
-    source_if_exists "bash_aliases"
-    source_if_exists "bash_exports"
-    source_if_exists "bash_completion"
-    source_if_exists "bash_start_window"
-else
-    echo "File 'bash_functions.sh' does not exist in '${BASH_CONFIGURATION_DIR}'"
-fi
 
+    # Source additional files via the helper function
+    for conf_file in \
+        bash_history \
+        bash_misc \
+        bash_colors \
+        bash_aliases \
+        bash_exports \
+        bash_completion \
+        bash_start_window \
+        bash_chat
+    do
+        source_if_exists "$conf_file"
+    done
+else
+    echo "Error: 'bash_functions.sh' not found in '${BASH_CONFIGURATION_DIR}'."
+fi
