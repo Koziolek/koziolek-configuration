@@ -1,7 +1,6 @@
 # Lista aliasów do różnych poleceń
 alias g=git
 alias git='hub'
-alias who_use_port='netstat -tulpn'
 alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K avg_mem,\t%M max_mem,\t%%I IO_ins\t%O IO_outs'"
 alias cozy="flatpak run com.github.geigi.cozy"
 alias workspace="cd ~/workspace"
@@ -18,8 +17,8 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
+    alias dir='dir --color=auto'
+    alias vdir='vdir --color=auto'
 
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'

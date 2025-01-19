@@ -41,6 +41,9 @@ Available functions:
   10) print_logo
        - Displays an ASCII art logo using neofetch from \$BASH_CONFIGURATION_DIR.
 
+  11) who_use_port
+       - List processes that use given port.
+
 Additional notes:
   - Ensure \$BASH_CONFIGURATION_DIR is set to the directory containing your
     configuration files and the "logo-ascii-art.txt" for print_logo.
@@ -214,9 +217,47 @@ function print_logo () {
 }
 
 ##
+# List processes that use given PORT if --sudo is set then run it as sudo.
+##
+function who_use_port () {
+    if [ $# -lt 1 ]; then
+        echo "Usage: who_use_port [--sudo] PORT"
+        return 1
+    fi
+
+    local root_mode=false
+    local port
+
+    # Check if the first argument is --sudo
+    if [ "$1" == "--sudo" ]; then
+        root_mode=true
+        shift # Remove the --sudo argument
+    fi
+
+    port="$1"
+
+    if [ -z "$port" ]; then
+        echo "Usage: who_use_port [--sudo] PORT"
+        return 1
+    fi
+
+    if $root_mode; then
+        make_me_sudo
+    fi
+
+    # Use pgrep to avoid killing the grep process itself
+    $SUDO netstat -tulpn | grep "$port" | awk '!seen[$0]++'
+
+    if $root_mode; then
+        unmake_me_sudo
+    fi
+}
+
+
+##
 # Export functions so they remain available after 'source'
 ##
-export -f usage
+export -f bash_customs_usage
 export -f source_if_exists
 export -f parse_git_branch
 export -f make_me_sudo
@@ -227,3 +268,4 @@ export -f heif_to_png
 export -f resize_to_full
 export -f run_tmux
 export -f print_logo
+export -f who_use_port
