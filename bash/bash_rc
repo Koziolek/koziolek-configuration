@@ -76,6 +76,8 @@ function order66 () {
 
 export -f order66
 
+export GIT_SCRIPTS_DIR=~/.git-configuration/git/git_helpers.sh
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="/home/koziolek/.sdkman"
 [[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ]] && source "/home/koziolek/.sdkman/bin/sdkman-init.sh"
