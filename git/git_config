@@ -1,5 +1,5 @@
 [include]
-	path = ~/.git-configuration/git/aliases
+	path = $GIT_CONFIGURATION_DIR/aliases
 [user]
 	email = bjkuczynski@gmail.com
 	name = Koziolek
@@ -8,7 +8,7 @@
 [core]
 	autocrlf = input
 	editor = "vim "
-	excludesfile = /home/koziolek/.gitignore
+	excludesfile = $GIT_CONFIGURATION_DIR/ignores
 [color]
 	ui = auto
 [init]

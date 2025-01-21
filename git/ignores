@@ -11,3 +11,8 @@ test-output/
 *.iml
 .idea/
 VAADIN/
+.gradle/
+build/
+settings.xml
+.jekyll-metadata
+.tool-versions
