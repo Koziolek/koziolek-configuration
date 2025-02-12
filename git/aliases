@@ -1,4 +1,5 @@
 [alias]
+    fun = "! bash \"$GIT_FUNCTIONS\""
     st = status
     ci = commit
     br = branch
@@ -7,6 +8,7 @@
     df = diff
     lg = log -p
     rbc = rebase --continue
+    rba = rebase --abort
     who = shortlog -s --
     push-upstream = !BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD) && git push -u origin $BRANCH_NAME
     slow-merge = merge --no-commit --no-ff
@@ -37,7 +39,7 @@
     fuck = reset --soft HEAD~
     lsd = log --oneline --graph --decorate
     p = pull --prune
-    exterminatus = "! f() { git p; LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}' | xargs git br -D;}; f"
+    exterminatus = fun git_exterminatus
     home = "! BRANCH_NAME=$(git rev-parse --abbrev-ref origin/HEAD | awk '{ split($0, arr, \"/\"); print arr[length(arr)]; }'); git co $BRANCH_NAME;"
     clean-home = "! git home && git exterminatus"
-
+    cbr= fun git_current_branch

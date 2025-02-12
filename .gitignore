@@ -12,3 +12,4 @@ test-output/
 *.iml
 .idea/
 VAADIN/
+bashrc

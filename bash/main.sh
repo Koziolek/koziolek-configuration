@@ -2,7 +2,6 @@
 # This is Bash, though some POSIX features may be used.
 
 # Define and export our configuration directory
-#export BASH_CONFIGURATION_DIR="$( cd -- "$( dirname -- $( realpath "${BASH_SOURCE[0]}") )" && pwd )"
 
 # Load the primary helper functions
 if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
@@ -18,7 +17,8 @@ if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
         bash_exports \
         bash_completion \
         bash_start_window \
-        bash_chat
+        bash_chat \
+        bash_customs
     do
         source_if_exists "$conf_file"
     done
