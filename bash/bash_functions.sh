@@ -173,19 +173,39 @@ function resize_to_full () {
 
         local win_id
         win_id="$(xdotool getactivewindow)"
-        local current_size
-        current_size="$(xwininfo -id "$win_id" -stats \
-            | egrep '(Width|Height):' \
-            | awk '{print $NF}' \
-            | xargs echo \
-            | sed -e 's/ /x/')"
+
+        local current_width
+        current_width="$(xwininfo -id "$win_id" -stats \
+                          | grep -E '(Width):' \
+                          | awk '{print $2}')"
+        local current_height
+        current_height="$(xwininfo -id "$win_id" -stats \
+                          | grep -E '(Height):' \
+                          | awk '{print $2}')"
 
         local max_size
-        max_size="$(xrandr | egrep '\*' | awk '{print $1}' | head -n 1)"
 
-        if [ "$current_size" != "$max_size" ]; then
-            xdotool key F11
+        readarray -t max_size < <(xrandr | grep -E '\*' | awk '{print $1}')
+
+        local is_max=0
+        for res in "${max_size[@]}" ; do
+          local max_width
+          local max_height
+          IFS='x' read -r max_width max_height <<< "$res"
+          if [[ ("$current_width" == "$max_width" &&  "$current_height" == "$max_height")
+            || ("$current_width" == "$max_height" &&  "$current_height" == "$max_width") ]]; then
+               is_max=1
+               break
+          fi
+        done
+
+        if [[ $is_max -eq 0 ]]; then
+             xdotool key F11
         fi
+#
+#        if [ "$current_size" != "$max_size" ]; then
+#            xdotool key F11
+#        fi
     fi
 }
 
@@ -323,17 +343,22 @@ function weather() {
       fi
 
       local city_name="$1"
-      local response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
+      local response
+      response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
 
       if [[ -z "$response" ]]; then
           echo "Error: Unable to fetch weather for ${city_name}."
           return 1
       fi
 
-      local weather_desc=$(echo "$response" | awk '{print $1}')
-      local temperature=$(echo "$response" | awk '{print $2}')
-      local humidity=$(echo "$response" | awk '{print $3}')
-      local wind_speed=$(echo "$response" | awk '{print $4, $5}')
+      local weather_desc
+      weather_desc=$(echo "$response" | awk '{print $1}')
+      local temperature
+      temperature=$(echo "$response" | awk '{print $2}')
+      local humidity
+      humidity=$(echo "$response" | awk '{print $3}')
+      local wind_speed
+      wind_speed=$(echo "$response" | awk '{print $4, $5}')
 
       echo "----------------------------------------"
       echo "| Weather in ${city_name}                   |"
