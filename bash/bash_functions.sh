@@ -26,25 +26,15 @@ Available functions:
        - Kills processes matching PATTERN.
 
   6) exterminatus PATTERN
-       - Kills processes matching PATTERN (same as order66, different name).
+       - Kills processes matching PATTERN (same as order66, different universe).
 
   7) heif_to_png
        - Converts all *.heic files in the current directory to PNGs using heif-convert.
 
-  8) resize_to_full
-       - If running in X11, attempts to full-screen the currently active window.
-
-  9) run_tmux
-       - Attaches to tmux or starts a new session if tmux is installed
-         and not already in a tmux session.
-
-  10) print_logo
-       - Displays an ASCII art logo using neofetch from \$BASH_CONFIGURATION_DIR.
-
-  11) who_use_port
+  8) who_use_port
        - List processes that use given port.
 
-  12) weather
+  9) weather
        - List processes that use given port.
 
 Additional notes:
@@ -202,10 +192,6 @@ function resize_to_full () {
         if [[ $is_max -eq 0 ]]; then
              xdotool key F11
         fi
-#
-#        if [ "$current_size" != "$max_size" ]; then
-#            xdotool key F11
-#        fi
     fi
 }
 
@@ -374,15 +360,11 @@ function weather() {
 # Export functions so they remain available after 'source'
 ##
 export -f bash_customs_usage
-export -f source_if_exists
 export -f parse_git_branch
 export -f make_me_sudo
 export -f unmake_me_sudo
 export -f order66
 export -f exterminatus
 export -f heif_to_png
-export -f resize_to_full
-export -f run_tmux
-export -f print_logo
 export -f who_use_port
 export -f weather
