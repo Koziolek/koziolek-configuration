@@ -35,7 +35,10 @@ Available functions:
        - List processes that use given port.
 
   9) weather
-       - List processes that use given port.
+       - Current weather
+
+  10) turn_async_profiler_on/turn_async_profiler_off
+       - Change kernel flags for java async profiler
 
 Additional notes:
   - Ensure \$BASH_CONFIGURATION_DIR is set to the directory containing your
@@ -356,6 +359,55 @@ function weather() {
       echo "----------------------------------------"
 }
 
+function resize_png() {
+    # Argumenty: $1 - nazwa pliku, $2 - skala w procentach
+    local scale=${2:-50}  # Skala domyślna to 50% (jeśli brak podano)
+
+    # Sprawdź, czy podano poprawną wartość skali (liczby całkowite)
+    if ! [[ "$scale" =~ ^[0-9]+$ ]] || [ "$scale" -le 0 ] || [ "$scale" -gt 100 ]; then
+        echo "Błąd: Skala musi być liczbą całkowitą z zakresu 1-100."
+        return 1
+    fi
+
+    # Jeśli podano nazwę pliku
+    if [ -n "$1" ]; then
+        # Sprawdź, czy plik istnieje i jest plikiem PNG
+        if [ -f "$1" ] && [[ "$1" == *.png ]]; then
+            echo "Przetwarzanie pliku: $1 (skala: ${scale}%)"
+            convert "$1" -resize "${scale}%" "$1"
+        else
+            echo "Błąd: Plik '$1' nie istnieje lub nie jest plikiem PNG."
+            return 1
+        fi
+    else
+        # Jeśli nie podano nazwy pliku, przetwarzaj wszystkie pliki PNG w katalogu
+        echo "Przetwarzanie wszystkich plików PNG w bieżącym katalogu (skala: ${scale}%)"
+        for file in *.png; do
+            if [ -f "$file" ]; then
+                echo "Przetwarzanie pliku: $file"
+                convert "$file" -resize "${scale}%" "$file"
+            fi
+        done
+    fi
+
+    echo "Przetwarzanie zakończone."
+}
+
+function turn_async_profiler_on() {
+  make_me_sudo
+  sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
+  sh -c 'echo 0 > /proc/sys/kernel/kptr_restrict'
+  unmake_me_sudo
+}
+
+function turn_async_profiler_off() {
+  make_me_sudo
+  sh -c 'echo 4 > /proc/sys/kernel/perf_event_paranoid'
+  sh -c 'echo 1 > /proc/sys/kernel/kptr_restrict'
+  unmake_me_sudo
+}
+
+
 ##
 # Export functions so they remain available after 'source'
 ##
@@ -368,3 +420,6 @@ export -f exterminatus
 export -f heif_to_png
 export -f who_use_port
 export -f weather
+export -f resize_png
+export -f turn_async_profiler_on
+export -f turn_async_profiler_off
