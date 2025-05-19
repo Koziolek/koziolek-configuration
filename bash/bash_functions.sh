@@ -154,7 +154,7 @@ function heif_to_png () {
 
 ##
 # Resizes the currently active window to full screen if running under X11
-# and using xdotool
+# and using xdotool ow gdbus ir swaymsg on Wayland
 ##
 function resize_to_full () {
     # Only run if X11 session
@@ -200,7 +200,32 @@ function resize_to_full () {
         if [[ $is_max -eq 0 ]]; then
              xdotool key F11
         fi
-    fi
+    elif [ "$XDG_SESSION_TYPE" = "wayland" ]; then
+        # --- GNOME ---
+        if command -v gdbus >/dev/null 2>&1; then
+            echo "Attempting to toggle fullscreen in GNOME"
+            gdbus call --session \
+              --dest org.gnome.Shell \
+              --object-path /org/gnome/Shell \
+              --method org.gnome.Shell.Eval \
+              'global.display.focus_window.toggle_fullscreen();' \
+              >/dev/null 2>&1
+            return $?
+        fi
+
+        # --- sway / wlroots-based compositor ---
+        if command -v swaymsg >/dev/null 2>&1; then
+            echo "Attempting to toggle fullscreen in Sway"
+            swaymsg fullscreen toggle
+            return $?
+        fi
+
+        echo "Wayland session detected, but no supported window manager interface found (gdbus/swaymsg missing)"
+        return 0
+    else
+        echo "Unsupported session type: $XDG_SESSION_TYPE"
+        return 0
+    fi 
 }
 
 ##
