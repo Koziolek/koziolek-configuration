@@ -3,9 +3,12 @@ export PS1="\u@\h \[\033[32m\]\w\[\033[33m\]\$(parse_git_branch)\[\033[00m\] $ "
 # printer name because cups sucks
 export PRINTER='L6170'
 # Add the directory of Tizen .NET Command Line Tools to user path.
-export PATH=~/tizen-studio/tools/ide/bin:$PATH
+export PATH=$HOME/.bin:$PATH
 export WORKSPACE=~/workspace
 export WORKSPACE_TOOLS=$WORKSPACE/tools
+export ASDF_DATA_DIR="$HOME/.asdf"
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+export PATH=/home/koziolek/.local/bin:$PATH
 
 # Export „secrets”
 if [ -f ~/.senv ]; then

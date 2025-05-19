@@ -10,12 +10,13 @@ if ! shopt -oq posix; then
 fi
 
 . /usr/share/bash-completion/completions/git
+. <(asdf completion bash)
 
 # alias g=git support
 complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
   || complete -o default -o nospace -F __git_wrap__git_main g
 
-. $HOME/.asdf/asdf.sh
-. $HOME/.asdf/completions/asdf.bash
+#. $HOME/.asdf/asdf.sh
+#. $HOME/.asdf/completions/asdf.bash
 . $HOME/.maven-bash-completion/bash_completion.bash
 . $MVND_HOME/bin/mvnd-bash-completion.bash

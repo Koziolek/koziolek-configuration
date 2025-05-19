@@ -167,6 +167,11 @@ function resize_to_full () {
         local win_id
         win_id="$(xdotool getactivewindow)"
 
+	if [ -z "$win_id" ]; then 
+	    echo "No active window found"
+	    return 0
+	fi    
+
         local current_width
         current_width="$(xwininfo -id "$win_id" -stats \
                           | grep -E '(Width):' \
