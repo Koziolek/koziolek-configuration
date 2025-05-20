@@ -15,7 +15,8 @@ CHATGPT_MODEL_ENDPOINT="https://api.openai.com/v1/models"
 
 # Main function
 function chatgpt() {
-    local prompt model temperature max_tokens
+    local prompt model temperature max_tokens;
+    local OPTIND opt;
     # Get list of models names
     function models() {
        response=$(curl -s -X GET "$CHATGPT_MODEL_ENDPOINT" -H "Authorization: Bearer $CHATGPT_API_KEY")
@@ -101,6 +102,7 @@ function chatgpt() {
         esac
     done
 
+    local OPTIND=1 # reset param pointer
     precheck || return 1
     ask
 }
