@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# This is non-interactive shell! We need source functions manually
+if [ -n "$BASH_CONFIGURATION_DIR" ] && [ -d "$BASH_CONFIGURATION_DIR" ]; then
+    source "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
+fi
+
 # Function to get the current Git branch name
 function git_current_branch() {
   # Check if the current directory is a git repository
@@ -21,6 +26,36 @@ function git_exterminatus() {
     echo "$gone_branches" | xargs git br -D
   fi
 }
+
+function git_home(){
+  local branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@');
+  log_info "Git go home at ${branch_name}"
+  git co ${branch_name};
+}
+
+function merge_pr() {
+  local pr="$1"
+
+  if [ -z "$pr" ]; then
+    log_man "Usage: merge_pr NUMBER
+      NUMBER - number of existing, open pull request in github repository
+    "
+    return 1;
+  fi
+
+  local to_merge=$(hub pr list -f %U%n | grep /$pr)
+
+  if [ -z "$to_merge"]; then
+    log_error "Pull request with number ${pr} does not exists. Existing pull requests:"
+    hub pr list -f %U%n
+    return 1;
+  fi
+
+  log_info "Merging pull request ${to_merge}"
+  git home
+  hub merge $to_merge
+}
+
 
 # Dispatcher
 if declare -f "$1" > /dev/null; then

@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - ~/.senv
+    ports:
+      - "16432:5432"
+    volumes:
+      - $POSTGRES_DATA:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
+    restart: always
+    networks:
+      - service-network
+  artifactory:
+    image: releases-docker.jfrog.io/jfrog/artifactory-oss:latest
+    container_name: artifactory
+    ports:
+      - "12081:8081"
+      - "12082:8082"
+    environment:
+      JF_SHARED_DATABASE_TYPE: postgresql
+      JF_SHARED_DATABASE_USERNAME: ${DB_USERNAME}
+      JF_SHARED_DATABASE_PASSWORD: ${DB_PASSWORD}
+      JF_SHARED_DATABASE_URL: jdbc:postgresql://db:5432/artifactory
+      JF_SHARED_DATABASE_DRIVER: org.postgresql.Driver
+    depends_on:
+      - db
+    volumes:
+      - $ARTIFACTORY_DATA:/var/opt/jfrog/artifactory
+    restart: always
+    networks:
+      - service-network
+
+networks:
+  service-network:
+    driver: bridge
