@@ -40,6 +40,7 @@
     lsd = log --oneline --graph --decorate
     p = pull --prune
     exterminatus = fun git_exterminatus
-    home = "! BRANCH_NAME=$(git rev-parse --abbrev-ref origin/HEAD | awk '{ split($0, arr, \"/\"); print arr[length(arr)]; }'); git co $BRANCH_NAME;"
+    home = fun git_home
     clean-home = "! git home && git exterminatus"
     cbr= fun git_current_branch
+    merge-hub= fun merge_pr
