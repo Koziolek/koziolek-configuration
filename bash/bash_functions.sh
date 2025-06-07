@@ -43,8 +43,11 @@ Available functions:
   11) supports_colors
        - Check if you could use colors in terminal
 
-  11) log_message [level] [messages]
+  12) log_message [level] [messages]
        - Log messages on given level. If level is not in: debug, info, error, man then use no_level
+
+  13) are_you_sure
+       – Ask user Yes/No
 
 Additional notes:
   - Ensure \$BASH_CONFIGURATION_DIR is set to the directory containing your
@@ -479,6 +482,9 @@ log_message() {
         "info")
             prefix="${C_GREEN}${level^^}: ${C_NC}"
             ;;
+        "warn")
+            prefix="${C_ORANGE}${level^^}: ${C_NC}"
+            ;;
         "error")
             prefix="${C_RED}${level^^}: ${C_NC}"
             ;;
@@ -500,6 +506,9 @@ function log_info() {
     log_message "info" "$@"
 }
 
+function log_warn() {
+    log_message "warn" "$@"
+}
 function log_error() {
     log_message "error" "$@"
 }
@@ -508,6 +517,62 @@ function log_man() {
     log_message "man" "$@"
 }
 
+function yes_or_no(){
+    local default=${1:-"n"}
+    local response
+    local valid=false
+
+    while ! $valid; do
+        if [ "$default" = "y" ]; then
+            read -r -p "${C_GREEN}[Y/n]:${C_NC} " response
+        else
+            read -r -p "${C_RED}[y/N]:${C_NC} " response
+        fi
+
+        response=${response:-$default}
+        case ${response,,} in
+            y|yes|Y|Yes)
+                valid=true
+                ;;
+            n|no|N|No)
+                valid=true
+                ;;
+            *)
+                log_man "Please answer with 'y' or 'n'"
+                ;;
+        esac
+    done
+    echo "${response}"
+}
+
+
+function are_you_sure(){
+    local default=${1:-"n"}
+    local response
+    local valid=false
+
+    while ! $valid; do
+        if [ "$default" = "y" ]; then
+            read -r -p "${C_GREEN}Are you sure? [Y/n]:${C_NC} " response
+        else
+            read -r -p "${C_RED}Are you sure? [y/N]:${C_NC} " response
+        fi
+
+        response=${response:-$default}
+        case ${response,,} in
+            y|yes|Y|Yes)
+                valid=true
+                ;;
+            n|no|N|No)
+                valid=true
+                ;;
+            *)
+                log_man "Please answer with 'y' or 'n'"
+                ;;
+        esac
+    done
+    echo "${response}"
+}
 
 ##
 # Export functions so they remain available after 'source'
@@ -528,5 +593,8 @@ export -f supports_colors
 export -f log_message
 export -f log_debug
 export -f log_info
+export -f log_warn
 export -f log_error
 export -f log_man
+export -f are_you_sure
+export -f yes_or_no

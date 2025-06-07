@@ -1,6 +1,6 @@
 # Set prompt. Depends of pwd - home > 20 then dirtrim=1 else =3
 PROMPT_COMMAND="set_dirtrim_by_path_length${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
-export PS1='${C_GREEN}⛧ 𓃵  ⛧[at]𖠿:${C_LBLUE}\w${C_CYAN}$(parse_git_branch)${C_NC}\$ '
+export PS1='${C_GREEN}⛧ 𓃵  ⛧[at]𖠿:${C_LBLUE}\w${C_CYAN}$(parse_git_branch)${C_NC} \$ '
 
 # printer name because cups sucks
 export PRINTER='L6170'

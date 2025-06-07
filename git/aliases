@@ -1,5 +1,6 @@
 [alias]
     fun = "! bash \"$GIT_FUNCTIONS\""
+    i  = fun git_init
     st = status
     ci = commit
     br = branch
@@ -43,4 +44,4 @@
     home = fun git_home
     clean-home = "! git home && git exterminatus"
     cbr= fun git_current_branch
-    merge-hub= fun merge_pr
+    merge-hub= fun hub_merge_pr

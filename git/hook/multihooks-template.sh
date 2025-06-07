@@ -28,7 +28,7 @@ case "$hook_type" in
         |update)
         IFS= read -rd '' stdin
         for file in "${BASH_SOURCE[0]}.d"/*; do
-            "./$file" "$@" <<<"$stdin" || exit 2
+           [ -x "$file" ] && "$file" "$@" <<<"$stdin" || exit 2
         done
         exit 0
         ;;
