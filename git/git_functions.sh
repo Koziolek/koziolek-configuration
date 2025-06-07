@@ -53,7 +53,7 @@ function merge_pr() {
 
   log_info "Merging pull request ${to_merge}"
   git home
-  git merge $to_merge
+  hub merge $to_merge
 }
 
 
