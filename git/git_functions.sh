@@ -122,6 +122,57 @@ function git_init(){
   fi
 }
 
+function git_new_branch(){
+  local type="feature"
+  case "$1" in
+    feature|version|fix|experimental)
+      type="$1"
+      shift
+      ;;
+    *)
+      type="feature"
+      ;;
+  esac
+
+  local branch_name=$(to_ascii "$*" | sed 's/[^a-zA-Z0-9 _-]//g')
+  branch_name=$(to_kebab_case "$branch_name")
+
+  if [ -z $branch_name ]; then
+    log_error "Branch need a name"
+    return 1
+  fi
+
+  local project_name=$(git_project_name)
+  if [ -n $project_name ]; then
+    branch_name="${project_name}-${branch_name}"
+  fi
+  branch_name="${type}/${branch_name}"
+
+  git pull
+  git co -b "${branch_name}"
+  git push -u origin "${branch_name}"
+}
+
+function git_new_feature_branch(){
+  git_new_branch "feature $*"
+}
+function git_new_version_branch(){
+  git_new_branch "version $*"
+}
+function git_new_fix_branch(){
+  git_new_branch "fix $*"
+}
+function git_new_experimental_branch(){
+  git_new_branch "experimental $*"
+}
+
+function git_vomit(){
+  local branch_name=$(git_current_branch)
+  git add .
+  git ci -a -m "$*"
+  git push -u origin $branch_name
+}
+
 # Dispatcher
 if declare -f "$1" > /dev/null; then
   "$@"

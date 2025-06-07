@@ -307,8 +307,13 @@ function who_use_port () {
     fi
 }
 
+function to_ascii() {
+  local input="$*"
+  echo "$input" | iconv -f utf8 -t ascii//TRANSLIT 2>/dev/null
+}
+
 function to_kebab_case() {
-  local input="$1"
+  local input="$*"
   echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /-/g' -e 's/^-//' -e 's/-$//'
 }
 
@@ -469,7 +474,7 @@ function set_dirtrim_by_path_length() {
     fi
 }
 
-log_message() {
+function log_message() {
     local level="$1"
     shift
     local messages=("$@")
@@ -598,3 +603,5 @@ export -f log_error
 export -f log_man
 export -f are_you_sure
 export -f yes_or_no
+export -f to_ascii
+export -f to_kebab_case
