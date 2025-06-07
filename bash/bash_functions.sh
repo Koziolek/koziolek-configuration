@@ -40,6 +40,12 @@ Available functions:
   10) turn_async_profiler_on/turn_async_profiler_off
        - Change kernel flags for java async profiler
 
+  11) supports_colors
+       - Check if you could use colors in terminal
+
+  11) log_message [level] [messages]
+       - Log messages on given level. If level is not in: debug, info, error, man then use no_level
+
 Additional notes:
   - Ensure \$BASH_CONFIGURATION_DIR is set to the directory containing your
     configuration files and the "logo-ascii-art.txt" for print_logo.
@@ -50,26 +56,29 @@ EOF
 }
 
 ##
-# Sources a file from $BASH_CONFIGURATION_DIR if it exists
-# Usage: source_if_exists filename
+# Sources a file from specified directory or $BASH_CONFIGURATION_DIR if it exists
+# Usage: source_if_exists filename [directory]
 ##
 function source_if_exists() {
     if [ $# -lt 1 ]; then
-        echo "Usage: source_if_exists FILE"
+        log_man "Usage: source_if_exists FILE [DIRECTORY]"
         return 1
     fi
 
     local filename="$1"
-    if [ -z "$BASH_CONFIGURATION_DIR" ]; then
-        echo "Warning: \$BASH_CONFIGURATION_DIR is not set. Cannot source files reliably."
+    local directory="${2:-$BASH_CONFIGURATION_DIR}"
+
+    if [ -z "$directory" ]; then
+        echo "Warning: Neither directory parameter nor \$BASH_CONFIGURATION_DIR is set. Cannot source files reliably."
+        return 1
     fi
 
-    local filepath="${BASH_CONFIGURATION_DIR}/${filename}.sh"
+    local filepath="${directory}/${filename}.sh"
     if [ -f "$filepath" ]; then
         # shellcheck source=/dev/null
         . "$filepath"
     else
-        echo "File '${filename}.sh' does not exist in '${BASH_CONFIGURATION_DIR}'"
+        echo "File '${filename}.sh' does not exist in '${directory}'"
     fi
 }
 
@@ -263,7 +272,7 @@ function print_logo () {
 ##
 function who_use_port () {
     if [ $# -lt 1 ]; then
-        echo "Usage: who_use_port [--sudo] PORT"
+        log_man "Usage: who_use_port [--sudo] PORT"
         return 1
     fi
 
@@ -328,7 +337,7 @@ function install_lib() {
   done
 
   if [ -z "$repo_url" ]; then
-    echo "Błąd: Adres repozytorium (-r) jest obowiązkowy."
+    log_error "Adres repozytorium (-r) jest obowiązkowy."
     echo "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>]"
     return 1
   fi
@@ -344,7 +353,7 @@ function install_lib() {
   fi
 
   if ! git clone "$repo_url" "$target_dir"; then
-    echo "Błąd: Nie udało się sklonować repozytorium '$repo_url'."
+    log_error "Nie udało się sklonować repozytorium '$repo_url'."
     return 1
   fi
 
@@ -357,7 +366,7 @@ function install_lib() {
 
 function weather() {
       if [[ -z "$1" ]]; then
-          echo "Usage: get_weather <city_name>"
+          log_man "Usage: get_weather <city_name>"
           return 1
       fi
 
@@ -366,7 +375,7 @@ function weather() {
       response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
 
       if [[ -z "$response" ]]; then
-          echo "Error: Unable to fetch weather for ${city_name}."
+          log_error "Unable to fetch weather for ${city_name}."
           return 1
       fi
 
@@ -395,7 +404,7 @@ function resize_png() {
 
     # Sprawdź, czy podano poprawną wartość skali (liczby całkowite)
     if ! [[ "$scale" =~ ^[0-9]+$ ]] || [ "$scale" -le 0 ] || [ "$scale" -gt 100 ]; then
-        echo "Błąd: Skala musi być liczbą całkowitą z zakresu 1-100."
+        log_error "Skala musi być liczbą całkowitą z zakresu 1-100."
         return 1
     fi
 
@@ -403,18 +412,18 @@ function resize_png() {
     if [ -n "$1" ]; then
         # Sprawdź, czy plik istnieje i jest plikiem PNG
         if [ -f "$1" ] && [[ "$1" == *.png ]]; then
-            echo "Przetwarzanie pliku: $1 (skala: ${scale}%)"
+            log_info "Przetwarzanie pliku: $1 (skala: ${scale}%)"
             convert "$1" -resize "${scale}%" "$1"
         else
-            echo "Błąd: Plik '$1' nie istnieje lub nie jest plikiem PNG."
+            log_error "Plik '$1' nie istnieje lub nie jest plikiem PNG."
             return 1
         fi
     else
         # Jeśli nie podano nazwy pliku, przetwarzaj wszystkie pliki PNG w katalogu
-        echo "Przetwarzanie wszystkich plików PNG w bieżącym katalogu (skala: ${scale}%)"
+        log_info "Przetwarzanie wszystkich plików PNG w bieżącym katalogu (skala: ${scale}%)"
         for file in *.png; do
             if [ -f "$file" ]; then
-                echo "Przetwarzanie pliku: $file"
+                log_info "Przetwarzanie pliku: $file"
                 convert "$file" -resize "${scale}%" "$file"
             fi
         done
@@ -437,6 +446,68 @@ function turn_async_profiler_off() {
   unmake_me_sudo
 }
 
+function supports_colors() {
+    # Sprawdzenie czy terminal obsługuje kolory
+    if [[ -t 1 ]] && command -v tput >/dev/null 2>&1; then
+        local colors=$(tput colors 2>/dev/null)
+        [[ $colors -ge 8 ]]
+    else
+        return 1
+    fi
+}
+
+function set_dirtrim_by_path_length() {
+    local full_path="$PWD"
+    local display_path="${full_path/#$HOME/~}"
+    if [ "${#display_path}" -gt 20 ]; then
+        export PROMPT_DIRTRIM=1
+    else
+        export PROMPT_DIRTRIM=3
+    fi
+}
+
+log_message() {
+    local level="$1"
+    shift
+    local messages=("$@")
+
+    local prefix=""
+    case "$level" in
+        "debug")
+            prefix="${C_BLUE}${level^^}: ${C_NC}"
+            ;;
+        "info")
+            prefix="${C_GREEN}${level^^}: ${C_NC}"
+            ;;
+        "error")
+            prefix="${C_RED}${level^^}: ${C_NC}"
+            ;;
+        "man")
+            prefix="${C_NC}"
+            ;;
+        *)
+            prefix="${C_NC}${level^^} "
+            ;;
+    esac
+    echo -e "${prefix}${messages[*]}${C_NC}"
+}
+
+function log_debug() {
+    log_message "debug" "$@"
+}
+
+function log_info() {
+    log_message "info" "$@"
+}
+
+function log_error() {
+    log_message "error" "$@"
+}
+
+function log_man() {
+    log_message "man" "$@"
+}
+
 
 ##
 # Export functions so they remain available after 'source'
@@ -453,3 +524,9 @@ export -f weather
 export -f resize_png
 export -f turn_async_profiler_on
 export -f turn_async_profiler_off
+export -f supports_colors
+export -f log_message
+export -f log_debug
+export -f log_info
+export -f log_error
+export -f log_man
