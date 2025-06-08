@@ -134,7 +134,8 @@ function git_new_branch(){
       ;;
   esac
 
-  local branch_name=$(to_ascii "$*" | sed 's/[^a-zA-Z0-9 _-]//g')
+  local branch_name=$(to_ascii "$*")
+  branch_name=$(remove_special "$branch_name")
   branch_name=$(to_kebab_case "$branch_name")
 
   if [ -z $branch_name ]; then
