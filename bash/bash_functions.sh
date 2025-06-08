@@ -116,32 +116,6 @@ function unmake_me_sudo () {
     unset RESET_SUDO
 }
 
-##
-# Kills processes matching a given pattern
-# Usage: order66 PATTERN
-##
-function order66 () {
-    if [ $# -lt 1 ]; then
-        echo "Usage: order66 PATTERN"
-        return 1
-    fi
-    exterminatus "$@"
-}
-
-##
-# Kills processes matching a given pattern
-# Usage: exterminatus PATTERN
-# (Same as order66)
-##
-function exterminatus () {
-    if [ $# -lt 1 ]; then
-        echo "Usage: exterminatus PATTERN"
-        return 1
-    fi
-    local pattern="$1"
-    # Use pgrep to avoid killing the grep process itself
-    pgrep -f "$pattern" | xargs -r kill -9
-}
 
 ##
 # Converts all *.heic files in the current directory to PNGs
@@ -268,53 +242,6 @@ function print_logo () {
     fi
 
     neofetch --ascii "$BASH_CONFIGURATION_DIR/logo-ascii-art.txt"
-}
-
-##
-# List processes that use given PORT if --sudo is set then run it as sudo.
-##
-function who_use_port () {
-    if [ $# -lt 1 ]; then
-        log_man "Usage: who_use_port [--sudo] PORT"
-        return 1
-    fi
-
-    local root_mode=false
-    local port
-
-    # Check if the first argument is --sudo
-    if [ "$1" == "--sudo" ]; then
-        root_mode=true
-        shift # Remove the --sudo argument
-    fi
-
-    port="$1"
-
-    if [ -z "$port" ]; then
-        echo "Usage: who_use_port [--sudo] PORT"
-        return 1
-    fi
-
-    if $root_mode; then
-        make_me_sudo
-    fi
-
-    # Use pgrep to avoid killing the grep process itself
-    $SUDO netstat -tulpn | grep "$port" | awk '!seen[$0]++'
-
-    if $root_mode; then
-        unmake_me_sudo
-    fi
-}
-
-function to_ascii() {
-  local input="$*"
-  echo "$input" | iconv -f utf8 -t ascii//TRANSLIT 2>/dev/null
-}
-
-function to_kebab_case() {
-  local input="$*"
-  echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /-/g' -e 's/^-//' -e 's/-$//'
 }
 
 function check_workspace() {
@@ -467,60 +394,14 @@ function supports_colors() {
 function set_dirtrim_by_path_length() {
     local full_path="$PWD"
     local display_path="${full_path/#$HOME/~}"
-    if [ "${#display_path}" -gt 20 ]; then
+    if [ "${#display_path}" -gt 36 ]; then
         export PROMPT_DIRTRIM=1
     else
         export PROMPT_DIRTRIM=3
     fi
 }
 
-function log_message() {
-    local level="$1"
-    shift
-    local messages=("$@")
 
-    local prefix=""
-    case "$level" in
-        "debug")
-            prefix="${C_BLUE}${level^^}: ${C_NC}"
-            ;;
-        "info")
-            prefix="${C_GREEN}${level^^}: ${C_NC}"
-            ;;
-        "warn")
-            prefix="${C_ORANGE}${level^^}: ${C_NC}"
-            ;;
-        "error")
-            prefix="${C_RED}${level^^}: ${C_NC}"
-            ;;
-        "man")
-            prefix="${C_NC}"
-            ;;
-        *)
-            prefix="${C_NC}${level^^} "
-            ;;
-    esac
-    echo -e "${prefix}${messages[*]}${C_NC}"
-}
-
-function log_debug() {
-    log_message "debug" "$@"
-}
-
-function log_info() {
-    log_message "info" "$@"
-}
-
-function log_warn() {
-    log_message "warn" "$@"
-}
-function log_error() {
-    log_message "error" "$@"
-}
-
-function log_man() {
-    log_message "man" "$@"
-}
 
 function yes_or_no(){
     local default=${1:-"n"}
@@ -579,6 +460,10 @@ function are_you_sure(){
     echo "${response}"
 }
 
+source_if_exists "./functions/000_log"
+source_if_exists "./functions/010_process_tools"
+source_if_exists "./functions/090_text_tools"
+
 ##
 # Export functions so they remain available after 'source'
 ##
@@ -586,8 +471,6 @@ export -f bash_customs_usage
 export -f parse_git_branch
 export -f make_me_sudo
 export -f unmake_me_sudo
-export -f order66
-export -f exterminatus
 export -f heif_to_png
 export -f who_use_port
 export -f weather
@@ -595,13 +478,5 @@ export -f resize_png
 export -f turn_async_profiler_on
 export -f turn_async_profiler_off
 export -f supports_colors
-export -f log_message
-export -f log_debug
-export -f log_info
-export -f log_warn
-export -f log_error
-export -f log_man
 export -f are_you_sure
 export -f yes_or_no
-export -f to_ascii
-export -f to_kebab_case
