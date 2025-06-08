@@ -154,16 +154,16 @@ function git_new_branch(){
 }
 
 function git_new_feature_branch(){
-  git_new_branch "feature $*"
+  git_new_branch feature $*
 }
 function git_new_version_branch(){
-  git_new_branch "version $*"
+  git_new_branch version $*
 }
 function git_new_fix_branch(){
-  git_new_branch "fix $*"
+  git_new_branch fix $*
 }
 function git_new_experimental_branch(){
-  git_new_branch "experimental $*"
+  git_new_branch experimental $*
 }
 
 function git_vomit(){
