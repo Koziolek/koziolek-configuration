@@ -174,6 +174,11 @@ function git_vomit(){
   git push -u origin $branch_name
 }
 
+function hub_amen() {
+  git_vomit "$*";
+  hub pull-request -m "$*"
+}
+
 # Dispatcher
 if declare -f "$1" > /dev/null; then
   "$@"

@@ -46,3 +46,4 @@
     clean-home = "! git home && git exterminatus"
     cbr= fun git_current_branch
     merge-hub= fun hub_merge_pr
+    amen-hub= fun hub_amen
