@@ -4,8 +4,8 @@ alias git='hub'
 alias time="$(which time) -f '\t%E real,\t%U user,\t%S sys,\t%K avg_mem,\t%M max_mem,\t%%I IO_ins\t%O IO_outs'"
 alias cozy="flatpak run com.github.geigi.cozy"
 alias workspace="cd ~/workspace"
-alias ll='ls -rAlF'
-alias la='ls -lat'
+alias ll='ls -al'
+alias la='ls -alt'
 alias l='ls -CF'
 alias in-window='xdg-open'
 alias ..="cd .."
@@ -24,3 +24,6 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
+# Aliases if you need other fluff
+alias order66="exterminatus"
+alias omega-protocol="exterminatus"

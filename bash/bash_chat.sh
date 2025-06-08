@@ -14,7 +14,7 @@ CHATGPT_ENDPOINT="https://api.openai.com/v1/chat/completions"
 CHATGPT_MODEL_ENDPOINT="https://api.openai.com/v1/models"
 
 # Main function
-function chatgpt() {
+function dżepetto() {
     local prompt model temperature max_tokens;
     local OPTIND opt;
     # Get list of models names
@@ -107,4 +107,4 @@ function chatgpt() {
     ask
 }
 
-export -f chatgpt
+export -f dżepetto
