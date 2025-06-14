@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# This is non-interactive shell! We need source functions manually
-if [ -n "$BASH_CONFIGURATION_DIR" ] && [ -d "$BASH_CONFIGURATION_DIR" ]; then
-    source "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
-fi
+##
+# Functions for git alias usage only. Should not be exported or exposed to normal shell.
+# This file is sourced via git alias.fun
+##
 
 # Function to get the current Git branch name
 function git_current_branch() {

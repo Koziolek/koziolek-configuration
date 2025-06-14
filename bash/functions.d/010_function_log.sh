@@ -55,10 +55,20 @@ function log_warn() {
 }
 function log_error() {
   log_message "error" "$@"
+  print_stack_trace
 }
 
 function log_man() {
   log_message "man" "$@"
+}
+
+function print_stack_trace() {
+    local frame=0
+    echo "Stack trace:"
+    while [[ ${FUNCNAME[frame]} ]]; do
+        echo "  ${frame}: ${FUNCNAME[frame]}() in ${BASH_SOURCE[frame]}:${BASH_LINENO[frame-1]}"
+        ((frame++))
+    done
 }
 
 export -f log_message
@@ -67,3 +77,4 @@ export -f log_info
 export -f log_warn
 export -f log_error
 export -f log_man
+export -f print_stack_trace

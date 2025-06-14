@@ -129,14 +129,25 @@ function parse_git_branch() {
 }
 
 function check_workspace() {
-  if [ ! -d "$WORKSPACE" ]; then
-    mkdir -p "$WORKSPACE";
-  fi
-  if [ ! -d "$WORKSPACE_TOOLS" ]; then
-    mkdir -p "$WORKSPACE_TOOLS";
-  fi
-}
+  ENV_DIRS=("$WORKSPACE" "$WORKSPACE_TOOLS" "$SERVICES_DATA" "$POSTGRES_DATA" "$NGINX_DATA")
+  ENV_VARS=("$DOCKER_COMPOSE")
 
+  for var in "${!ENV_DIRS[@]}"; do
+    if [ -z "${ENV_DIRS[$var]}" ]; then
+      log_warn "Var ${ENV_DIRS[$var]} is not set"
+    elif [ ! -d "${ENV_DIRS[$var]}" ]; then
+      log_warn "Directory ${ENV_DIRS[$var]} doesn't exist"
+      mkdir -p "${ENV_DIRS[$var]}"
+    fi
+  done
+
+  for var in "${!ENV_VARS[@]}"; do
+    if [ -z "${ENV_VARS[$var]}" ]; then
+      log_warn "Var ${ENV_VARS[$var]} is not set"
+    fi
+  done
+
+}
 
 source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
 
@@ -145,3 +156,6 @@ source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
 ##
 export -f bash_customs_usage
 export -f supports_colors
+
+# DONE we don't need sourcing anymore
+export BASH_FUNCTIONS_LOADED=1

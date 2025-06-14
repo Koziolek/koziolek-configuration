@@ -1,0 +1,66 @@
+services:
+  nginx-proxy:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - $NGINX_DATA/config:/etc/nginx/conf.d
+      - $NGINX_DATA/ssl:/etc/nginx/ssl
+      - $NGINX_DATA/www:/usr/share/nginx/html
+      - $NGINX_DATA/config/nginx.default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - home-db
+      - artifactory
+    restart: always
+    networks:
+      - service-network
+  artifactory:
+    image: releases-docker.jfrog.io/jfrog/artifactory-oss:latest
+    container_name: artifactory
+    user: 1030:1030
+    env_file:
+      - ~/.senv
+    environment:
+      JF_SHARED_DATABASE_TYPE: postgresql
+      JF_SHARED_DATABASE_USERNAME: ${DB_USERNAME}
+      JF_SHARED_DATABASE_PASSWORD: ${DB_PASSWORD}
+      JF_SHARED_DATABASE_URL: jdbc:postgresql://home-db:5432/artifactory
+      JF_SHARED_DATABASE_DRIVER: org.postgresql.Driver
+    depends_on:
+      - home-db
+    restart: always
+    networks:
+      - service-network
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    depends_on:
+      - home-db
+    restart: always
+    networks:
+      - service-network
+  home-db:
+    image: postgres:latest
+    container_name: home-db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - ~/.senv
+    ports:
+      - "16432:5432"
+    volumes:
+      - $POSTGRES_DATA/init.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
+    restart: always
+    networks:
+      - service-network
+
+networks:
+  service-network:
+    driver: bridge

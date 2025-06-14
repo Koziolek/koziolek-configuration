@@ -1,18 +1,42 @@
 #!/usr/bin/env bash
 
 function install_lib() {
+  local OPTIND opt;
   local repo_url=""
   local target_dir=""
   local exec_file=""
+  local exp=false
 
-  while getopts ":r:t:e:" opt; do
+  function _install_lib_show_help {
+      cat <<EOF
+Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-h]
+  -r: Adres repozytorium
+  -t: Opcjonalny katalog docelowy
+  -e: Opcjonalny plik wykonywalny
+  -x: Uruchamia sourcing pliku wskazanego w -e
+  -h: Wyświetl pomoc
+EOF
+  }
+
+  function _install_lib_source {
+    if [[ $exp == true ]]; then
+     . "$target_dir/$exec_file"
+    fi
+  }
+
+  while getopts ":hr:t:e:x" opt; do
     case "$opt" in
+      h) 
+        _install_lib_show_help
+        return 0
+        ;;
       r) repo_url="$OPTARG" ;; # Adres repozytorium
       t) target_dir="$OPTARG" ;; # Opcjonalny katalog docelowy
       e) exec_file="$OPTARG" ;; # Opcjonalny plik wykonywalny
+      x) exp=true ;;
       *)
-        echo "Nieznana opcja: -$OPTARG"
-        echo "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>]"
+        log_warn "Nieznana opcja: -$OPTARG"
+        log_man "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-h]"
         return 1
         ;;
     esac
@@ -20,7 +44,7 @@ function install_lib() {
 
   if [ -z "$repo_url" ]; then
     log_error "Adres repozytorium (-r) jest obowiązkowy."
-    echo "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>]"
+    log_man "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-h]"
     return 1
   fi
 
@@ -31,6 +55,7 @@ function install_lib() {
   fi
 
   if [ -d "$target_dir" ]; then
+    _install_lib_source
     return 0
   fi
 
@@ -44,6 +69,10 @@ function install_lib() {
       chmod +x "$exec_file"
     fi
   fi
+
+  _install_lib_source
+
+  local OPTIND=1 # reset param pointer
 }
 
 function weather() {

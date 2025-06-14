@@ -1,5 +1,5 @@
 [alias]
-    fun = "! bash \"$GIT_FUNCTIONS\""
+    fun = "! SUPRESS_SOURCING=1 bash -i \"$GIT_FUNCTIONS\""
     i  = fun git_init
     st = status
     ci = commit

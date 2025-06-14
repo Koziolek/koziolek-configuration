@@ -124,5 +124,9 @@ function set_dirtrim_by_path_length() {
     fi
 }
 
+function verify_configuration() {
+  return 0;
+}
+
 # DO NOT EXPORT FUNCTIONS
 # We need them only during evaluation of ~/.bashrc file, and they should not be avaliable after that.
