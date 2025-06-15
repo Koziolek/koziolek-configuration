@@ -83,7 +83,7 @@ function source_if_exists() {
     local directory="${2:-$BASH_CONFIGURATION_DIR}"
 
     if [ -z "$directory" ]; then
-        echo "Warning: Neither directory parameter nor \$BASH_CONFIGURATION_DIR is set. Cannot source files reliably."
+        log_warn "Neither directory parameter nor \$BASH_CONFIGURATION_DIR is set. Cannot source files reliably."
         return 1
     fi
 
@@ -92,7 +92,7 @@ function source_if_exists() {
         # shellcheck source=/dev/null
         . "$filepath"
     else
-        echo "File '${filename}.sh' does not exist in '${directory}'"
+        log_warn "File '${filename}.sh' does not exist in '${directory}'"
     fi
 }
 
