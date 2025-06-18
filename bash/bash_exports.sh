@@ -11,6 +11,7 @@ export WORKSPACE_TOOLS=$WORKSPACE/tools
 export SERVICES_DATA=${WORKSPACE_TOOLS}/_data
 export NGINX_DATA=${SERVICES_DATA}/nginx_data
 export POSTGRES_DATA=${SERVICES_DATA}/postgres_data
+export NEXUS_DATA=${SERVICES_DATA}/nexus_data
 
 export ASDF_DATA_DIR="$HOME/.asdf"
 export DOCKER_COMPOSE=$(check_docker_compose_availability)

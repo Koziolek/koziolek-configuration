@@ -3,17 +3,19 @@
 
 # Define and export our configuration directory
 
-# Load the primary helper functions
-if [ -z "$BASH_FUNCTIONS_LOADED" ] && [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
-  # shellcheck source=/dev/null
+
+function load_config() {
+    for conf_file in services_functions; do
+      source_if_exists "$conf_file" "${SERVICES_CONFIGURATION_DIR}"
+    done
+}
+
+if [ -n "$BASH_FUNCTIONS_LOADED" ] && [ "$BASH_FUNCTIONS_LOADED" -eq 1 ]; then
+  load_config
+elif [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
   . "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
-
-  # Source additional files via the helper function
-  for conf_file in \
-    services_functions; do
-    source_if_exists "$conf_file" "${SERVICES_CONFIGURATION_DIR}"
-  done
-
+  load_config
 else
-  [ -z "$BASH_FUNCTIONS_LOADED" ] && echo "Error: 'bash_functions.sh' not found in '${BASH_CONFIGURATION_DIR}'."
+    echo "Error: 'bash_functions.sh' not found in '${BASH_CONFIGURATION_DIR}'."
 fi
+
