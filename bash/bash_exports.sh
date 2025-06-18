@@ -5,14 +5,20 @@ export PS1='${C_GREEN}⛧ 𓃵  ⛧[at]𖠿:${C_LBLUE}\w${C_CYAN}$(parse_git_bra
 # printer name because cups sucks
 export PRINTER='L6170'
 
-export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-export PATH=/home/koziolek/.local/bin:$PATH
 export WORKSPACE=~/workspace
 export WORKSPACE_TOOLS=$WORKSPACE/tools
+
 export SERVICES_DATA=${WORKSPACE_TOOLS}/_data
-export ARTIFACTORY_DATA=${SERVICES_DATA}/artifactory_data
+export NGINX_DATA=${SERVICES_DATA}/nginx_data
 export POSTGRES_DATA=${SERVICES_DATA}/postgres_data
+export NEXUS_DATA=${SERVICES_DATA}/nexus_data
+
 export ASDF_DATA_DIR="$HOME/.asdf"
+export DOCKER_COMPOSE=$(check_docker_compose_availability)
+
+export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
+export PATH=/home/koziolek/.local/bin:$PATH
+
 
 # Export „secrets”
 if [ -f ~/.senv ]; then

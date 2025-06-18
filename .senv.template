@@ -1,0 +1,7 @@
+export OPENAI_KEY=
+export TMUXAI_OPENROUTER_API_KEY=
+export DB_USERNAME=
+export DB_PASSWORD=
+export DB_NAME=
+export PGADMIN_EMAIL=
+export PGADMIN_PASSWORD=

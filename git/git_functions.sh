@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# This is non-interactive shell! We need source functions manually
-if [ -n "$BASH_CONFIGURATION_DIR" ] && [ -d "$BASH_CONFIGURATION_DIR" ]; then
-    source "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
-fi
+##
+# Functions for git alias usage only. Should not be exported or exposed to normal shell.
+# This file is sourced via git alias.fun
+##
 
 # Function to get the current Git branch name
 function git_current_branch() {
@@ -47,31 +47,6 @@ function git_home(){
   local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@');
   log_info "Git go home at ${home_branch_name}"
   git co ${home_branch_name};
-}
-
-# Merging pull request in github repo
-function hub_merge_pr() {
-  local pr="$1"
-
-  if [ -z "$pr" ]; then
-    log_man "Usage: merge_pr NUMBER
-      NUMBER - number of existing, open pull request in github repository
-    "
-    return 1;
-  fi
-
-  local to_merge=$(hub pr list -f %U%n | grep /$pr)
-
-  if [ -z "$to_merge"]; then
-    log_error "Pull request with number ${pr} does not exists. Existing pull requests:"
-    hub pr list -f %U%n
-    return 1;
-  fi
-
-  log_info "Merging pull request ${to_merge}"
-  git home
-  hub merge $to_merge
-  git push
 }
 
 function git_init_multi_hooks(){
@@ -174,16 +149,15 @@ function git_vomit(){
   git push -u origin $branch_name
 }
 
-function hub_amen() {
-  git_vomit "$*";
-  hub pull-request -m "$*"
-}
+. ${GIT_CONFIGURATION_DIR}/hub_functions.sh
 
-# Dispatcher
-if declare -f "$1" > /dev/null; then
-  "$@"
-else
-  log_error "Function '$1' not found.
-    Available functions: push_upstream, single_push, branch_create, merge_with, go_to_branch, commit_and_push, merge_feature, remove_gone_branches"
-  exit 1
-fi
+"$@"
+
+## Dispatcher
+#if declare -f "$1" > /dev/null; then
+#
+#else
+#  log_error "Function '$1' not found.
+#    Available functions: push_upstream, single_push, branch_create, merge_with, go_to_branch, commit_and_push, merge_feature, remove_gone_branches"
+#  exit 1
+#fi
