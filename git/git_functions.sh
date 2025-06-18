@@ -149,13 +149,15 @@ function git_vomit(){
   git push -u origin $branch_name
 }
 
-. hub_functions.sh
+. ${GIT_CONFIGURATION_DIR}/hub_functions.sh
 
-# Dispatcher
-if declare -f "$1" > /dev/null; then
-  "$@"
-else
-  log_error "Function '$1' not found.
-    Available functions: push_upstream, single_push, branch_create, merge_with, go_to_branch, commit_and_push, merge_feature, remove_gone_branches"
-  exit 1
-fi
+"$@"
+
+## Dispatcher
+#if declare -f "$1" > /dev/null; then
+#
+#else
+#  log_error "Function '$1' not found.
+#    Available functions: push_upstream, single_push, branch_create, merge_with, go_to_branch, commit_and_push, merge_feature, remove_gone_branches"
+#  exit 1
+#fi

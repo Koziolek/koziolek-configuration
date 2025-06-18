@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 function hub_amen() {
+  log_info "Vomiting and creating PR in GH"
   git_vomit "$*";
   hub pull-request -m "$*"
 }
