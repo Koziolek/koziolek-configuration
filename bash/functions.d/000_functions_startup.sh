@@ -4,8 +4,8 @@
 # and using xdotool ow gdbus ir swaymsg on Wayland
 ##
 function resize_to_full () {
-    # Only run if X11 session
-    if [ "$XDG_SESSION_TYPE" = "x11" ]; then
+    # Only run if X11 session or if DISPLAY exists
+    if [ "$XDG_SESSION_TYPE" = "x11" ] || [ -n "$DISPLAY" ]; then
         # Check if xdotool is installed
         if ! command -v xdotool >/dev/null 2>&1; then
             return 0
@@ -14,10 +14,10 @@ function resize_to_full () {
         local win_id
         win_id="$(xdotool getactivewindow)"
 
-	if [ -z "$win_id" ]; then
-	    echo "No active window found"
-	    return 0
-	fi
+	    if [ -z "$win_id" ]; then
+	        echo "No active window found"
+	        return 0
+	    fi
 
         local current_width
         current_width="$(xwininfo -id "$win_id" -stats \
@@ -125,6 +125,7 @@ function set_dirtrim_by_path_length() {
 }
 
 function verify_configuration() {
+  check_workspace
   return 0;
 }
 

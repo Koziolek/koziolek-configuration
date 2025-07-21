@@ -15,8 +15,8 @@ cd ~/ || return
 [ -d ~/workspace/ ] || mkdir workspace
 cd workspace || return
 
-git clone https://github.com/Koziolek/git-configuration.git
-ln -s ~/workspace/git-configuration .git-configuration
+git clone https://github.com/Koziolek/koziolek-configuration.git
+ln -s ~/workspace/koziolek-configuration .koziolek-configuration
 
 git clone https://github.com/asdf-vm/asdf.git
 cd asdf || return

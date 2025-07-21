@@ -15,8 +15,8 @@ function prepare_cert() {
   $SUDO openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout $NGINX_DATA/ssl/nginx.key \
     -out $NGINX_DATA/ssl/nginx.crt \
-    -subj "/C=PL/ST=Lower Silesia/L=Wroclaw/O=Home/OU=IT/CN=localhost" \
-    -addext "subjectAltName=DNS:localhost,DNS:home,IP:127.0.0.1"
+    -subj "/C=PL/ST=Lower Silesia/L=Wroclaw/O=Home/OU=IT/CN=koziolek.home" \
+    -addext "subjectAltName=DNS:koziolek.home,DNS:home,IP:127.0.0.1"
 
   log_info "
   SSL certificates generated successfully!
@@ -34,8 +34,8 @@ function prepare_cert() {
   1. Add '127.0.0.1 home' to your /etc/hosts file
   2. Run: docker-compose up -d
   3. Access services at:
-     - https://localhost/artifactory (or https://home/artifactory)
-     - https://localhost/postgres (or https://home/postgres)"
+     - https://koziolek.home/artifactory (or https://home/artifactory)
+     - https://koziolek.home/postgres (or https://home/postgres)"
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
