@@ -26,5 +26,5 @@ else
   echo 'Secret file ~/.senv has been created. It is user readonly file!'
 fi
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-export SDKMAN_DIR="~/.sdkman"
-[ -s "~/.sdkman/bin/sdkman-init.sh" ] && . "~/.sdkman/bin/sdkman-init.sh"
+export SDKMAN_DIR="$HOME/.sdkman"
+[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ] && . "$HOME/.sdkman/bin/sdkman-init.sh"
