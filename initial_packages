@@ -60,4 +60,4 @@ sdk i mvnd
 
 cd ~/ || return
 ln -s "~/${PROJECT_NAME}/bash/bash_alias" .bash_aliases
-echo ". ~/${PROJECT_NAME}/git-configuration/bash/bash_rc" >> ~/.bashrc
+echo ". ~/.${PROJECT_NAME}/bash/templates/bashrc.template" >> ~/.bashrc

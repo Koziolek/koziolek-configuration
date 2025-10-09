@@ -1,0 +1,17 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# for examples
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) exit 0;;
+esac
+
+if [ -d ~/.git-configuration/ ]; then
+    . ~/.git-configuration/main.sh
+elfi [ -d ~/.koziolek-configuration/ ]; then
+    . ~/.koziolek-configuration/main.sh
+else
+    echo 'Nie ma konfiguracji! Żyj w biedzie!'
+fi
