@@ -10,7 +10,7 @@ shopt -s checkwinsize
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
 # sometimes we misspell spell…
-eval "$(thefuck --alias)"
+command -v thefuck >/dev/null 2>&1 && eval "$(thefuck --alias)"
 
 # jebana konfiguracja spotify 
 command -v pactl >/dev/null 2>&1 && pactl set-default-sink alsa_output.usb-Razer_Razer_Kraken_Kitty_Edition_00000000-00.analog-stereo
