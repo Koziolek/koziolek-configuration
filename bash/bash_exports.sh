@@ -13,7 +13,7 @@ export ASDF_DATA_DIR="$HOME/.asdf"
 export DOCKER_COMPOSE=$(check_docker_compose_availability)
 
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
-export PATH=/home/koziolek/.local/bin:$PATH
+export PATH=~/.local/bin:$PATH
 
 
 # Export „secrets”
@@ -26,5 +26,5 @@ else
   echo 'Secret file ~/.senv has been created. It is user readonly file!'
 fi
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-export SDKMAN_DIR="/home/koziolek/.sdkman"
-[ -s "/home/koziolek/.sdkman/bin/sdkman-init.sh" ] && . "/home/koziolek/.sdkman/bin/sdkman-init.sh"
+export SDKMAN_DIR="~/.sdkman"
+[ -s "~/.sdkman/bin/sdkman-init.sh" ] && . "~/.sdkman/bin/sdkman-init.sh"

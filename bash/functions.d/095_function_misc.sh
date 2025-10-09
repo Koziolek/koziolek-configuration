@@ -108,5 +108,10 @@ function weather() {
       printf "| %-15s | %-10s |\n" "Wind Speed" "${wind_speed}"
       echo "----------------------------------------"
 }
-
+function start_x() {
+   make_me_sudo
+   $SUDO systemctl start lightdm
+   unmake_me_sudo
+}
+export -f start_x
 export -f weather

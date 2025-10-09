@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PROJECT_NAME='koziolek-configuration'
+
 SUDO=''
 if (( $EUID != 0 )); then
     SUDO='sudo'
@@ -8,15 +10,15 @@ fi
 $SUDO apt update
 $SUDO apt-get install -y git vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates \
   software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
-  libxcb-xtest0 libxcb-xinerama0 htop libheif-examples
+  libxcb-xtest0 libxcb-xinerama0 htop libheif-examples unzip zip
 
 cd ~/ || return
 
 [ -d ~/workspace/ ] || mkdir workspace
 cd workspace || return
 
-git clone https://github.com/Koziolek/koziolek-configuration.git
-ln -s ~/workspace/koziolek-configuration .koziolek-configuration
+git clone "https://github.com/Koziolek/${koziolek-configuration}.git"
+ln -s "~/workspace/${koziolek-configuration}" ".${koziolek-configuration}"
 
 git clone https://github.com/asdf-vm/asdf.git
 cd asdf || return
@@ -34,24 +36,25 @@ sdk i java
 sdk i maven 
 sdk i mvnd
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-echo "deb http://packages.azlux.fr/debian/ buster main" | $SUDO tee /etc/apt/sources.list.d/azlux.list
-wget -qO - https://azlux.fr/repo.gpg.key | $SUDO apt-key add -
-
-$SUDO apt update
-apt-cache policy docker-ce
-$SUDO apt-get install -y docker-ce docker-compose docker-ctop
-$SUDO snap install spotify
-
-cd ~/Pobrane/ || return
-
-wget https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
-wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
-wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
-
-$SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./steam_latest.deb
+# TODO: to trzeba jakoś inaczej ogarnąć
+# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+# echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+# echo "deb http://packages.azlux.fr/debian/ buster main" | $SUDO tee /etc/apt/sources.list.d/azlux.list
+# wget -qO - https://azlux.fr/repo.gpg.key | $SUDO apt-key add -
+#
+# $SUDO apt update
+# apt-cache policy docker-ce
+# $SUDO apt-get install -y docker-ce docker-compose docker-ctop
+# $SUDO snap install spotify
+#
+# cd ~/Pobrane/ || return
+#
+# wget https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
+# wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
+# wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
+#
+# $SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./steam_latest.deb
 
 cd ~/ || return
-ln -s /home/koziolek/workspace/git-configuration/bash/bash_alias .bash_aliases
-echo '. /home/koziolek/workspace/git-configuration/bash/bash_rc' >> ~/.bashrc
+ln -s "~/${koziolek-configuration}/bash/bash_alias" .bash_aliases
+echo ". ~/${koziolek-configuration}/git-configuration/bash/bash_rc" >> ~/.bashrc
