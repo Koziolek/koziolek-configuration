@@ -12,30 +12,30 @@ $SUDO apt-get install -y git vim thefuck xdotool neofetch tmux hub curl gnupg2 a
   software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
   libxcb-xtest0 libxcb-xinerama0 htop libheif-examples unzip zip
 
-cd ~/ || return
+cd $HOME/ || return
 
-[ -d ~/workspace/ ] || mkdir workspace
+[ -d $HOME/workspace/ ] || mkdir workspace
 cd workspace || return
 
-if [ ! -d "~/workspace/${PROJECT_NAME}" ]; then
+if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
     git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"
-    ln -s "~/workspace/${PROJECT_NAME}" ".${PROJECT_NAME}"
+    ln -s "$HOME/workspace/${PROJECT_NAME}" ".${PROJECT_NAME}"
 fi
 
-if [ ! -L ~/.${PROJECT_NAME} ] && [ ! -d ~/.${PROJECT_NAME} ]; then
-    ln -s ~/workspace/${PROJECT_NAME} ~/.${PROJECT_NAME}
+if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
+    ln -s $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
 fi
 
 # Zmienił się sposób działania asdf
-#if [ ! -d "~/workspace/asdf" ]; then
-#    cd ~/workspace
+#if [ ! -d "$HOME/workspace/asdf" ]; then
+#    cd $HOME/workspace
 #    git clone https://github.com/asdf-vm/asdf.git
 #    cd asdf || return
 #    git tag -l --sort=committerdate| tail -1 | xargs git checkout -d
 #
-#    cd ~/ || return
+#    cd $HOME/ || return
 #
-#    ln -s ~/workspace/asdf/asdf ~/.asdf
+#    ln -s $HOME/workspace/asdf/asdf $HOME/.asdf
 #fi
 
 curl -s "https://get.sdkman.io" | bash
@@ -57,7 +57,7 @@ sdk i mvnd
 # $SUDO apt-get install -y docker-ce docker-compose docker-ctop
 # $SUDO snap install spotify
 #
-# cd ~/Pobrane/ || return
+# cd $HOME/Pobrane/ || return
 #
 # wget https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
 # wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
@@ -65,5 +65,5 @@ sdk i mvnd
 #
 # $SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./steam_latest.deb
 
-cd ~/ || return
-echo ". ~/.${PROJECT_NAME}/bash/templates/bashrc.template" >> ~/.bashrc
+cd $HOME/ || return
+echo ". $HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" >> $HOME/.bashrc

@@ -130,4 +130,4 @@ function verify_configuration() {
 }
 
 # DO NOT EXPORT FUNCTIONS
-# We need them only during evaluation of ~/.bashrc file, and they should not be avaliable after that.
+# We need them only during evaluation of $HOME/.bashrc file, and they should not be avaliable after that.

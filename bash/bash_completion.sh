@@ -22,7 +22,7 @@ complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/n
 if [ -d "$MVND_HOME" ]; then
     . $MVND_HOME/bin/mvnd-bash-completion.bash
 else
-    sdk i mvnd 
+    sdk i mvnd
     export MVND_HOME="${HOME}/.sdkman/candidates/mvnd/current/"
     . $MVND_HOME/bin/mvnd-bash-completion.bash
 fi

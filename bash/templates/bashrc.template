@@ -1,4 +1,4 @@
-# ~/.bashrc: executed by bash(1) for non-login shells.
+# $HOME/.bashrc: executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
@@ -8,10 +8,10 @@ case $- in
       *) exit 0;;
 esac
 
-if [ -d ~/.git-configuration/ ]; then
-    . ~/.git-configuration/main.sh
-elif [ -d ~/.koziolek-configuration/ ]; then
-    . ~/.koziolek-configuration/main.sh
+if [ -d $HOME/.git-configuration/ ]; then
+    . $HOME/.git-configuration/main.sh
+elif [ -d $HOME/.koziolek-configuration/ ]; then
+    . $HOME/.koziolek-configuration/main.sh
 else
     echo 'Nie ma konfiguracji! Żyj w biedzie!'
 fi
