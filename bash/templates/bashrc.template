@@ -10,7 +10,7 @@ esac
 
 if [ -d ~/.git-configuration/ ]; then
     . ~/.git-configuration/main.sh
-elfi [ -d ~/.koziolek-configuration/ ]; then
+elif [ -d ~/.koziolek-configuration/ ]; then
     . ~/.koziolek-configuration/main.sh
 else
     echo 'Nie ma konfiguracji! Żyj w biedzie!'
