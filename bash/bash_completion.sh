@@ -19,4 +19,10 @@ complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/n
 #. $HOME/.asdf/asdf.sh
 #. $HOME/.asdf/completions/asdf.bash
 . $HOME/.maven-bash-completion/bash_completion.bash
-. $MVND_HOME/bin/mvnd-bash-completion.bash
+if [ -d "$MVND_HOME" ]; then
+    . $MVND_HOME/bin/mvnd-bash-completion.bash
+else
+    sdk i mvnd 
+    export MVND_HOME="${HOME}/.sdkman/candidates/mvnd/current/"
+    . $MVND_HOME/bin/mvnd-bash-completion.bash
+fi
