@@ -26,16 +26,17 @@ if [ ! -L ~/.${PROJECT_NAME} ] && [ ! -d ~/.${PROJECT_NAME} ]; then
     ln -s ~/workspace/${PROJECT_NAME} ~/.${PROJECT_NAME}
 fi
 
-if [ ! -d "~/workspace/asdf" ]; then
-    cd ~/workspace
-    git clone https://github.com/asdf-vm/asdf.git
-    cd asdf || return
-    git tag -l --sort=committerdate| tail -1 | xargs git checkout -d
-    
-    cd ~/ || return
-    
-    ln -s ~/workspace/asdf .asdf
-fi
+# Zmienił się sposób działania asdf
+#if [ ! -d "~/workspace/asdf" ]; then
+#    cd ~/workspace
+#    git clone https://github.com/asdf-vm/asdf.git
+#    cd asdf || return
+#    git tag -l --sort=committerdate| tail -1 | xargs git checkout -d
+#
+#    cd ~/ || return
+#
+#    ln -s ~/workspace/asdf/asdf ~/.asdf
+#fi
 
 curl -s "https://get.sdkman.io" | bash
 
@@ -65,5 +66,4 @@ sdk i mvnd
 # $SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./steam_latest.deb
 
 cd ~/ || return
-ln -s "~/.${PROJECT_NAME}/bash/bash_alias" .bash_aliases
 echo ". ~/.${PROJECT_NAME}/bash/templates/bashrc.template" >> ~/.bashrc
