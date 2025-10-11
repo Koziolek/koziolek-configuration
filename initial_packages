@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 PROJECT_NAME='koziolek-configuration'
 
@@ -253,4 +253,7 @@ install_sdkman
 install_apps
 install_docker
 prepare_bashrc
+
+ls $HOME
+
 maybe_restart
