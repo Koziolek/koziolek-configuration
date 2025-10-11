@@ -1,0 +1,22 @@
+FROM ubuntu:24.04
+
+# Ustaw zmienne środowiskowe dla nieinteraktywnej instalacji
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Warsaw
+
+# Zaktualizuj system i zainstaluj podstawowe narzędzia
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    wget \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Skopiuj plik initial_packages do kontenera
+COPY initial_packages /usr/local/bin/initial_packages
+
+# Nadaj uprawnienia wykonywania
+RUN chmod +x /usr/local/bin/initial_packages
+
+# Ustaw domyślne polecenie - uruchom skrypt przy starcie kontenera
+CMD ["/usr/local/bin/initial_packages"]

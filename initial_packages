@@ -7,63 +7,250 @@ if (( $EUID != 0 )); then
     SUDO='sudo'
 fi
 
-$SUDO apt update
-$SUDO apt-get install -y git vim thefuck xdotool neofetch tmux hub curl gnupg2 apt-transport-https ca-certificates \
-  software-properties-common libatomic1 libgconf-2-4 libgdk-pixbuf2.0-0 libgl1-mesa-glx libegl1-mesa \
-  libxcb-xtest0 libxcb-xinerama0 htop libheif-examples unzip zip
+install_initial_packages() {
+    $SUDO apt update
+    $SUDO apt install -y \
+        curl \
+        wget \
+        git \
+        vim \
+        unzip \
+        zip \
+        thefuck \
+        xdotool \
+        neofetch \
+        tmux \
+        htop \
+        hub \
+        curl \
+        gnupg2 \
+        apt-transport-https \
+        ca-certificates \
+        software-properties-common \
+        libatomic1 \
+        libgconf-2-4 \
+        libgdk-pixbuf2.0-0 \
+        libgl1-mesa-glx \
+        libegl1-mesa \
+        libxcb-xtest0 \
+        libxcb-xinerama0 \
+        libheif-examples
+}
+
+
+prepare_workspace() {
+    [ -d $HOME/workspace/ ] || mkdir workspace
+    cd workspace || return
+
+    if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
+        git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"
+        ln -s "$HOME/workspace/${PROJECT_NAME}" ".${PROJECT_NAME}"
+    fi
+
+    if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
+        ln -s $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
+    fi
+}
+
+install_asdf() {
+    echo "Pobieranie informacji o najnowszej wersji asdf..."
+
+    LATEST_TAG=$(curl -s https://api.github.com/repos/asdf-vm/asdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [ -z "$LATEST_TAG" ]; then
+        echo "Błąd: nie udało się pobrać informacji o najnowszej wersji"
+        return 1
+    fi
+
+    echo "Najnowsza wersja: $LATEST_TAG"
+    mkdir -p "$HOME/.local/bin"
+
+    DOWNLOAD_URL="https://github.com/asdf-vm/asdf/releases/download/${LATEST_TAG}/asdf-${LATEST_TAG}-linux-amd64.tar.gz"
+
+    echo "Pobieranie asdf z: $DOWNLOAD_URL"
+    cd "$HOME/.local/bin"
+    curl -L "$DOWNLOAD_URL" -o "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
+
+    if [ $? -ne 0 ]; then
+        echo "Błąd: nie udało się pobrać archiwum"
+        return 1
+    fi
+    if [ -d "asdf" ]; then
+        echo "Usuwanie poprzedniej instalacji asdf..."
+        rm -rf "asdf"
+    fi
+    tar -xzf "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
+
+    if [ $? -ne 0 ]; then
+        echo "Błąd: nie udało się rozpakować archiwum"
+        return 1
+    fi
+    rm -f "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
+
+    echo "asdf $LATEST_TAG został pomyślnie zainstalowany w $HOME/.local/bin/"
+    echo "Dodaj następujące linie do swojego .bashrc:"
+    echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "source \$HOME/.local/bin/asdf/asdf.sh"
+    echo "source \$HOME/.local/bin/asdf/completions/asdf.bash"
+}
+
+install_sdkman() {
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+    sdk i java
+    sdk i maven
+    sdk i mvnd
+
+}
+
+install_apps() {
+    local DOWNLOAD_DIR="$HOME/Pobrane"
+    mkdir -p "$DOWNLOAD_DIR"
+
+    echo "Instalacja aplikacji tylko przez .deb pakiety..."
+
+    # Spotify przez repozytorium
+    if ! command -v spotify >/dev/null 2>&1; then
+        echo "Instalacja Spotify..."
+        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg | $SUDO gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
+        echo "deb https://repository.spotify.com stable non-free" | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
+        $SUDO apt update && $SUDO apt install -y spotify-client
+    fi
+
+    cd "$DOWNLOAD_DIR" || return 1
+
+    # Przygotuj listę aplikacji do pobrania
+    declare -A apps=(
+        ["1password"]="https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb"
+        ["steam"]="https://cdn.akamai.steamstatic.com/client/installer/steam.deb"
+    )
+
+    # Pobierz i zainstaluj każdą aplikację
+    for app in "${!apps[@]}"; do
+        deb_file="${app}.deb"
+
+        if [ ! -f "$deb_file" ] || [ $(($(date +%s) - $(stat -c %Y "$deb_file" 2>/dev/null || echo 0))) -gt 86400 ]; then
+            echo "Pobieranie $app..."
+            wget -O "$deb_file" "${apps[$app]}"
+        fi
+
+        echo "Instalacja $app..."
+        $SUDO apt install -y "./$deb_file"
+    done
+
+    # Specjalna konfiguracja dla Steam (architektura 32-bit)
+    if [ -f "steam.deb" ]; then
+        echo "Konfiguracja Steam (biblioteki 32-bit)..."
+        $SUDO dpkg --add-architecture i386
+        $SUDO apt update
+        $SUDO apt install -y lib32gcc-s1 libc6-i386
+        $SUDO apt install -f -y  # napraw zależności
+    fi
+
+    echo "Wszystkie aplikacje zostały zainstalowane!"
+}
+
+
+install_docker() {
+    echo "Instalacja Docker i docker-ctop..."
+    
+    # Usuń stare wersje Docker jeśli istnieją
+    echo "Usuwanie starych wersji Docker..."
+    $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+    
+    # Aktualizuj pakiety
+    echo "Aktualizacja listy pakietów..."
+    $SUDO apt-get update
+    
+    # Zainstaluj wymagane pakiety
+    echo "Instalacja wymaganych pakietów..."
+    $SUDO apt-get install -y \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release \
+        apt-transport-https \
+        software-properties-common
+    
+    # Dodaj klucz GPG Docker
+    echo "Dodawanie klucza GPG Docker..."
+    $SUDO mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    
+    # Dodaj repozytorium Docker
+    echo "Dodawanie repozytorium Docker..."
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Aktualizuj listę pakietów z nowym repozytorium
+    $SUDO apt-get update
+    
+    # Zainstaluj Docker Engine
+    echo "Instalacja Docker Engine..."
+    $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
+    # Uruchom i włącz Docker service
+    echo "Uruchamianie Docker service..."
+    $SUDO systemctl start docker
+    $SUDO systemctl enable docker
+    
+    # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
+    echo "Dodawanie użytkownika $USER do grupy docker..."
+    $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
+    $SUDO usermod -aG docker $USER
+    
+    # Zainstaluj docker-compose (standalone)
+    echo "Instalacja docker-compose..."
+    DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
+    $SUDO curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    $SUDO chmod +x /usr/local/bin/docker-compose
+    
+    # Zainstaluj docker-ctop
+    echo "Instalacja docker-ctop..."
+    CTOP_VERSION=$(curl -s https://api.github.com/repos/bcicen/ctop/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
+    $SUDO curl -L "https://github.com/bcicen/ctop/releases/download/${CTOP_VERSION}/ctop-${CTOP_VERSION#v}-linux-amd64" -o /usr/local/bin/ctop
+    $SUDO chmod +x /usr/local/bin/ctop
+    
+    # Sprawdź instalację
+    echo "Sprawdzanie instalacji..."
+    docker --version
+    docker-compose --version
+    ctop -v
+    
+    echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
+    echo "Użytkownik $USER został dodany do grupy docker."
+    echo ""
+}
+
+maybe_restart() {
+    echo "UWAGA: Aby móc uruchamiać Docker bez sudo, musisz się wylogować i zalogować ponownie,"
+    echo "lub zrestartować komputer, żeby zmiany w grupach zostały zaaplikowane."
+    echo ""
+    read -p "Czy chcesz zrestartować komputer teraz? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[YyTt]$ ]]; then
+        echo "Restartowanie systemu..."
+        $SUDO reboot
+    else
+        echo "Pamiętaj o wylogowaniu i ponownym zalogowaniu lub restarcie systemu!"
+        echo "Możesz też uruchomić: newgrp docker"
+    fi
+}
+
+prepare_bashrc() {
+
+cd $HOME/ || return
+cat ". $HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > $HOME/.bashrc
+}
 
 cd $HOME/ || return
 
-[ -d $HOME/workspace/ ] || mkdir workspace
-cd workspace || return
-
-if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
-    git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"
-    ln -s "$HOME/workspace/${PROJECT_NAME}" ".${PROJECT_NAME}"
-fi
-
-if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
-    ln -s $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
-fi
-
-# Zmienił się sposób działania asdf
-#if [ ! -d "$HOME/workspace/asdf" ]; then
-#    cd $HOME/workspace
-#    git clone https://github.com/asdf-vm/asdf.git
-#    cd asdf || return
-#    git tag -l --sort=committerdate| tail -1 | xargs git checkout -d
-#
-#    cd $HOME/ || return
-#
-#    ln -s $HOME/workspace/asdf/asdf $HOME/.asdf
-#fi
-
-curl -s "https://get.sdkman.io" | bash
-
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-sdk i java
-sdk i maven 
-sdk i mvnd
-
-# TODO: to trzeba jakoś inaczej ogarnąć
-# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-# echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-# echo "deb http://packages.azlux.fr/debian/ buster main" | $SUDO tee /etc/apt/sources.list.d/azlux.list
-# wget -qO - https://azlux.fr/repo.gpg.key | $SUDO apt-key add -
-#
-# $SUDO apt update
-# apt-cache policy docker-ce
-# $SUDO apt-get install -y docker-ce docker-compose docker-ctop
-# $SUDO snap install spotify
-#
-# cd $HOME/Pobrane/ || return
-#
-# wget https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
-# wget https://cdn.zoom.us/prod/5.10.7.3311/zoom_amd64.deb
-# wget https://repo.steampowered.com/steam/archive/precise/steam_latest.deb
-#
-# $SUDO apt-get install ./1password-latest.deb ./zoom_amd64.deb ./steam_latest.deb
-
-cd $HOME/ || return
-echo ". $HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" >> $HOME/.bashrc
+install_initial_packages
+prepare_workspace
+install_asdf
+install_sdkman
+install_apps
+install_docker
+prepare_bashrc
+maybe_restart
