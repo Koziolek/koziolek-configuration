@@ -7,12 +7,16 @@ if (( $EUID != 0 )); then
     SUDO='sudo'
 fi
 
+prerequaried=(
+    software-properties-common
+)
+
 system_tools=(
   curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release
 )
 
 security_tools=(
-  gnupg gnupg2 apt-transport-https ca-certificates software-properties-common
+  gnupg gnupg2 apt-transport-https ca-certificates
 )
 
 graphics_libs=(
@@ -56,6 +60,8 @@ safe_apt_install() {
 
 install_initial_packages() {
     # we need some universe repos
+    $SUDO apt-get -qq update
+    safe_apt_install "${prerequaried[@]}"
     $SUDO add-apt-repository -y universe
     $SUDO apt-get -qq update
     safe_apt_install "${all_packages[@]}"
