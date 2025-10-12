@@ -7,53 +7,59 @@ if (( $EUID != 0 )); then
     SUDO='sudo'
 fi
 
-install_initial_packages() {
-    # we need some universe repos
-    $SUDO add-apt-repository universe -y
+system_tools=(
+  curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release
+)
 
-    $SUDO apt update
-    $SUDO apt install -y \
-        curl \
-        wget \
-        git \
-        vim \
-        unzip \
-        zip \
-        tree \
-        thefuck \
-        xdotool \
-        neofetch \
-        tmux \
-        htop \
-        hub \
-        curl \
-        gnupg2 \
-        apt-transport-https \
-        ca-certificates \
-        software-properties-common \
-        libatomic1 \
-        libgl1-mesa-dri \
-        libglx-mesa0 \
-        # libegl1-mesa \
-        # libgles2-mesa \
-        mesa-utils \
-        mesa-utils-extra \
-        # gconf2-common \
-        # gconf-service \
-        # libgconf-2-4 \
-        libglvnd0 \
-        libglx0 \
-        libegl1 \
-        libgles2 \
-        libvulkan1 \
-        libgdk-pixbuf2.0-0 \
-        libxcb-xtest0 \
-        libxcb-xinerama0 \
-        libheif-examples
+security_tools=(
+  gnupg gnupg2 apt-transport-https ca-certificates software-properties-common
+)
+
+graphics_libs=(
+  libatomic1 libgl1-mesa-dri libglx-mesa0 libegl1-mesa libgles2-mesa
+  mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
+)
+
+gui_libs=(
+  gconf2-common gconf-service libgconf-2-4 libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
+)
+
+image_tools=(
+  libheif-examples
+)
+
+all_packages=(
+  "${system_tools[@]}"
+  "${security_tools[@]}"
+  "${graphics_libs[@]}"
+  "${gui_libs[@]}"
+  "${image_tools[@]}"
+)
+
+safe_apt_install() {
+  local pkg ok_list=()
+  for pkg in "$@"; do
+    if apt-cache show "$pkg" >/dev/null 2>&1; then
+      ok_list+=("$pkg")
+    else
+      echo "⚠️ Package '$pkg' not found, skipping"
+    fi
+  done
+
+  if [ "${#ok_list[@]}" -gt 0 ]; then
+    echo "Installing: ${ok_list[*]}"
+    sudo apt-get install -qqy "${ok_list[@]}"
+  else
+    echo "❌ No valid packages to install."
+  fi
 }
 
-# Tych nie ma w repo
-# libgl1-mesa-glx libegl1-mesa libgconf-2-4
+install_initial_packages() {
+    # we need some universe repos
+    $SUDO add-apt-repository universe -qy
+    $SUDO apt-get -qq update
+    safe_apt_install "${all_packages[@]}"
+}
 
 prepare_workspace() {
     set -e
@@ -134,7 +140,7 @@ install_apps() {
         echo "Instalacja Spotify..."
         curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg | $SUDO gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
         echo "deb https://repository.spotify.com stable non-free" | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
-        $SUDO apt update && $SUDO apt install -y spotify-client
+        $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
     fi
 
     cd "$DOWNLOAD_DIR" || return 1
@@ -155,16 +161,16 @@ install_apps() {
         fi
 
         echo "Instalacja $app..."
-        $SUDO apt install -y "./$deb_file"
+        $SUDO apt-get install -qqy "./$deb_file"
     done
 
     # Specjalna konfiguracja dla Steam (architektura 32-bit)
     if [ -f "steam.deb" ]; then
         echo "Konfiguracja Steam (biblioteki 32-bit)..."
         $SUDO dpkg --add-architecture i386
-        $SUDO apt update
-        $SUDO apt install -y lib32gcc-s1 libc6-i386
-        $SUDO apt install -f -y  # napraw zależności
+        $SUDO apt-get update
+        $SUDO apt-get install -qqy lib32gcc-s1 libc6-i386
+        $SUDO apt-get install -fqqy  # napraw zależności
     fi
 
     echo "Wszystkie aplikacje zostały zainstalowane!"
@@ -177,20 +183,7 @@ install_docker() {
     # Usuń stare wersje Docker jeśli istnieją
     echo "Usuwanie starych wersji Docker..."
     $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
-    
-    # Aktualizuj pakiety
-    echo "Aktualizacja listy pakietów..."
-    $SUDO apt-get update
-    
-    # Zainstaluj wymagane pakiety
-    echo "Instalacja wymaganych pakietów..."
-    $SUDO apt-get install -y \
-        ca-certificates \
-        curl \
-        gnupg \
-        lsb-release \
-        apt-transport-https \
-        software-properties-common
+
     
     # Dodaj klucz GPG Docker
     echo "Dodawanie klucza GPG Docker..."
@@ -204,11 +197,11 @@ install_docker() {
       $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # Aktualizuj listę pakietów z nowym repozytorium
-    $SUDO apt-get update
+    $SUDO apt-get -qq update
     
     # Zainstaluj Docker Engine
     echo "Instalacja Docker Engine..."
-    $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     
     # Uruchom i włącz Docker service
     echo "Uruchamianie Docker service..."
@@ -272,5 +265,5 @@ install_sdkman
 install_apps
 install_docker
 prepare_bashrc
-tree -d $HOME
+
 maybe_restart

@@ -8,15 +8,8 @@ ENV TZ=Europe/Warsaw
 RUN apt-get update && \
     apt-get install -y \
     curl \
-    wget \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Skopiuj plik initial_packages do kontenera
-COPY initial_packages.sh /usr/local/bin/initial_packages.sh
-
-# Nadaj uprawnienia wykonywania
-RUN chmod +x /usr/local/bin/initial_packages.sh
-
-# Ustaw domyślne polecenie - uruchom skrypt przy starcie kontenera
-CMD ["/usr/local/bin/initial_packages.sh"]
+# Uruchom przy starcie kontenera polecenie instalacyjne
+CMD curl -s https://raw.githubusercontent.com/Koziolek/koziolek-configuration/refs/heads/master/initial_packages.sh | bash
