@@ -8,6 +8,9 @@ if (( $EUID != 0 )); then
 fi
 
 install_initial_packages() {
+    # we need some universe repos
+    $SUDO add-apt-repository universe -y
+
     $SUDO apt update
     $SUDO apt install -y \
         curl \
@@ -16,6 +19,7 @@ install_initial_packages() {
         vim \
         unzip \
         zip \
+        tree \
         thefuck \
         xdotool \
         neofetch \
@@ -28,28 +32,44 @@ install_initial_packages() {
         ca-certificates \
         software-properties-common \
         libatomic1 \
-        libgconf-2-4 \
+        libgl1-mesa-dri \
+        libglx-mesa0 \
+        # libegl1-mesa \
+        # libgles2-mesa \
+        mesa-utils \
+        mesa-utils-extra \
+        # gconf2-common \
+        # gconf-service \
+        # libgconf-2-4 \
+        libglvnd0 \
+        libglx0 \
+        libegl1 \
+        libgles2 \
+        libvulkan1 \
         libgdk-pixbuf2.0-0 \
-        libgl1-mesa-glx \
-        libegl1-mesa \
         libxcb-xtest0 \
         libxcb-xinerama0 \
         libheif-examples
 }
 
+# Tych nie ma w repo
+# libgl1-mesa-glx libegl1-mesa libgconf-2-4
 
 prepare_workspace() {
+    set -e
+
     [ -d $HOME/workspace/ ] || mkdir workspace
     cd workspace || return
 
     if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
         git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"
-        ln -s "$HOME/workspace/${PROJECT_NAME}" ".${PROJECT_NAME}"
+        ln -sfn "$HOME/workspace/${PROJECT_NAME}" "$HOME/.${PROJECT_NAME}"
     fi
 
     if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
-        ln -s $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
+        ln -sfn $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
     fi
+    set +e
 }
 
 install_asdf() {
@@ -239,9 +259,8 @@ maybe_restart() {
 }
 
 prepare_bashrc() {
-
-cd $HOME/ || return
-cat ". $HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > $HOME/.bashrc
+    cd $HOME/ || return
+    cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
 }
 
 cd $HOME/ || return
@@ -253,7 +272,5 @@ install_sdkman
 install_apps
 install_docker
 prepare_bashrc
-
-ls $HOME
-
+tree -d $HOME
 maybe_restart
