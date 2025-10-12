@@ -56,7 +56,7 @@ safe_apt_install() {
 
 install_initial_packages() {
     # we need some universe repos
-    $SUDO add-apt-repository universe -qy
+    $SUDO add-apt-repository -y universe
     $SUDO apt-get -qq update
     safe_apt_install "${all_packages[@]}"
 }
