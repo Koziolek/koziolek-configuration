@@ -71,6 +71,15 @@ function print_stack_trace() {
     done
 }
 
+function log_exterminatus () {
+  local pattern="$1"
+
+  log_man \
+    "In fealty to the God-Emperor, our undying Lord,
+      and by the grace of the Golden Throne,
+      I declare Exterminatus upon the ${pattern}"
+}
+
 export -f log_message
 export -f log_debug
 export -f log_info

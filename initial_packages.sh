@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
+set -Eeuo pipefail
+trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
+
 PROJECT_NAME='koziolek-configuration'
+export DEBIAN_FRONTEND=noninteractive
 
 SUDO=''
 if (( $EUID != 0 )); then
     SUDO='sudo'
 fi
 
-prerequaried=(
+prerequisites=(
     software-properties-common
 )
 
@@ -52,7 +56,7 @@ safe_apt_install() {
 
   if [ "${#ok_list[@]}" -gt 0 ]; then
     echo "Installing: ${ok_list[*]}"
-    sudo apt-get install -qqy "${ok_list[@]}"
+    $SUDO apt-get install -qqy "${ok_list[@]}"
   else
     echo "❌ No valid packages to install."
   fi
@@ -61,7 +65,7 @@ safe_apt_install() {
 install_initial_packages() {
     # we need some universe repos
     $SUDO apt-get -qq update
-    safe_apt_install "${prerequaried[@]}"
+    safe_apt_install "${prerequisites[@]}"
     $SUDO add-apt-repository -y universe
     $SUDO apt-get -qq update
     safe_apt_install "${all_packages[@]}"
@@ -70,8 +74,8 @@ install_initial_packages() {
 prepare_workspace() {
     set -e
 
-    [ -d $HOME/workspace/ ] || mkdir workspace
-    cd workspace || return
+    [ -d "$HOME/workspace/" ] || mkdir "$HOME/workspace/"
+    cd "$HOME/workspace/" || return
 
     if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
         git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"

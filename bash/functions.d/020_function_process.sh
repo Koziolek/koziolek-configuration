@@ -31,10 +31,14 @@ function unmake_me_sudo() {
 ##
 function exterminatus() {
   if [ $# -lt 1 ]; then
-    log_man "Usage: exterminatus PATTERN"
+    log_man \
+      "Usage
+pray to Emperor and then:
+  exterminatus PATTERN"
     return 1
   fi
   local pattern="$1"
+  log_exterminatus "process of ${pattern}"
   # Use pgrep to avoid killing the grep process itself
   pgrep -f "$pattern" | xargs -r kill -9
 }

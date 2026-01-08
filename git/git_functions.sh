@@ -30,10 +30,7 @@ function git_delete_merged_remote() {
 # Remove merged branches
 function git_exterminatus() {
   local project_name=$(git_project_name);
-  log_man \
-  "In fealty to the God-Emperor, our undying Lord,
-      and by the grace of the Golden Throne,
-      I declare Exterminatus upon the project of ${project_name}"
+  log_exterminatus "project of ${project_name}"
   git_delete_merged_remote
   git p
   gone_branches=$(LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}')
