@@ -80,7 +80,20 @@ function who_use_port() {
   fi
 }
 
+##
+# Clear swap by turn it off then on.
+##
+function reswap() {
+  make_me_sudo
+
+  $SUDO swapoff -a
+  $SUDO swapon -a
+
+  unmake_me_sudo
+}
+
 export -f exterminatus
 export -f who_use_port
 export -f make_me_sudo
 export -f unmake_me_sudo
+export -f reswap
