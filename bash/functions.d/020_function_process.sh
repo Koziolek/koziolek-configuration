@@ -92,8 +92,23 @@ function reswap() {
   unmake_me_sudo
 }
 
+##
+# Shows who use swap
+##
+
+function who_use_swap() {
+  for pid in /proc/[0-9]*; do
+    name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
+    swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)
+    if [ -n "$swap" ] && [ "$swap" -gt 0 ]; then
+      printf "%8d KB  %-20s  %s\n" "$swap" "$name" "$pid"
+    fi
+  done | sort -nr | head
+}
+
 export -f exterminatus
 export -f who_use_port
 export -f make_me_sudo
 export -f unmake_me_sudo
 export -f reswap
+export -f who_use_swap
