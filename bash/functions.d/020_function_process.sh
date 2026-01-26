@@ -95,7 +95,6 @@ function reswap() {
 ##
 # Shows who use swap
 ##
-
 function who_use_swap() {
   for pid in /proc/[0-9]*; do
     name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
