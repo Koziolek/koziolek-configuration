@@ -37,10 +37,27 @@ pray to Emperor and then:
   exterminatus PATTERN"
     return 1
   fi
-  local pattern="$1"
+
+  local root_mode=false
+  local pattern
+
+  # Check if the first argument is --sudo
+  if [ "$1" == "--sudo" ]; then
+    root_mode=true
+    shift # Remove the --sudo argument
+  fi
+
+  pattern="$1"
+  if $root_mode; then
+    make_me_sudo
+  fi
   log_exterminatus "process of ${pattern}"
   # Use pgrep to avoid killing the grep process itself
-  pgrep -f "$pattern" | xargs -r kill -9
+  $SUDO pgrep -f "$pattern" | xargs -r kill -9
+
+  if $root_mode; then
+    unmake_me_sudo
+  fi
 }
 
 ##
