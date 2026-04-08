@@ -2,9 +2,9 @@
 
 # netconf_diag.sh - Diagnostyka zrywania połączeń podczas telekonferencji
 # Użycie:
-#   sudo ./netconf_diag.sh              # domyślnie 15 minut, host 1.1.1.1
-#   sudo ./netconf_diag.sh -d 30 -t 8.8.8.8
-#   sudo ./netconf_diag.sh -i wlp2s0    # wymuszenie interfejsu
+#   sudo netconf_diag              # domyślnie 15 minut, host 1.1.1.1
+#   sudo netconf_diag -d 30 -t 8.8.8.8
+#   sudo netconf_diag -i wlp2s0    # wymuszenie interfejsu
 
 function netconf_diag() {
   make_me_sudo
@@ -18,7 +18,7 @@ function netconf_diag() {
 
   usage() {
     cat <<EOF
-Użycie: sudo $0 [-d minuty] [-t host] [-i interfejs] [-o katalog]
+Użycie: netconf_diag [-d minuty] [-t host] [-i interfejs] [-o katalog]
   -d  czas działania w minutach (domyślnie: ${DURATION_MIN})
   -t  host do testu (domyślnie: ${TARGET})
   -i  interfejs sieciowy (np. eth0/wlp2s0); jeśli puste, wykryje sam
@@ -83,7 +83,7 @@ EOF
     return 1
   fi
 
-  GW="$(ip route | awk '/default/ {print $3; exit}')"
+  local GW="$(ip route | awk '/default/ {print $3; exit}')"
   GW="${GW:-}"
   echo "Interface: $IFACE" | tee -a "$LOG"
   echo "Gateway: ${GW:-unknown}" | tee -a "$LOG"
@@ -136,11 +136,10 @@ EOF
   if need_cmd mtr; then
     echo "Starting mtr (chunked)..." | tee -a "$LOG"
     (
-      # co ~30s dopisuje mały raport
       while true; do
-        echo "===== $(date -Is) =====" >>"$MTRLOG"
-        mtr -r -w -c 20 -i 0.2 "$TARGET" >>"$MTRLOG" 2>&1
-        echo >>"$MTRLOG"
+        echo "===== $(date -Is) =====" >> "$MTRLOG"
+        mtr -r -w -c 20 -i 0.2 "$TARGET" >> "$MTRLOG" 2>&1
+        echo >> "$MTRLOG"
         sleep 10
       done
     ) &
@@ -176,8 +175,8 @@ EOF
   snapshot "START"
 
   while [[ $(date +%s) -lt $END_EPOCH ]]; do
-    OK_GW=1
-    OK_NET=1
+    local OK_GW=1
+    local OK_NET=1
 
     if [[ -n "${GW}" ]]; then
       ping -n -c 1 -W 1 -I "$IFACE" "$GW" >/dev/null 2>&1 || OK_GW=0
@@ -219,7 +218,7 @@ EOF
   fi
 
   # Paczka wyników
-  TAR="$OUTDIR.tar.gz"
+  local TAR="$OUTDIR.tar.gz"
   tar -czf "$TAR" -C "$(dirname "$OUTDIR")" "$(basename "$OUTDIR")"
 
   echo "== done: $(date -Is) ==" | tee -a "$LOG"
@@ -233,5 +232,10 @@ EOF
   unmake_me_sudo
 }
 
-# Eksportuj funkcję zawsze (niezależnie od trybu uruchomienia)
 export -f netconf_diag
+
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  export -f netconf_diag
+else
+  netconf_diag "$@"
+fi

@@ -17,3 +17,5 @@ settings.xml
 .jekyll-metadata
 .tool-versions
 .env
+.claude
+CLAUDE.md
