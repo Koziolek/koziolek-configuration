@@ -14,6 +14,7 @@ alias cd..="cd .."
 alias iotop="sudo iotop"
 alias alert='notify-send --urgency=critical -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 alias fix-net='sudo umount /etc/resolv.conf && sudo mount --rbind -o rslave /run/host/etc/resolv.conf /etc/resolv.conf'
+alias pack-repo='zip -r p.zip . ; base64 p.zip > p ; md5sum p p.zip'
 
 if [ -x /usr/bin/dircolors ]; then
     test -r $HOME/.dircolors && eval "$(dircolors -b $HOME/.dircolors)" || eval "$(dircolors -b)"
