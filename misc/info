@@ -1,0 +1,49 @@
+[1mhw-info.sh[0m – zrzut konfiguracji sprzętowej  2026-04-02 14:02:44
+
+[1m[0;36m══════════════════════════════════════[0m
+[1m[0;36m  🖥  PROCESOR[0m
+[1m[0;36m══════════════════════════════════════[0m
+
+  [1m/proc/cpuinfo:[0m
+  Model : AMD Ryzen Threadripper 3960X 24-Core Processor
+  Takt  : 4175 MHz
+  Rdzenie fizyczne : 48
+
+[1m[0;36m══════════════════════════════════════[0m
+[1m[0;36m  🔧  PŁYTA GŁÓWNA[0m
+[1m[0;36m══════════════════════════════════════[0m
+
+
+[1m[0;36m══════════════════════════════════════[0m
+[1m[0;36m     BIOS[0m
+[1m[0;36m══════════════════════════════════════[0m
+
+[1m[0;36m══════════════════════════════════════[0m
+[1m[0;36m  💾  PAMIĘĆ RAM[0m
+[1m[0;36m══════════════════════════════════════[0m
+  Łącznie zainstalowane: [1m125,6 GiB[0m
+
+  [Slot 1]
+
+  [Slot 2]
+
+  [Slot 3]
+
+  [Slot 4]
+
+  [Slot 5]
+
+  [Slot 6]
+
+  [Slot 7]
+
+  [Slot 8]
+
+
+[1m[0;36m══════════════════════════════════════[0m
+[1m[0;36m  🎮  KARTA GRAFICZNA[0m
+[1m[0;36m══════════════════════════════════════[0m
+  [1mlspci:[0m
+    03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 22 [Radeon RX 6700/6700 XT/6750 XT / 6800M/6850M XT] (rev c1)
+
+  [1mSzczegóły (dmidecode):[0m
