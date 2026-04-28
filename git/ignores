@@ -19,3 +19,6 @@ settings.xml
 .env
 .claude
 CLAUDE.md
+log
+podsumowanie*.md
+podsumowanie/
