@@ -9,9 +9,14 @@ services:
       - $NGINX_DATA/config:/etc/nginx/conf.d
       - $NGINX_DATA/ssl:/etc/nginx/ssl
       - $NGINX_DATA/www:/usr/share/nginx/html
-    depends_on:
-      - home-db
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - service-network
   nexus:
@@ -28,17 +33,32 @@ services:
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/service/rest/v1/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     networks:
       - service-network
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
+    env_file:
+      - ~/.senv
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     depends_on:
-      - home-db
+      home-db:
+        condition: service_healthy
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - service-network
   home-db:
@@ -55,6 +75,11 @@ services:
     volumes:
       - $POSTGRES_DATA/init.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - service-network
 

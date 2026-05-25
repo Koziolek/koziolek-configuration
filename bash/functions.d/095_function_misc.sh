@@ -66,7 +66,7 @@ EOF
 
   if [ -n "$exec_file" ]; then
     if [ ! -x "$target_dir/$exec_file" ]; then
-      chmod +x "$exec_file"
+      chmod +x "$target_dir/$exec_file"
     fi
   fi
 

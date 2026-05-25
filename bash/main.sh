@@ -9,12 +9,12 @@ if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
   . "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
 
   # if you need an interactive shell but without reloading (like in git)
-  if [ "${SUPRESS_SOURCING}" = "1" ]; then
-    export SUPRESS_SOURCING=0
+  if [ "${SUPPRESS_SOURCING}" = "1" ]; then
+    export SUPPRESS_SOURCING=0
     return 0
   fi
 
-  export SUPRESS_SOURCING=0
+  export SUPPRESS_SOURCING=0
   # Source additional files via the helper function
   for conf_file in \
     bash_history \

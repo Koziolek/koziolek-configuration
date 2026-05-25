@@ -27,7 +27,14 @@ case "$hook_type" in
         |pre-receive \
         |update)
         IFS= read -rd '' stdin
-        for file in "${BASH_SOURCE[0]}.d"/*; do
+        shopt -s nullglob
+        hooks=("${BASH_SOURCE[0]}.d"/*)
+        shopt -u nullglob
+        if [ ${#hooks[@]} -eq 0 ]; then
+            echo "no hooks found for $hook_type"
+            exit 0
+        fi
+        for file in "${hooks[@]}"; do
            [ -x "$file" ] && "$file" "$@" <<<"$stdin" || exit 2
         done
         exit 0

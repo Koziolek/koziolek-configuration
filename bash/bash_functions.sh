@@ -9,51 +9,61 @@ Usage: source this script or call its functions directly in your shell.
 
 Available functions:
 
-  1) source_if_exists FILE
-       - Sources FILE.sh from \$BASH_CONFIGURATION_DIR if it exists.
+  [Powłoka]
+  source_if_exists FILE        – sourcuje FILE.sh z \$BASH_CONFIGURATION_DIR jeśli istnieje
+  supports_colors              – sprawdza czy terminal obsługuje kolory
 
-  2) parse_git_branch
-       - Prints the current git branch (if in a git repo).
+  [Procesy i system]
+  make_me_sudo                 – ustawia \$SUDO='sudo' (lub '' gdy root)
+  unmake_me_sudo               – cofa make_me_sudo
+  exterminatus PATTERN         – zabija procesy pasujące do PATTERN
+  reswap                       – wyłącza i włącza swap (czyści pamięć swap)
+  who_use_swap                 – lista procesów używających swap
+  who_use_port PORT            – lista procesów używających podany port
 
-  3) make_me_sudo
-       - Sets up environment variables to use sudo without a password prompt
-         (if not already root).
+  [Logowanie]
+  log_message LEVEL MSG        – log z poziomem: debug, info, warn, error, man
+  log_debug MSG                – log poziom debug
+  log_info MSG                 – log poziom info
+  log_warn MSG                 – log poziom warn
+  log_error MSG                – log poziom error + stack trace
+  log_man MSG                  – log poziom man (dokumentacja/pomoc)
+  print_stack_trace            – drukuje bieżący stack trace
 
-  4) unmake_me_sudo
-       - Revokes sudo privileges set by make_me_sudo.
+  [Interakcja]
+  are_you_sure                 – pyta o potwierdzenie (Y/N), zwraca kod wyjścia
+  yes_or_no PROMPT             – pyta o Y/N, zwraca 0/1
 
-  5) order66 PATTERN
-       - Kills processes matching PATTERN.
+  [Docker]
+  check_container_status NAME  – sprawdza status kontenera
+  check_compose_status         – sprawdza status usług docker compose
+  check_all_services_healthy   – sprawdza czy wszystkie usługi są healthy
+  start_compose_services       – startuje usługi docker compose
 
-  6) exterminatus PATTERN
-       - Kills processes matching PATTERN (same as order66, different universe).
+  [Tekst]
+  to_ascii STR                 – konwertuje znaki diakrytyczne na ASCII
+  to_kebab_case STR            – konwertuje string do kebab-case
+  to_dot_case STR              – konwertuje string do dot.case
+  remove_special STR           – usuwa znaki specjalne ze stringa
 
-  7) heif_to_png
-       - Converts all *.heic files in the current directory to PNGs using heif-convert.
+  [Obrazy]
+  heif_to_png                  – konwertuje *.heic w bieżącym katalogu do PNG
+  resize_png FILE WIDTH        – skaluje PNG w miejscu
+  resize_jpg FILE WIDTH        – skaluje JPG w miejscu
 
-  8) who_use_port
-       - List processes that use given port.
+  [Narzędzia]
+  weather                      – aktualna pogoda (wttr.in)
+  start_x                      – uruchamia środowisko graficzne
+  generate_month_dirs          – tworzy strukturę katalogów miesięcznych
+  get_and_build                – git pull + wykryj system budowania + zbuduj (gab)
+  git_context                  – interaktywne przełączanie kontekstu git (user/email)
+  netconf_diag                 – diagnostyka sieci
+  dżepetto -p PROMPT           – zapytanie do OpenAI ChatGPT
+  update_asdf                  – sprawdza i instaluje nową wersję asdf jeśli dostępna
 
-  9) weather
-       - Current weather
-
-  10) turn_async_profiler_on/turn_async_profiler_off
-       - Change kernel flags for java async profiler
-
-  11) supports_colors
-       - Check if you could use colors in terminal
-
-  12) log_message [level] [messages]
-       - Log messages on given level. If level is not in: debug, info, error, man then use no_level
-
-  13) are_you_sure
-       – Ask user Yes/No
-
-Additional notes:
-  - Ensure \$BASH_CONFIGURATION_DIR is set to the directory containing your
-    configuration files and the "logo-ascii-art.txt" for print_logo.
-  - Some functions require extra tools to be installed (e.g., neofetch,
-    heif-convert, xdotool, tmux).
+  [Java]
+  turn_async_profiler_on       – ustawia flagi jądra dla async-profilera JVM
+  turn_async_profiler_off      – cofa flagi async-profilera
 
 EOF
 }
@@ -129,24 +139,71 @@ function parse_git_branch() {
 }
 
 function check_workspace() {
-  ENV_DIRS=("$WORKSPACE" "$WORKSPACE_TOOLS" "$SERVICES_DATA" "$POSTGRES_DATA" "$NGINX_DATA")
-  ENV_VARS=("$DOCKER_COMPOSE")
+  ENV_DIRS=(WORKSPACE WORKSPACE_TOOLS SERVICES_DATA POSTGRES_DATA NGINX_DATA)
+  ENV_VARS=(DOCKER_COMPOSE)
 
-  for var in "${!ENV_DIRS[@]}"; do
-    if [ -z "${ENV_DIRS[$var]}" ]; then
-      log_warn "Var ${ENV_DIRS[$var]} is not set"
-    elif [ ! -d "${ENV_DIRS[$var]}" ]; then
-      log_warn "Directory ${ENV_DIRS[$var]} doesn't exist"
-      mkdir -p "${ENV_DIRS[$var]}"
+  for name in "${ENV_DIRS[@]}"; do
+    if [ -z "${!name}" ]; then
+      log_warn "Var $name is not set"
+    elif [ ! -d "${!name}" ]; then
+      log_warn "Directory ${!name} doesn't exist"
+      mkdir -p "${!name}"
     fi
   done
 
-  for var in "${!ENV_VARS[@]}"; do
-    if [ -z "${ENV_VARS[$var]}" ]; then
-      log_warn "Var ${ENV_VARS[$var]} is not set"
+  for name in "${ENV_VARS[@]}"; do
+    if [ -z "${!name}" ]; then
+      log_warn "Var $name is not set"
     fi
   done
 
+}
+
+function update_asdf() {
+    local asdf_bin="$HOME/.local/bin/asdf"
+
+    if [ ! -x "$asdf_bin" ]; then
+        log_error "asdf nie jest zainstalowany w $HOME/.local/bin/asdf"
+        return 1
+    fi
+
+    local current_version latest_tag
+    current_version=$("$asdf_bin" version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [ -z "$latest_tag" ]; then
+        log_error "Nie udało się pobrać informacji o najnowszej wersji asdf"
+        return 1
+    fi
+
+    if [ "$current_version" = "$latest_tag" ]; then
+        log_info "asdf jest aktualne ($current_version)"
+        return 0
+    fi
+
+    log_info "Aktualizacja asdf: $current_version → $latest_tag"
+    local archive="asdf-${latest_tag}-linux-amd64.tar.gz"
+    local download_url="https://github.com/asdf-vm/asdf/releases/download/${latest_tag}/${archive}"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    set +e
+    curl -L "$download_url" -o "$tmp_dir/$archive"
+    local curl_status=$?
+    set -e
+
+    if [ $curl_status -ne 0 ]; then
+        log_error "Nie udało się pobrać asdf $latest_tag"
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"
+    cp "$tmp_dir/asdf" "$asdf_bin"
+    chmod +x "$asdf_bin"
+    rm -rf "$tmp_dir"
+
+    log_info "asdf zaktualizowany do $latest_tag"
 }
 
 source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
@@ -156,6 +213,7 @@ source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
 ##
 export -f bash_customs_usage
 export -f supports_colors
+export -f update_asdf
 
 # DONE we don't need sourcing anymore
 export BASH_FUNCTIONS_LOADED=1

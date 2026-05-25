@@ -31,11 +31,11 @@ function prepare_cert() {
   unmake_me_sudo
   log_info "
   Next steps:
-  1. Add '127.0.0.1 home' to your /etc/hosts file
-  2. Run: docker-compose up -d
+  1. Add '127.0.0.1 koziolek.home' to your /etc/hosts file
+  2. Run: docker compose up -d
   3. Access services at:
-     - https://koziolek.home/artifactory (or https://home/artifactory)
-     - https://koziolek.home/postgres (or https://home/postgres)"
+     - https://koziolek.home/nexus
+     - https://koziolek.home/pgadmin"
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then

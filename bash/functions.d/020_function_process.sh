@@ -90,7 +90,7 @@ function who_use_port() {
   fi
 
   # Use pgrep to avoid killing the grep process itself
-  $SUDO netstat -tulpn | grep "$port" | awk '!seen[$0]++'
+  $SUDO ss -tulpn | grep "$port" | awk '!seen[$0]++'
 
   if $root_mode; then
     unmake_me_sudo

@@ -15,6 +15,7 @@ export DOCKER_COMPOSE=$(check_docker_compose_availability)
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 export PATH=$HOME/.local/bin:$PATH
 
+export CLAUDE_SKILL_CONFIG=$WORKSPACE/ai/claude/config.json
 
 # Export „secrets”
 if [ -f $HOME/.senv ]; then

@@ -20,5 +20,7 @@ settings.xml
 .claude
 CLAUDE.md
 log
+logs/
 podsumowanie*.md
 podsumowanie/
+.~lock*

@@ -45,21 +45,16 @@ initial_check() {
 
 read_project_name() {
   echo "Please give me project Key. This value ahead ticket number in tracker e.g. TIG-111, TIG is key."
-  echo "Key must match ([A-Z0-9]{1,10})|(#)"
+  echo "Key must match ^([A-Z0-9]{1,10}|#)$"
   read -r project_name
 
-  if [[ $project_name =~ [A-Z0-9]+ ]]; then
-    return 0
-  fi
-
   while :; do
-    echo "Please give me VALID project Key."
-    echo "Key must match ([A-Z0-9]{1,10})|(#)"
-    read -r project_name
-
-    if [[ $project_name =~ ([A-Z0-9]{1,10})|(#) ]]; then
+    if [[ $project_name =~ ^([A-Z0-9]{1,10}|#)$ ]]; then
       return 0
     fi
+    echo "Please give me VALID project Key."
+    echo "Key must match ^([A-Z0-9]{1,10}|#)$"
+    read -r project_name
   done
 }
 
@@ -69,9 +64,12 @@ echo "Start setup"
 read_project_name
 
 git config project.name $project_name
-git config core.hooksPath .hooks
+
+# shellcheck source=/dev/null
+source "${GIT_CONFIGURATION_DIR}/git_functions.sh"
+git_init_multi_hooks
 
 #touch .gitsetup
-ignored=`cat .gitignore | grep .gitsetup`
-echo $ignored
-echo .gitsetup >> .gitignore
+if ! grep -qF '.gitsetup' .gitignore 2>/dev/null; then
+    echo .gitsetup >> .gitignore
+fi

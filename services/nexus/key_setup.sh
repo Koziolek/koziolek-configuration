@@ -5,7 +5,7 @@ function prepare_key(){
   local secret_file="$NEXUS_DATA/etc/keystore/nexus.secrets.json"
   local generated_key=$(openssl rand -base64 32)
   if [ ! -f $secret_file_template ]; then
-    log_wanr "$secret_file_template file not found"
+    log_warn "$secret_file_template file not found"
     return 1
   fi
   make_me_sudo
