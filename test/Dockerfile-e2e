@@ -1,0 +1,17 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Warsaw
+
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Lokalny skrypt zamiast curl z GitHub — testujemy bieżące zmiany
+COPY initial_packages.sh /initial_packages.sh
+RUN chmod +x /initial_packages.sh
+
+# Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
+CMD ["/initial_packages.sh"]

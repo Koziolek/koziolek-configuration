@@ -21,6 +21,8 @@ settings.xml
 CLAUDE.md
 log
 logs/
+test/results/*
+!test/results/.gitkeep
 podsumowanie*.md
 podsumowanie/
 .~lock*
