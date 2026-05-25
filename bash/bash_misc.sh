@@ -10,6 +10,13 @@ shopt -s checkwinsize
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
 # sometimes we misspell spell…
-command -v thefuck >/dev/null 2>&1 && eval "$(thefuck --alias)"
+# command -v thefuck >/dev/null 2>&1 && eval "$(thefuck --alias)"
+if command -v thefuck >/dev/null 2>&1; then
+  fuck() {
+    unset -f fuck
+    eval "$(thefuck --alias)"
+    fuck "$@"
+  }
+fi
 
 

@@ -19,18 +19,19 @@ function resize_to_full () {
           return 0
       fi
 
-        local current_width
-        current_width="$(xwininfo -id "$win_id" -stats \
-                          | grep -E '(Width):' \
-                          | awk '{print $2}')"
-        local current_height
-        current_height="$(xwininfo -id "$win_id" -stats \
-                          | grep -E '(Height):' \
-                          | awk '{print $2}')"
+        local geom
+        geom="$(xwininfo -id "$win_id" -stats \
+                  | awk '/Width:/{w=$2} /Height:/{h=$2} END{print w"x"h}')"
+        local current_width="${geom%%x*}"
+        local current_height="${geom##*x}"
 
+        local _d="${DISPLAY//:/_}"
+        local _xrandr_cache="$HOME/.cache/display_max_size_${_d//\//_}"
+        if [ ! -s "$_xrandr_cache" ]; then
+            xrandr | awk '/\*/{print $1}' > "$_xrandr_cache"
+        fi
         local max_size
-
-        readarray -t max_size < <(xrandr | grep -E '\*' | awk '{print $1}')
+        readarray -t max_size < "$_xrandr_cache"
 
         local is_max=0
         for res in "${max_size[@]}" ; do
@@ -102,7 +103,20 @@ function print_logo () {
         return 1
     fi
 
-    neofetch --ascii "$BASH_CONFIGURATION_DIR/logo-ascii-art.txt"
+    _LOGO_TMP=$(mktemp)
+    neofetch --ascii "$BASH_CONFIGURATION_DIR/logo-ascii-art.txt" >"$_LOGO_TMP" 2>&1 &
+    _LOGO_PID=$!
+
+    _show_logo() {
+        wait "$_LOGO_PID" 2>/dev/null
+        cat "$_LOGO_TMP"
+        rm -f "$_LOGO_TMP"
+        unset _LOGO_PID _LOGO_TMP
+        PROMPT_COMMAND="${PROMPT_COMMAND//_show_logo;/}"
+        PROMPT_COMMAND="${PROMPT_COMMAND//_show_logo/}"
+        unset -f _show_logo
+    }
+    PROMPT_COMMAND="_show_logo${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 }
 
 function supports_colors() {

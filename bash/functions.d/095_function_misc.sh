@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 
 function install_lib() {
+  local _args=("$@") _t="" _e="" _x=false _i
+  for (( _i = 0; _i < ${#_args[@]}; _i++ )); do
+    case "${_args[_i]}" in
+      -t) _t="${_args[_i+1]}"; _i=$(( _i + 1 )) ;;
+      -e) _e="${_args[_i+1]}"; _i=$(( _i + 1 )) ;;
+      -x) _x=true ;;
+    esac
+  done
+  if [[ -n "$_t" && -d "$WORKSPACE_TOOLS/$_t" ]]; then
+    [[ "$_x" == true && -n "$_e" ]] && . "$WORKSPACE_TOOLS/$_t/$_e"
+    return 0
+  fi
+
   local OPTIND opt
   local repo_url=""
   local target_dir=""
