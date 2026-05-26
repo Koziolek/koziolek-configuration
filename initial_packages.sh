@@ -16,7 +16,7 @@ prerequisites=(
 )
 
 system_tools=(
-  curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release
+  curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
 )
 
 security_tools=(
@@ -36,12 +36,17 @@ image_tools=(
   libheif-examples
 )
 
+diag_tools=(
+  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli
+)
+
 all_packages=(
   "${system_tools[@]}"
   "${security_tools[@]}"
   "${graphics_libs[@]}"
   "${gui_libs[@]}"
   "${image_tools[@]}"
+  "${diag_tools[@]}"
 )
 
 safe_apt_install() {
@@ -105,9 +110,11 @@ install_asdf() {
 
     echo "Pobieranie asdf z: $DOWNLOAD_URL"
     cd "$HOME/.local/bin"
+    set +e
     curl -L "$DOWNLOAD_URL" -o "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-
-    if [ $? -ne 0 ]; then
+    local curl_status=$?
+    set -e
+    if [ $curl_status -ne 0 ]; then
         echo "Błąd: nie udało się pobrać archiwum"
         return 1
     fi
@@ -115,9 +122,11 @@ install_asdf() {
         echo "Usuwanie poprzedniej instalacji asdf..."
         rm -rf "asdf"
     fi
+    set +e
     tar -xzf "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-
-    if [ $? -ne 0 ]; then
+    local tar_status=$?
+    set -e
+    if [ $tar_status -ne 0 ]; then
         echo "Błąd: nie udało się rozpakować archiwum"
         return 1
     fi
@@ -128,6 +137,37 @@ install_asdf() {
     echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo "source \$HOME/.local/bin/asdf/asdf.sh"
     echo "source \$HOME/.local/bin/asdf/completions/asdf.bash"
+}
+
+install_rust_and_difft() {
+    if command -v difft &>/dev/null; then
+        echo "difftastic już zainstalowany: $(difft --version)"
+        return 0
+    fi
+
+    local asdf_bin="$HOME/.local/bin/asdf"
+    if [ ! -x "$asdf_bin" ]; then
+        echo "Błąd: asdf nie jest zainstalowany. Uruchom najpierw install_asdf."
+        return 1
+    fi
+
+    echo "Dodawanie pluginu rust dla asdf..."
+    "$asdf_bin" plugin add rust https://github.com/asdf-community/asdf-rust.git 2>/dev/null || true
+
+    echo "Instalacja najnowszej wersji Rust..."
+    "$asdf_bin" install rust latest
+    "$asdf_bin" global rust latest
+
+    local cargo_bin
+    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
+    if [ -z "$cargo_bin" ]; then
+        echo "Błąd: cargo niedostępne po instalacji Rust"
+        return 1
+    fi
+
+    echo "Instalacja difftastic..."
+    "$cargo_bin" install difftastic
+    echo "difftastic zainstalowany pomyślnie"
 }
 
 install_sdkman() {
@@ -223,12 +263,6 @@ install_docker() {
     $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
     $SUDO usermod -aG docker $USER
     
-    # Zainstaluj docker-compose (standalone)
-    echo "Instalacja docker-compose..."
-    DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
-    $SUDO curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    $SUDO chmod +x /usr/local/bin/docker-compose
-    
     # Zainstaluj docker-ctop
     echo "Instalacja docker-ctop..."
     CTOP_VERSION=$(curl -s https://api.github.com/repos/bcicen/ctop/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
@@ -271,6 +305,7 @@ cd $HOME/ || return
 install_initial_packages
 prepare_workspace
 install_asdf
+install_rust_and_difft
 install_sdkman
 install_apps
 install_docker

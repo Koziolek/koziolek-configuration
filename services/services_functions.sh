@@ -2,23 +2,27 @@
 
 function configurate_nginx() {
   make_me_sudo
-  $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/* $NGINX_DATA/.
+  $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/config $NGINX_DATA/.
+  $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/www $NGINX_DATA/.
+  $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/ssl/certs $NGINX_DATA/ssl/. 2>/dev/null || true
+  unmake_me_sudo
 }
 function configurate_postgres() {
   make_me_sudo
   $SUDO cp -r $SERVICES_CONFIGURATION_DIR/postgres/* $POSTGRES_DATA/.
+  unmake_me_sudo
 }
 function configurate_nexus() {
   make_me_sudo
-  if [ ! -d "$NEXUS_DATA" ] && [ ! -d "$NEXUS_DATA"/etc ]; then
+  if [ ! -d "$NEXUS_DATA" ] || [ ! -d "$NEXUS_DATA"/etc ]; then
     $SUDO mkdir -p $NEXUS_DATA/etc
   fi
   $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nexus/etc/* $NEXUS_DATA/etc/.
   $SUDO chown -R 200:200 $NEXUS_DATA/etc/
+  unmake_me_sudo
 }
 
 function configurate_services() {
-  make_me_sudo
   source_if_exists ssl_setup $SERVICES_CONFIGURATION_DIR/nginx/ssl/
   source_if_exists key_setup $SERVICES_CONFIGURATION_DIR/nexus/
   configurate_postgres
@@ -26,7 +30,6 @@ function configurate_services() {
   prepare_cert
   configurate_nexus
   prepare_key
-  unmake_me_sudo
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then

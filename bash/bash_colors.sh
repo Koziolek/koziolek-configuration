@@ -2,7 +2,7 @@ if supports_colors; then
   export C_RED=$'\033[0;31m'
   export C_GREEN=$'\033[0;32m'
   export C_YELLOW=$'\033[1;33m'
-  export C_ORANGE=$'\033[199;33m'
+  export C_ORANGE=$'\033[38;5;208m'
   export C_BLUE=$'\033[0;34m'
   export C_LBLUE=$'\033[0;94m'
   export C_PURPLE=$'\033[0;35m'

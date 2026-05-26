@@ -77,7 +77,7 @@ EOF
       elif [[ -n "$current_ctx" && "$line" =~ ^[[:space:]]*email[[:space:]]*=[[:space:]]*(.+)$ ]]; then
         GC_CTX_EMAIL["$current_ctx"]="${BASH_REMATCH[1]}"
       fi
-    done < "$GC_CONFIG_FILE"
+    done <"$GC_CONFIG_FILE"
 
     if [[ ${#GC_CTX_ORDER[@]} -eq 0 ]]; then
       log_error "Plik $GC_CONFIG_FILE nie zawiera żadnych kontekstów"
@@ -87,8 +87,23 @@ EOF
     return 0
   }
 
+  _gc_display_current_config() {
+    local current_name current_email
+
+    current_name="$(git config user.name 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
+    current_email="$(git config user.email 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
+    current_project="$(git config project.name 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
+
+    log_man "\n${C_BOLD}Bieżąca konfiguracja git:${C_NC}"
+    log_info "user.name     = $current_name"
+    log_info "user.email    = $current_email"
+    log_info "project.name  = $current_project"
+  }
+
   _gc_select_context() {
     local i choice
+
+    _gc_display_current_config
 
     log_man "\n${C_BOLD}Dostępne konteksty:${C_NC}"
     for i in "${!GC_CTX_ORDER[@]}"; do
@@ -100,19 +115,17 @@ EOF
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Wybierz kontekst (0 wyjście) [1-${#GC_CTX_ORDER[@]}]:${C_NC} ")" choice
-      
-      # Obsługa wyjścia
-      if (( choice == 0 )); then
+
+      if ((choice == 0)); then
         log_info "Anulowanie"
+        return 1
+      fi
+
+      if [[ "$choice" =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= ${#GC_CTX_ORDER[@]})); then
+        GC_SELECTED_IDX=$((choice - 1))
         return 0
       fi
-      
-      # Sprawdzenie zakresu
-      if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#GC_CTX_ORDER[@]} )); then
-        # Zwróć INDEKS, a nie wartość - będziemy dostępować bezpośrednio do tablicy
-        return $((choice - 1))
-      fi
-      
+
       log_warn "Nieprawidłowy wybór. Podaj liczbę od 1 do ${#GC_CTX_ORDER[@]} (0 aby wyjść)"
     done
   }
@@ -212,15 +225,10 @@ EOF
   _gc_parse_config || return 1
 
   # Select context
-  _gc_select_context
-  local selected_idx=$?
-  
-  # Jeśli funkcja zwróciła 1, to anulowano
-  if [[ $selected_idx -eq 0 ]]; then
-    return 1
-  fi
-  
-  local selected_ctx="${GC_CTX_ORDER[$selected_idx]}"
+  local GC_SELECTED_IDX=''
+  _gc_select_context || return 1
+
+  local selected_ctx="${GC_CTX_ORDER[$GC_SELECTED_IDX]}"
 
   # Validate selected context
   _gc_validate_context "$selected_ctx" || return 1

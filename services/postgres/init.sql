@@ -1,5 +1,4 @@
 -- Skrypt inicjalizacyjny dla trzech baz danych
--- Używa CREATE DATABASE IF NOT EXISTS (PostgreSQL 9.1+)
 
 -- Tworzenie bazy danych 'ghost-track' (nazwa w cudzysłowach przez myślnik)
 SELECT 'CREATE DATABASE "ghost-track"'

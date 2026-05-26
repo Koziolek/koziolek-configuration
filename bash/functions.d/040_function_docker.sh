@@ -5,10 +5,8 @@ function check_docker_compose_availability() {
     if docker compose version &>/dev/null; then
         echo "docker compose"
         return 0
-    elif command -v docker-compose &>/dev/null && docker-compose version &>/dev/null; then
-        echo "docker-compose"
-        return 0
     else
+        log_error "docker compose plugin nie jest dostępny. Zainstaluj docker-compose-plugin."
         return 1
     fi
 }

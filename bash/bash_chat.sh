@@ -43,15 +43,18 @@ function dżepetto() {
         temperature=${temperature:-$DEFAULT_TEMPERATURE}
         max_tokens=${max_tokens:-$DEFAULT_MAX_TOKENS}
         # Make API request
+        local payload
+        payload=$(jq -n \
+            --arg model "$model" \
+            --arg prompt "$prompt" \
+            --argjson max_tokens "$max_tokens" \
+            --argjson temperature "$temperature" \
+            '{model: $model, messages: [{role: "user", content: $prompt}], max_tokens: $max_tokens, temperature: $temperature}')
+
         response=$(curl -s -X POST "$CHATGPT_ENDPOINT" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $CHATGPT_API_KEY" \
-            -d '{
-                "model": "'"$model"'",
-                "messages": [{"role": "user", "content": "'"$prompt"'"}],
-                "max_tokens": '"$max_tokens"',
-                "temperature": '"$temperature"'
-            }')
+            -d "$payload")
 
         # Check for errors
         if [ $? -ne 0 ]; then

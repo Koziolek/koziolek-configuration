@@ -1,5 +1,5 @@
 # setup main configuration
-if [ ! -e ".gitconfig" ] || [ ! -L ".gitconfig" ] || [ "$GIT_CONFIGURATION_DIR/git_config" -nt "$HOME/.gitconfig" ] ; then
+if [ ! -e "$HOME/.gitconfig" ] || [ "$GIT_CONFIGURATION_DIR/git_config" -nt "$HOME/.gitconfig" ] ; then
   cat  "$GIT_CONFIGURATION_DIR/git_config" | envsubst > $HOME/.gitconfig
 fi
 

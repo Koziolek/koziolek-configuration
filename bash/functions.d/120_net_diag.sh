@@ -232,8 +232,6 @@ EOF
   unmake_me_sudo
 }
 
-export -f netconf_diag
-
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   export -f netconf_diag
 else

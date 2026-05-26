@@ -31,31 +31,31 @@ check_deps() {
 dump_cpu() {
   header "🖥  PROCESOR"
   dmidecode -t processor | awk '
-    /^\s*(Socket Designation|Family|Manufacturer|Version|Max Speed|Core Count|Thread Count):/ {
-      sub(/^\s+/, ""); print "  " $0
+    /^[[:space:]]*(Socket Designation|Family|Manufacturer|Version|Max Speed|Core Count|Thread Count):/ {
+      sub(/^[[:space:]]+/, ""); print "  " $0
     }
   '
   echo
   echo -e "  ${BOLD}/proc/cpuinfo:${RESET}"
-  grep -m1 "model name" /proc/cpuinfo | sed 's/model name\s*:\s*/  Model : /'
-  grep -m1 "cpu MHz"    /proc/cpuinfo | sed 's/cpu MHz\s*:\s*/  Takt  : /' | \
+  grep -m1 "model name" /proc/cpuinfo | sed 's/model name[[:space:]]*:[[:space:]]*/  Model : /'
+  grep -m1 "cpu MHz"    /proc/cpuinfo | sed 's/cpu MHz[[:space:]]*:[[:space:]]*/  Takt  : /' | \
     awk '{printf "  Takt  : %.0f MHz\n", $NF}'
-  echo "  Rdzenie fizyczne : $(grep -c "^processor" /proc/cpuinfo)"
+  echo "  Procesory logiczne : $(grep -c "^processor" /proc/cpuinfo)"
 }
 
 # ── PŁYTA GŁÓWNA ──────────────────────────────────────────────────────────────
 dump_motherboard() {
   header "🔧  PŁYTA GŁÓWNA"
   dmidecode -t baseboard | awk '
-    /^\s*(Manufacturer|Product Name|Version|Serial Number|Asset Tag):/ {
-      sub(/^\s+/, ""); print "  " $0
+    /^[[:space:]]*(Manufacturer|Product Name|Version|Serial Number|Asset Tag):/ {
+      sub(/^[[:space:]]+/, ""); print "  " $0
     }
   '
   echo
   header "   BIOS"
   dmidecode -t bios | awk '
-    /^\s*(Vendor|Version|Release Date|Firmware Revision):/ {
-      sub(/^\s+/, ""); print "  " $0
+    /^[[:space:]]*(Vendor|Version|Release Date|Firmware Revision):/ {
+      sub(/^[[:space:]]+/, ""); print "  " $0
     }
   '
 }
@@ -70,9 +70,9 @@ dump_ram() {
 
   dmidecode -t memory | awk '
     /^Memory Device$/ { device++ }
-    device && /^\s*(Locator|Size|Type|Speed|Manufacturer|Part Number|Form Factor):/ {
+    device && /^[[:space:]]*(Locator|Size|Type|Speed|Manufacturer|Part Number|Form Factor):/ {
       if (/Locator:/ && !/Bank/) slot=$0
-      sub(/^\s+/, "")
+      sub(/^[[:space:]]+/, "")
       data[device] = data[device] "\n    " $0
     }
     END {
@@ -108,8 +108,8 @@ dump_gpu() {
   else
     echo -e "  ${BOLD}Szczegóły (dmidecode):${RESET}"
     dmidecode -t display 2>/dev/null | awk '
-      /^\s*(Manufacturer|Product Name|Description|Current Video Mode):/ {
-        sub(/^\s+/, ""); print "    " $0
+      /^[[:space:]]*(Manufacturer|Product Name|Description|Current Video Mode):/ {
+        sub(/^[[:space:]]+/, ""); print "    " $0
       }
     '
   fi

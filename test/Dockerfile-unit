@@ -1,0 +1,11 @@
+FROM alpine:latest
+
+RUN apk add --no-cache bash git curl coreutils util-linux
+
+RUN git clone --depth=1 https://github.com/kward/shunit2.git /opt/shunit2
+
+ENV SHUNIT2=/opt/shunit2/shunit2
+
+WORKDIR /project
+
+CMD ["/project/test/run-inside.sh"]

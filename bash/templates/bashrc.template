@@ -8,9 +8,7 @@ case $- in
       *) exit 0;;
 esac
 
-if [ -d $HOME/.git-configuration/ ]; then
-    . $HOME/.git-configuration/main.sh
-elif [ -d $HOME/.koziolek-configuration/ ]; then
+if [ -d $HOME/.koziolek-configuration/ ]; then
     . $HOME/.koziolek-configuration/main.sh
 else
     echo 'Nie ma konfiguracji! Żyj w biedzie!'

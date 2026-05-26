@@ -1,28 +1,51 @@
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
 if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
-  fi
+    _lazy_completion() {
+        unset -f _lazy_completion
+        if [ -f /usr/share/bash-completion/bash_completion ]; then
+            . /usr/share/bash-completion/bash_completion
+        elif [ -f /etc/bash_completion ]; then
+            . /etc/bash_completion
+        fi
+        if declare -f __git_wrap__git_main &>/dev/null; then
+            complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
+                || complete -o default -o nospace -F __git_wrap__git_main g
+        fi
+        _completion_loader "$@"
+    }
+    complete -D -F _lazy_completion
 fi
 
-. /usr/share/bash-completion/completions/git
-. <(asdf completion bash)
+_git_lazy() {
+    [ -f /usr/share/bash-completion/completions/git ] && . /usr/share/bash-completion/completions/git
+    if declare -f __git_wrap__git_main &>/dev/null; then
+        complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
+            || complete -o default -o nospace -F __git_wrap__git_main g
+    fi
+    unset -f _git_lazy
+    declare -f __git_wrap__git_main &>/dev/null && __git_wrap__git_main "$@"
+}
+complete -o bashdefault -o default -o nospace -F _git_lazy g
 
-# alias g=git support
-complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
-  || complete -o default -o nospace -F __git_wrap__git_main g
+_ASDF_BIN="$HOME/.local/bin/asdf"
+_ASDF_COMP="$HOME/.cache/asdf_bash_completion"
+if command -v asdf &>/dev/null; then
+    if [ ! -f "$_ASDF_COMP" ] || [ "$_ASDF_BIN" -nt "$_ASDF_COMP" ]; then
+        mkdir -p "$(dirname "$_ASDF_COMP")"
+        asdf completion bash >"$_ASDF_COMP" 2>/dev/null
+    fi
+    [ -f "$_ASDF_COMP" ] && . "$_ASDF_COMP"
+fi
+unset _ASDF_BIN _ASDF_COMP
 
-#. $HOME/.asdf/asdf.sh
-#. $HOME/.asdf/completions/asdf.bash
-. $HOME/.maven-bash-completion/bash_completion.bash
-if [ -d "$MVND_HOME" ]; then
-    . $MVND_HOME/bin/mvnd-bash-completion.bash
-else
+if ! command -v mvn &>/dev/null; then sdk i maven; fi
+if [ -f "$HOME/.maven-bash-completion/bash_completion.bash" ]; then
+    . "$HOME/.maven-bash-completion/bash_completion.bash"
+fi
+
+if ! command -v mvnd &>/dev/null; then
     sdk i mvnd
     export MVND_HOME="${HOME}/.sdkman/candidates/mvnd/current/"
-    . $MVND_HOME/bin/mvnd-bash-completion.bash
+fi
+if [ -n "$MVND_HOME" ] && [ -f "$MVND_HOME/bin/mvnd-bash-completion.bash" ]; then
+    . "$MVND_HOME/bin/mvnd-bash-completion.bash"
 fi

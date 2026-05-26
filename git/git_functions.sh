@@ -22,8 +22,14 @@ function git_project_name() {
 }
 
 function git_delete_merged_remote() {
-  for branch in $(git branch -r --merged master | grep -v /master | sed 's/origin\///g'); do
-    git push -d origin $branch
+  local default_branch
+  default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  if [ -z "$default_branch" ]; then
+    default_branch="master"
+    log_warn "Nie wykryto gałęzi domyślnej, używam: $default_branch"
+  fi
+  for branch in $(git branch -r --merged "$default_branch" | grep -v "/$default_branch" | sed 's/origin\///g'); do
+    git push -d origin "$branch"
   done
 }
 
@@ -47,7 +53,7 @@ function git_home(){
 }
 
 function git_init_multi_hooks(){
-  rm .git/hooks/*
+  find .git/hooks -maxdepth 1 -type f ! -name '*.sample' -delete
   hooks=(
     "applypatch-msg"
     "commit-msg"
@@ -66,8 +72,8 @@ function git_init_multi_hooks(){
   )
   for hook in "${hooks[@]}"; do
     cat "${GIT_CONFIGURATION_DIR}/hook/multihooks-template.sh" > "./.git/hooks/${hook}"
-    mkdir  "./.git/hooks/${hook}.d"
-    chmod +x ./.git/hooks/*
+    mkdir -p "./.git/hooks/${hook}.d"
+    chmod +x "./.git/hooks/${hook}"
   done
 }
 
@@ -116,7 +122,7 @@ function git_new_branch(){
   fi
 
   local project_name=$(git_project_name)
-  if [ -n $project_name ]; then
+  if [ -n "$project_name" ]; then
     branch_name="${project_name}-${branch_name}"
   fi
   branch_name="${type}/${branch_name}"

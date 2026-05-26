@@ -16,6 +16,7 @@ function log_message() {
 
   if [ -z "$level" ] || [ -z "$messages" ]; then
     echo "${C_RED}NOTHING TO LOG${C_NC}: Empty log call at ${FUNCNAME[*]}"
+    return 0;
   fi
 
   local prefix=""

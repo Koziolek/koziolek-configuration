@@ -12,7 +12,7 @@ function to_kebab_case() {
 
 function to_dot_case() {
   local input="$*"
-  echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /./g' -e 's/^.//' -e 's/.$//'
+  echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /./g' -e 's/^\.//' -e 's/\.$//'
 }
 
 function remove_special() {
