@@ -60,6 +60,9 @@ for path in \
     /project/bash/main.sh \
     /project/git/main.sh \
     /project/services/main.sh \
+    /project/tmux/main.sh \
+    /project/tmux/tmux.conf \
+    /project/tmux/session-init.sh \
     /project/bash/functions.d \
     /project/bash/functions.d/gab_plugins \
     /project/git/aliases \
