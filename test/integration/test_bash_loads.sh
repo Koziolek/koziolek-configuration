@@ -31,9 +31,11 @@ oneTimeSetUp() {
     # Sourcujemy bash/main.sh w czystym subshell; wyniki trafiają do pliku
     bash -c "
         export HOME='$_FAKE_HOME'
+        export MAIN_CONFIGURATION_DIR='$PROJECT_ROOT'
         export BASH_CONFIGURATION_DIR='$PROJECT_ROOT/bash'
         export GIT_CONFIGURATION_DIR='$PROJECT_ROOT/git'
         export SERVICES_CONFIGURATION_DIR='$PROJECT_ROOT/services'
+        export TMUX_CONFIGURATION_DIR='$PROJECT_ROOT/tmux'
         export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
         export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 

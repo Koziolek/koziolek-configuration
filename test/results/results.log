@@ -1,0 +1,252 @@
+=======================================
+  Test run: 2026-06-09 19:42:05
+  OS: Linux
+=======================================
+testDetectsMaven
+testDetectsGradle
+testDetectsMix
+testDetectsNpm
+testDetectsCargo
+testMavenWinsOverGradle
+testDryRunDoesNotBuild
+testSkipPullSkipsGit
+testListShowsAllPlugins
+testUnknownBuildSystemReturnsError
+testCustomPluginDirIsUsed
+
+Ran [1;36m11[0m tests.
+
+[1;32mOK[0m
+testListsAvailableContexts
+testSetsUserName
+testSetsUserEmail
+testSecondContextSetsCorrectData
+testHandlesMissingConfigFile
+testHandlesInvalidChoiceThenCancel
+testCancelReturnsNonZero
+testDoesNotRunOutsideGitRepo
+
+Ran [1;36m8[0m tests.
+
+[1;32mOK[0m
+testFastPathSkipsCloneWhenDirExists
+testFastPathNoSourceWithoutXFlag
+testFastPathSourcesFileWhenXFlagSet
+testReturnsErrorWithoutRepoUrl
+testClonesWhenDirAbsent
+testTargetDirDerivedFromRepoName
+testFastPathReturnsZero
+
+Ran [1;36m7[0m tests.
+
+[1;32mOK[0m
+testLogInfoOutputFormat
+testLogWarnOutputFormat
+testLogDebugOutputFormat
+testLogErrorOutputFormat
+testLogErrorIncludesStackTrace
+testLogManPrintsMessageWithoutTag
+testLogErrorDoesNotExitScript
+testLogMessageEmptyLevelProducesNothingToLog
+testLogInfoMultipleArgs
+
+Ran [1;36m9[0m tests.
+
+[1;32mOK[0m
+testGenerateMonthDirsCreates12Dirs
+testGenerateMonthDirsNamingFormatFirstMonth
+testGenerateMonthDirsNamingFormatLastMonth
+testGenerateMonthDirsNamingFormatMidYear
+testGenerateMonthDirsSkipsExistingWithoutError
+testGenerateMonthDirsIdempotent
+testWeatherRequiresCityArg
+Usage: get_weather <city_name>
+testWeatherWithMockedCurl
+testWeatherFailsWhenCurlReturnsEmpty
+
+Ran [1;36m9[0m tests.
+
+[1;32mOK[0m
+testRunTmuxDoesNothingWhenInsideTmux
+testRunTmuxDoesNothingWhenTermIsScreen
+testRunTmuxDoesNothingWhenTmuxNotInstalled
+testRunTmuxCallsSessionInitWhenSessionMissing
+testRunTmuxSkipsSessionInitWhenSessionExists
+testRunTmuxAlwaysCallsAttachSession
+testRunTmuxAttachesToSessionNamedMain
+
+Ran [1;36m7[0m tests.
+
+[1;32mOK[0m
+/home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh: line 220: export: supports_colors: not a function
+testSourceIfExistsSourcesExistingFile
+testSourceIfExistsMissingFileReturnsZero
+WARN: File 'nonexistent_file_xyz.sh' does not exist in '/tmp/tmp.quZPFPH1QG'
+testSourceIfExistsNoArgsReturnsOne
+Usage: source_if_exists FILE [DIRECTORY]
+testSourceIfExistsNoBashConfigDirReturnsOne
+WARN: Neither directory parameter nor $BASH_CONFIGURATION_DIR is set. Cannot source files reliably.
+testSourceIfExistsUsesBashConfigDirAsDefault
+testSourceDirectoryLoadsNumberedFiles
+testSourceDirectoryIgnoresNonNumberedFiles
+testSourceDirectoryLoadsInAlphabeticalOrder
+testSourceDirectoryMissingDirReturnsOne
+ERROR: Directory not found: /nonexistent_path_xyz_12345
+Stack trace:
+  0: print_stack_trace() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:0
+  1: log_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:59
+  2: __log_or_echo_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:75
+  3: source_directory() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:120
+  4: testSourceDirectoryMissingDirReturnsOne() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:121
+  5: _shunit_execSuite() in /tmp/shunit2/shunit2:1259
+  6: source() in /tmp/shunit2/shunit2:1598
+  7: main() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:139
+testSourceDirectoryEmptyArgReturnsOne
+ERROR: Directory path required
+Stack trace:
+  0: print_stack_trace() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:0
+  1: log_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:59
+  2: __log_or_echo_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:75
+  3: source_directory() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:115
+  4: testSourceDirectoryEmptyArgReturnsOne() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:127
+  5: _shunit_execSuite() in /tmp/shunit2/shunit2:1259
+  6: source() in /tmp/shunit2/shunit2:1598
+  7: main() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:139
+testSourceDirectoryNoArgReturnsOne
+ERROR: Directory path required
+Stack trace:
+  0: print_stack_trace() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:0
+  1: log_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/functions.d/010_function_log.sh:59
+  2: __log_or_echo_error() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:75
+  3: source_directory() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/bash/bash_functions.sh:115
+  4: testSourceDirectoryNoArgReturnsOne() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:133
+  5: _shunit_execSuite() in /tmp/shunit2/shunit2:1259
+  6: source() in /tmp/shunit2/shunit2:1598
+  7: main() in /home/runner/work/koziolek-configuration/koziolek-configuration/Koziolek/koziolek-configuration/test/unit/test_source_helpers.sh:139
+
+Ran [1;36m11[0m tests.
+
+[1;32mOK[0m
+testBashMainExitsZero
+testLogFunctionsAvailableAfterLoad
+testGetAndBuildAvailableAfterLoad
+testInstallLibAvailableAfterLoad
+testSourceDirectoryAvailableAfterLoad
+testPromptCommandContainsSdkmanInit
+testWorkspaceExportedAfterLoad
+testWorkspaceToolsExportedAfterLoad
+
+Ran [1;36m8[0m tests.
+
+[1;32mOK[0m
+testLazyCompletionRegistered
+testGitLazyCompletionRegisteredForG
+testGitLazyCompletionHasCorrectOptions
+testAsdfCompletionCacheCreated
+testAsdfCompletionCacheNotRegeneratedIfFresh
+
+Ran [1;36m5[0m tests.
+
+[1;32mOK[0m
+testWorkspaceSetToHomeWorkspace
+testWorkspaceToolsUnderWorkspace
+testDockerComposeSetWhenDockerPresent
+testDockerComposeEmptyWhenDockerAbsent
+testClaudeSkillConfigExported
+testSdkmanDirPointsToHomeSdkman
+testPathIncludesSdkmanCandidateBinsWhenPresent
+testJavaHomeSetWhenSdkmanJavaPresent
+testSenvCreatedWhenAbsent
+testSenvPermissionsAreUserReadOnly
+
+Ran [1;36m10[0m tests.
+
+[1;32mOK[0m
+testAliasFunDefined
+testAliasStEqualsStatus
+testAliasCiEqualsCommit
+testAliasFuckIsResetSoftHead
+testAliasNbCallsNewFeatureBranch
+testAliasLaListsAliases
+testAliasPushUpstreamDefined
+testAliasLgDefined
+testAliasesFileContainsAliasSection
+testGitConfigTemplateIncludesAliasesFile
+
+Ran [1;36m10[0m tests.
+
+[1;32mOK[0m
+testTmuxConfFileExistsInRepo
+testSessionInitScriptExistsInRepo
+testSessionInitScriptIsExecutable
+testTmuxMainShExistsInRepo
+testTmuxMainLoadsWithoutError
+testTmuxMainCreatesSymlink
+testTmuxMainSymlinkPointsToRepoConf
+testTmuxMainIsIdempotent
+testSessionInitDefinesWindowServer
+testSessionInitDefinesWindowState
+testSessionInitDefinesWindowHome
+testSessionInitHasFunctionCreateWindowServer
+testSessionInitHasFunctionCreateWindowState
+testSessionInitHasFunctionCreateWindowHome
+testSessionInitDefaultFocusIsHome
+testTmuxConfContainsCwdBindings
+testTmuxConfContainsUpdateEnvironment
+
+Ran [1;36m17[0m tests.
+
+[1;32mOK[0m
+testInWindowIsXdgOpenOnLinux
+testFixNetExistsOnLinux
+testIotopExistsOnLinux
+testCozzyExistsOnLinux
+testLsUsesColorAutoOnLinux
+testFdAliasForFdfindOnLinux
+fdfind niedostępny — pomijam test aliasu fd
+
+Ran [1;36m6[0m tests.
+
+[1;32mOK[0m
+testAsyncProfilerOnDefinedOnLinux
+testAsyncProfilerOffDefinedOnLinux
+testAsyncProfilerOnWritesToProc
+testAsyncProfilerOnHasDarwinGuard
+testAsyncProfilerOffHasDarwinGuard
+
+Ran [1;36m5[0m tests.
+
+[1;32mOK[0m
+testReswapDefinedOnLinux
+testWhoUseSwapDefinedOnLinux
+testWhoUsePortUsesSSOnLinux
+testWhoUsePortHasBothSSAndLsofBranches
+testExterminatusWithNoMatchReturns0
+In fealty to the God-Emperor, our undying Lord,
+      and by the grace of the Golden Throne,
+      I declare Exterminatus upon the process of nonexistent_process_9289_xyz_test
+testExterminatusBodyHasNoXargsR
+testReswapBodyContainsSwapoff
+
+Ran [1;36m7[0m tests.
+
+[1;32mOK[0m
+testOsTypeIsLinux
+testIsLinuxFlagSet
+testNotDarwinOnLinux
+testNoHomebrewPrefixOnLinux
+
+Ran [1;36m4[0m tests.
+
+[1;32mOK[0m
+testNoHomebrewPrefixOnLinux
+testPathDoesNotContainHomebrewOnLinux
+testSenvPermissionsAreUserReadOnlyOnLinux
+
+Ran [1;36m3[0m tests.
+
+[1;32mOK[0m
+
+=======================================
+  Passed: 17   Failed: 0
+=======================================
