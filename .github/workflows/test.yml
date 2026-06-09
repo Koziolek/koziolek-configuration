@@ -10,7 +10,7 @@ on:
 
 jobs:
   unit-integration:
-    name: Unit & Integration (Linux)
+    name: "Unit and Integration (Linux)"
     runs-on: ubuntu-latest
 
     steps:
