@@ -16,7 +16,14 @@ if ! shopt -oq posix; then
 fi
 
 _git_lazy() {
-    [ -f /usr/share/bash-completion/completions/git ] && . /usr/share/bash-completion/completions/git
+    local _git_comp
+    for _git_comp in \
+        /usr/share/bash-completion/completions/git \
+        /opt/homebrew/share/bash-completion/completions/git \
+        /usr/local/share/bash-completion/completions/git; do
+        [ -f "$_git_comp" ] && { . "$_git_comp"; break; }
+    done
+    unset _git_comp
     if declare -f __git_wrap__git_main &>/dev/null; then
         complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
             || complete -o default -o nospace -F __git_wrap__git_main g
