@@ -4,6 +4,7 @@
 # and using xdotool ow gdbus ir swaymsg on Wayland
 ##
 function resize_to_full () {
+    [[ "$(uname -s)" == "Darwin" ]] && return 0
     # Only run if X11 session or if DISPLAY exists
     if [ "$XDG_SESSION_TYPE" = "x11" ] || [ -n "$DISPLAY" ]; then
         # Check if xdotool is installed

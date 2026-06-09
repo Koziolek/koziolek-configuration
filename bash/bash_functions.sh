@@ -182,7 +182,12 @@ function update_asdf() {
     fi
 
     log_info "Aktualizacja asdf: $current_version → $latest_tag"
-    local archive="asdf-${latest_tag}-linux-amd64.tar.gz"
+    local _os _arch
+    _os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    _arch="$(uname -m)"
+    [[ "$_arch" == "x86_64" ]] && _arch="amd64"
+    [[ "$_arch" == "arm64" || "$_arch" == "aarch64" ]] && _arch="arm64"
+    local archive="asdf-${latest_tag}-${_os}-${_arch}.tar.gz"
     local download_url="https://github.com/asdf-vm/asdf/releases/download/${latest_tag}/${archive}"
     local tmp_dir
     tmp_dir=$(mktemp -d)

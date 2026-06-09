@@ -17,6 +17,21 @@ else
     export DOCKER_COMPOSE=""
 fi
 
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    if [ -d /opt/homebrew ]; then
+        export HOMEBREW_PREFIX="/opt/homebrew"
+    elif [ -d /usr/local/Homebrew ]; then
+        export HOMEBREW_PREFIX="/usr/local"
+    fi
+    if [ -n "$HOMEBREW_PREFIX" ]; then
+        export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+        export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
+        export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX/Homebrew"
+        export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
+        export MANPATH="$HOMEBREW_PREFIX/share/man:${MANPATH:-}"
+    fi
+fi
+
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 export PATH=$HOME/.local/bin:$PATH
 

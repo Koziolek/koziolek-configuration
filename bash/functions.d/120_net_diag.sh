@@ -7,6 +7,10 @@
 #   sudo netconf_diag -i wlp2s0    # wymuszenie interfejsu
 
 function netconf_diag() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, journalctl) — niedostępnych na macOS"
+    return 1
+  fi
   make_me_sudo
   local DURATION_MIN=15
   local TARGET="1.1.1.1"
