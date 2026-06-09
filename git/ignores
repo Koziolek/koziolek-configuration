@@ -26,3 +26,4 @@ test/results/*
 podsumowanie*.md
 podsumowanie/
 .~lock*
+.worktrees/

@@ -91,6 +91,47 @@ testTmuxMainIsIdempotent() {
 }
 
 # ---------------------------------------------------------------------------
+# Zawartość session-init.sh
+# ---------------------------------------------------------------------------
+
+_session_init() { cat "$PROJECT_ROOT/tmux/session-init.sh"; }
+
+testSessionInitDefinesWindowServer() {
+    assertContains 'session-init.sh musi definiować WIN_SERVER' \
+        "$(_session_init)" 'WIN_SERVER="SERVER"'
+}
+
+testSessionInitDefinesWindowState() {
+    assertContains 'session-init.sh musi definiować WIN_STATE' \
+        "$(_session_init)" 'WIN_STATE="STATE"'
+}
+
+testSessionInitDefinesWindowHome() {
+    assertContains 'session-init.sh musi definiować WIN_HOME' \
+        "$(_session_init)" 'WIN_HOME="HOME"'
+}
+
+testSessionInitHasFunctionCreateWindowServer() {
+    assertContains 'session-init.sh musi zawierać create_window_server()' \
+        "$(_session_init)" 'create_window_server()'
+}
+
+testSessionInitHasFunctionCreateWindowState() {
+    assertContains 'session-init.sh musi zawierać create_window_state()' \
+        "$(_session_init)" 'create_window_state()'
+}
+
+testSessionInitHasFunctionCreateWindowHome() {
+    assertContains 'session-init.sh musi zawierać create_window_home()' \
+        "$(_session_init)" 'create_window_home()'
+}
+
+testSessionInitDefaultFocusIsHome() {
+    assertContains 'session-init.sh musi ustawiać fokus na WIN_HOME' \
+        "$(_session_init)" 'select-window -t "$SESSION:$WIN_HOME"'
+}
+
+# ---------------------------------------------------------------------------
 # Zawartość tmux.conf
 # ---------------------------------------------------------------------------
 
