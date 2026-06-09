@@ -8,6 +8,7 @@
 #   --all               Uruchom wszystkie testy (unit + e2e + e2e-local)
 #   --e2e               Uruchom testy e2e (initial_packages.sh + GitHub clone, wolne)
 #   --e2e-local         Uruchom testy e2e z lokalnym projektem podpiętym jako volume
+#   --native            Uruchom testy bezpośrednio na hoście (bez Docker) — wymagane na macOS
 #   --filter <wzorzec>  Uruchom tylko pliki pasujące do wzorca (unit/integration)
 #   --rebuild           Wymuś przebudowanie obrazów Docker
 #   --help              Pokaż tę pomoc
@@ -23,6 +24,7 @@ E2E_IMAGE="koziolek-test-e2e"
 
 RUN_E2E=false
 RUN_E2E_LOCAL=false
+RUN_NATIVE=false
 TEST_FILTER=""
 REBUILD=false
 DOCKER_NETWORK="koziolek-test-net"
@@ -37,6 +39,7 @@ while [[ $# -gt 0 ]]; do
         --all)       RUN_E2E=true; RUN_E2E_LOCAL=true; shift ;;
         --e2e)       RUN_E2E=true; shift ;;
         --e2e-local) RUN_E2E_LOCAL=true; shift ;;
+        --native)    RUN_NATIVE=true; shift ;;
         --filter)    TEST_FILTER="$2"; shift 2 ;;
         --rebuild)   REBUILD=true; shift ;;
         --help|-h)   usage ;;
@@ -114,9 +117,9 @@ _check_test_image() {
 # ---------------------------------------------------------------------------
 # Preflight: sprawdza i konfiguruje środowisko przed uruchomieniem testów
 
-_preflight() {
+_preflight_docker() {
     echo "======================================="
-    echo "  Sprawdzanie środowiska"
+    echo "  Sprawdzanie środowiska (Docker)"
     echo "======================================="
 
     _check_docker
@@ -138,6 +141,35 @@ _preflight() {
     echo ""
 }
 
+_preflight_native() {
+    echo "======================================="
+    echo "  Sprawdzanie środowiska (native: $(uname -s))"
+    echo "======================================="
+
+    if ! command -v bash >/dev/null 2>&1; then
+        _fail "bash niedostępny"
+        exit 1
+    fi
+    _ok "bash $(bash --version | head -1)"
+
+    if [[ ! -f "${SHUNIT2:-}" ]] && ! command -v shunit2 >/dev/null 2>&1; then
+        local shunit2_path
+        shunit2_path="$(find "$PROJECT_ROOT" -name 'shunit2' -not -path '*/\.git/*' 2>/dev/null | head -1)"
+        if [[ -n "$shunit2_path" ]]; then
+            export SHUNIT2="$shunit2_path"
+            _ok "shunit2: $SHUNIT2"
+        else
+            _fail "shunit2 nie znaleziony — sklonuj: git clone https://github.com/kward/shunit2.git \$WORKSPACE_TOOLS/shunit2"
+            exit 1
+        fi
+    else
+        _ok "shunit2: ${SHUNIT2:-system}"
+    fi
+
+    echo "======================================="
+    echo ""
+}
+
 # ---------------------------------------------------------------------------
 
 echo "======================================="
@@ -145,17 +177,26 @@ echo "  git-configuration test runner"
 echo "======================================="
 echo ""
 
-_preflight
-
 # --- Testy jednostkowe i integracyjne ---
-echo "▶ Uruchamianie testów unit/integration..."
-docker run --rm \
-    --network="$DOCKER_NETWORK" \
-    -v "$PROJECT_ROOT:/project:ro" \
-    -v "$RESULTS_DIR:/results" \
-    -e "TEST_FILTER=$TEST_FILTER" \
-    "$UNIT_IMAGE"
-UNIT_EXIT=$?
+if $RUN_NATIVE; then
+    _preflight_native
+
+    echo "▶ Uruchamianie testów natywnie ($(uname -s))..."
+    mkdir -p "$RESULTS_DIR"
+    RESULTS_DIR="$RESULTS_DIR" TEST_FILTER="$TEST_FILTER" bash "$TEST_DIR/run-inside.sh"
+    UNIT_EXIT=$?
+else
+    _preflight_docker
+
+    echo "▶ Uruchamianie testów unit/integration (Docker/Linux)..."
+    docker run --rm \
+        --network="$DOCKER_NETWORK" \
+        -v "$PROJECT_ROOT:/project:ro" \
+        -v "$RESULTS_DIR:/results" \
+        -e "TEST_FILTER=$TEST_FILTER" \
+        "$UNIT_IMAGE"
+    UNIT_EXIT=$?
+fi
 
 # --- Testy e2e (GitHub clone) ---
 if $RUN_E2E; then

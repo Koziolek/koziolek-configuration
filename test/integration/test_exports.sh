@@ -154,7 +154,11 @@ testSenvPermissionsAreUserReadOnly() {
         { . '$PROJECT_ROOT/bash/bash_exports.sh'; } >/dev/null 2>&1
     "
     local perms
-    perms="$(stat -c '%a' "$_FAKE_HOME/.senv" 2>/dev/null || echo 'missing')"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        perms="$(stat -f '%OLp' "$_FAKE_HOME/.senv" 2>/dev/null || echo 'missing')"
+    else
+        perms="$(stat -c '%a' "$_FAKE_HOME/.senv" 2>/dev/null || echo 'missing')"
+    fi
     assertEquals '.senv musi mieć uprawnienia 400' '400' "$perms"
 }
 

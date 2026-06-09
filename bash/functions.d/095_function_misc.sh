@@ -122,6 +122,10 @@ function weather() {
   echo "----------------------------------------"
 }
 function start_x() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    log_warn "start_x: systemctl/lightdm niedostępne na macOS"
+    return 1
+  fi
   make_me_sudo
   $SUDO systemctl start lightdm
   unmake_me_sudo
@@ -159,7 +163,7 @@ function tmux_dump() {
 
   {
     echo "TMUX SESSION DUMP"
-    echo "Generated: $(date -Is)"
+    echo "Generated: $(date '+%Y-%m-%dT%H:%M:%S%z')"
     echo
 
     echo "=== CURRENT SESSION ==="
