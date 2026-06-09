@@ -1,11 +1,15 @@
 if ! shopt -oq posix; then
     _lazy_completion() {
         unset -f _lazy_completion
-        if [ -f /usr/share/bash-completion/bash_completion ]; then
-            . /usr/share/bash-completion/bash_completion
-        elif [ -f /etc/bash_completion ]; then
-            . /etc/bash_completion
-        fi
+        local _bc
+        for _bc in \
+            /usr/share/bash-completion/bash_completion \
+            /opt/homebrew/share/bash-completion/bash_completion \
+            /usr/local/share/bash-completion/bash_completion \
+            /etc/bash_completion; do
+            [ -f "$_bc" ] && { . "$_bc"; break; }
+        done
+        unset _bc
         if declare -f __git_wrap__git_main &>/dev/null; then
             complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
                 || complete -o default -o nospace -F __git_wrap__git_main g
