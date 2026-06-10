@@ -29,6 +29,10 @@ jobs:
           mkdir -p "$RESULTS_DIR"
           bash test/run-inside.sh
 
+      - name: Print test results
+        if: always()
+        run: cat test/results/results.log 2>/dev/null || echo "Brak pliku wyników"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
