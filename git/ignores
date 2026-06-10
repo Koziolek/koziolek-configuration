@@ -27,3 +27,4 @@ podsumowanie*.md
 podsumowanie/
 .~lock*
 .worktrees/
+code-review/
