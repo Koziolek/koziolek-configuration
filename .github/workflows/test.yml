@@ -19,8 +19,8 @@ jobs:
 
       - name: Install shunit2
         run: |
-          git clone --depth=1 https://github.com/kward/shunit2.git /opt/shunit2
-          echo "SHUNIT2=/opt/shunit2/shunit2" >> "$GITHUB_ENV"
+          git clone --depth=1 https://github.com/kward/shunit2.git "$RUNNER_TEMP/shunit2"
+          echo "SHUNIT2=$RUNNER_TEMP/shunit2/shunit2" >> "$GITHUB_ENV"
 
       - name: Run tests
         env:
