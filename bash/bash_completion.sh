@@ -5,7 +5,9 @@ if ! shopt -oq posix; then
         for _bc in \
             /usr/share/bash-completion/bash_completion \
             /opt/homebrew/share/bash-completion/bash_completion \
+            /opt/homebrew/etc/bash_completion \
             /usr/local/share/bash-completion/bash_completion \
+            /usr/local/etc/bash_completion \
             /etc/bash_completion; do
             [ -f "$_bc" ] && { . "$_bc"; break; }
         done
@@ -14,7 +16,7 @@ if ! shopt -oq posix; then
             complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
                 || complete -o default -o nospace -F __git_wrap__git_main g
         fi
-        _completion_loader "$@"
+        declare -f _completion_loader &>/dev/null && _completion_loader "$@"
     }
     complete -D -F _lazy_completion
 fi
