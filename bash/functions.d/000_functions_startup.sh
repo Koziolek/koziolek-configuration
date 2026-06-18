@@ -4,6 +4,7 @@
 # and using xdotool ow gdbus ir swaymsg on Wayland
 ##
 function resize_to_full () {
+    [[ "$(uname -s)" == "Darwin" ]] && return 0
     # Only run if X11 session or if DISPLAY exists
     if [ "$XDG_SESSION_TYPE" = "x11" ] || [ -n "$DISPLAY" ]; then
         # Check if xdotool is installed
@@ -77,15 +78,21 @@ function resize_to_full () {
 }
 
 ##
-# Runs tmux if not inside a tmux session already
+# Uruchamia tmux lub dołącza do istniejącej sesji "main".
+# Layout początkowy tworzony tylko raz — przy pierwszym uruchomieniu sesji.
 ##
 function run_tmux () {
-    if command -v tmux >/dev/null 2>&1; then
-        # If not in a tmux session and not in a TERM that starts with "screen"
-        if [[ ! "$TERM" =~ screen ]] && [ -z "$TMUX" ]; then
-            exec tmux
-        fi
+    if ! command -v tmux >/dev/null 2>&1; then
+        return 0
     fi
+    if [[ "$TERM" =~ screen ]] || [ -n "$TMUX" ]; then
+        return 0
+    fi
+    local SESSION="main"
+    if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+        bash "${MAIN_CONFIGURATION_DIR}/tmux/session-init.sh"
+    fi
+    exec tmux attach-session -t "$SESSION"
 }
 
 ##

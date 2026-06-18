@@ -52,8 +52,11 @@ pray to Emperor and then:
     make_me_sudo
   fi
   log_exterminatus "process of ${pattern}"
-  # Use pgrep to avoid killing the grep process itself
-  $SUDO pgrep -f "$pattern" | xargs -r kill -9
+  local _pids
+  _pids=$(pgrep -f "$pattern")
+  if [ -n "$_pids" ]; then
+    echo "$_pids" | $SUDO xargs kill -9
+  fi
 
   if $root_mode; then
     unmake_me_sudo
@@ -89,8 +92,11 @@ function who_use_port() {
     make_me_sudo
   fi
 
-  # Use pgrep to avoid killing the grep process itself
-  $SUDO ss -tulpn | grep "$port" | awk '!seen[$0]++'
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    $SUDO lsof -i ":${port}" -n -P
+  else
+    $SUDO ss -tulpn | grep "$port" | awk '!seen[$0]++'
+  fi
 
   if $root_mode; then
     unmake_me_sudo
@@ -101,6 +107,10 @@ function who_use_port() {
 # Clear swap by turn it off then on.
 ##
 function reswap() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    log_warn "reswap: swapoff/swapon niedostępne na macOS"
+    return 1
+  fi
   make_me_sudo
 
   $SUDO swapoff -a
@@ -113,6 +123,10 @@ function reswap() {
 # Shows who use swap
 ##
 function who_use_swap() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    log_warn "who_use_swap: /proc niedostępny na macOS"
+    return 1
+  fi
   for pid in /proc/[0-9]*; do
     name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
     swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)

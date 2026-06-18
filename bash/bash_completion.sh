@@ -1,22 +1,35 @@
 if ! shopt -oq posix; then
     _lazy_completion() {
         unset -f _lazy_completion
-        if [ -f /usr/share/bash-completion/bash_completion ]; then
-            . /usr/share/bash-completion/bash_completion
-        elif [ -f /etc/bash_completion ]; then
-            . /etc/bash_completion
-        fi
+        local _bc
+        for _bc in \
+            /usr/share/bash-completion/bash_completion \
+            /opt/homebrew/share/bash-completion/bash_completion \
+            /opt/homebrew/etc/bash_completion \
+            /usr/local/share/bash-completion/bash_completion \
+            /usr/local/etc/bash_completion \
+            /etc/bash_completion; do
+            [ -f "$_bc" ] && { . "$_bc"; break; }
+        done
+        unset _bc
         if declare -f __git_wrap__git_main &>/dev/null; then
             complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
                 || complete -o default -o nospace -F __git_wrap__git_main g
         fi
-        _completion_loader "$@"
+        declare -f _completion_loader &>/dev/null && _completion_loader "$@"
     }
     complete -D -F _lazy_completion
 fi
 
 _git_lazy() {
-    [ -f /usr/share/bash-completion/completions/git ] && . /usr/share/bash-completion/completions/git
+    local _git_comp
+    for _git_comp in \
+        /usr/share/bash-completion/completions/git \
+        /opt/homebrew/share/bash-completion/completions/git \
+        /usr/local/share/bash-completion/completions/git; do
+        [ -f "$_git_comp" ] && { . "$_git_comp"; break; }
+    done
+    unset _git_comp
     if declare -f __git_wrap__git_main &>/dev/null; then
         complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
             || complete -o default -o nospace -F __git_wrap__git_main g

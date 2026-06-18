@@ -49,7 +49,7 @@ function git_exterminatus() {
 function git_home(){
   local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@');
   log_info "Git go home at ${home_branch_name}"
-  git co ${home_branch_name};
+  git co ${home_branch_name} && git pull;
 }
 
 function git_init_multi_hooks(){
@@ -150,6 +150,31 @@ function git_vomit(){
   git add .
   git ci -a -m "$*"
   git push -u origin $branch_name
+}
+
+function git_vomit_one(){
+  local branch_name=$(git_current_branch)
+  local base_branch
+  base_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  if [ -z "$base_branch" ]; then
+    base_branch="master"
+  fi
+
+  local commit_count
+  commit_count=$(git log "${base_branch}..HEAD" --oneline 2>/dev/null | wc -l)
+
+  git add .
+
+  if [ "$commit_count" -gt 0 ]; then
+    local old_messages
+    old_messages=$(git log "${base_branch}..HEAD" --format="%s" --reverse)
+    git reset --soft "HEAD~${commit_count}"
+    git ci -m "${old_messages}"$'\n'"$*"
+  else
+    git ci -m "$*"
+  fi
+
+  git push -u origin "${branch_name}" --force-with-lease
 }
 
 . ${GIT_CONFIGURATION_DIR}/hub_functions.sh

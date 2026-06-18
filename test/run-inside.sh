@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Uruchamiany wewnątrz kontenera unit/integration. Zbiera wyniki do /results/.
+# Uruchamiany wewnątrz kontenera lub natywnie (--native).
+# Zbiera wyniki do /results/ lub $RESULTS_DIR.
 
 set -euo pipefail
 
 RESULTS_DIR="${RESULTS_DIR:-/results}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_FILTER="${TEST_FILTER:-}"
+CURRENT_OS="$(uname -s)"
 
 mkdir -p "$RESULTS_DIR"
 
@@ -36,16 +38,32 @@ run_suite() {
             ERRORS+=("$suite_name/$name")
         fi
     done
+    return 0
 }
 
 {
     echo "======================================="
     echo "  Test run: $(date '+%Y-%m-%d %H:%M:%S')"
+    printf "  OS: %s\n" "$CURRENT_OS"
     echo "======================================="
 } | tee "$RESULTS_DIR/results.log"
 
+# Testy wspólne (cross-platform)
 run_suite "$SCRIPT_DIR/unit"        "unit"
 run_suite "$SCRIPT_DIR/integration" "integration"
+
+# Testy dedykowane dla bieżącego OS
+if [[ "$CURRENT_OS" == "Darwin" ]]; then
+    echo ""
+    echo "--- Testy macOS (darwin) ---"
+    run_suite "$SCRIPT_DIR/unit/darwin"        "unit/darwin"
+    run_suite "$SCRIPT_DIR/integration/darwin" "integration/darwin"
+else
+    echo ""
+    echo "--- Testy Linux (linux) ---"
+    run_suite "$SCRIPT_DIR/unit/linux"         "unit/linux"
+    run_suite "$SCRIPT_DIR/integration/linux"  "integration/linux"
+fi
 
 {
     echo ""

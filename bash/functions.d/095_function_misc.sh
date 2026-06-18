@@ -122,6 +122,10 @@ function weather() {
   echo "----------------------------------------"
 }
 function start_x() {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    log_warn "start_x: systemctl/lightdm niedostępne na macOS"
+    return 1
+  fi
   make_me_sudo
   $SUDO systemctl start lightdm
   unmake_me_sudo
@@ -144,6 +148,57 @@ function generate_month_dirs() {
   done
 }
 
+function tmux_dump() {
+  local out="${1:-tmux-session-dump-$(date +%Y%m%d-%H%M%S).txt}"
+
+  if ! command -v tmux >/dev/null 2>&1; then
+    echo "tmux is not installed" >&2
+    return 1
+  fi
+
+  if [ -z "${TMUX:-}" ]; then
+    echo "Not running inside tmux session" >&2
+    return 1
+  fi
+
+  {
+    echo "TMUX SESSION DUMP"
+    echo "Generated: $(date '+%Y-%m-%dT%H:%M:%S%z')"
+    echo
+
+    echo "=== CURRENT SESSION ==="
+    tmux display-message -p \
+      'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
+    echo
+
+    echo "=== SESSIONS ==="
+    tmux list-sessions -F \
+      'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
+    echo
+
+    echo "=== WINDOWS ==="
+    tmux list-windows -a -F \
+      'session=#{session_name} window=#{window_index} name=#{window_name} active=#{window_active} panes=#{window_panes} layout=#{window_layout}'
+    echo
+
+    echo "=== PANES ==="
+    tmux list-panes -a -F \
+      'session=#{session_name} window=#{window_index} pane=#{pane_index} id=#{pane_id} active=#{pane_active} size=#{pane_width}x#{pane_height} path=#{pane_current_path} command=#{pane_current_command} title=#{pane_title}'
+    echo
+
+    echo "=== GLOBAL OPTIONS ==="
+    tmux show-options -g
+    echo
+
+    echo "=== GLOBAL WINDOW OPTIONS ==="
+    tmux show-window-options -g
+
+  } > "$out"
+
+  echo "$out"
+}
+
 export -f start_x
 export -f weather
 export -f generate_month_dirs
+export -f tmux_dump

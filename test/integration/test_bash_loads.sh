@@ -36,6 +36,7 @@ oneTimeSetUp() {
         export SERVICES_CONFIGURATION_DIR='$PROJECT_ROOT/services'
         export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
         export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
+        export TMUX=1
 
         . '$PROJECT_ROOT/bash/main.sh' 2>/dev/null
         echo \"EXIT:\$?\"

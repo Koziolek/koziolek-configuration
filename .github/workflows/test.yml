@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  unit-integration:
+    name: "Unit and Integration (Linux)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install shunit2
+        run: |
+          git clone --depth=1 https://github.com/kward/shunit2.git "$RUNNER_TEMP/shunit2"
+          echo "SHUNIT2=$RUNNER_TEMP/shunit2/shunit2" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        env:
+          RESULTS_DIR: ${{ github.workspace }}/test/results
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          bash test/run-inside.sh
+
+      - name: Print test results
+        if: always()
+        run: cat test/results/results.log 2>/dev/null || echo "Brak pliku wyników"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results
+          path: test/results/results.log
+          retention-days: 7

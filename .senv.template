@@ -1,5 +1,6 @@
 export OPENAI_KEY=
 export TMUXAI_OPENROUTER_API_KEY=
+export NVD_API_KEY=
 export DB_USERNAME=
 export DB_PASSWORD=
 export DB_NAME=
