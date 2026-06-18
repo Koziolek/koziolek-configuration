@@ -15,7 +15,7 @@
 #   email = janek@example.com
 #
 # Użycie:
-#   git_context
+#   git_context [-a|--add]
 # ============================================================================
 
 function git_context() {
@@ -28,11 +28,14 @@ function git_context() {
 ${C_BOLD}git_context${C_NC} – interaktywna konfiguracja kontekstu git
 
 ${C_BOLD}Użycie:${C_NC}
-    git_context [-h|--help]
+    git_context [-h|--help] [-a|--add]
 
 ${C_BOLD}Opis:${C_NC}
     Interaktywnie konfiguruje git user.name, user.email i project.name
     na podstawie predefiniowanych kontekstów z pliku ~/.config/git-context
+
+${C_BOLD}Opcje:${C_NC}
+    -a, --add    Dodaj nowy profil do pliku konfiguracyjnego
 
 ${C_BOLD}Plik konfiguracyjny:${C_NC}
     ~/.config/git-context
@@ -44,17 +47,11 @@ ${C_BOLD}Plik konfiguracyjny:${C_NC}
 EOF
   }
 
-  _gc_validate() {
-    if [[ ! -f "$GC_CONFIG_FILE" ]]; then
-      log_error "Brak pliku konfiguracyjnego: $GC_CONFIG_FILE"
-      return 1
-    fi
-
+  _gc_validate_git_repo() {
     if ! git rev-parse --git-dir &>/dev/null; then
       log_error "Bieżący katalog nie jest repozytorium git"
       return 1
     fi
-
     return 0
   }
 
@@ -191,6 +188,67 @@ EOF
     echo
   }
 
+  _gc_create_config() {
+    local answer name email
+
+    read -rp "$(echo -e "${C_BOLD}Plik $GC_CONFIG_FILE nie istnieje. Stworzyć? [t/N]:${C_NC} ")" answer
+    if [[ "${answer,,}" != "t" ]]; then
+      log_info "Anulowanie"
+      return 1
+    fi
+
+    mkdir -p "$(dirname "$GC_CONFIG_FILE")"
+
+    log_man "\n${C_BOLD}Dane dla profilu 'default':${C_NC}"
+
+    while true; do
+      read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name
+      [[ -n "${name// /}" ]] && break
+      log_error "Pole nie może być puste"
+    done
+
+    while true; do
+      read -rp "$(echo -e "${C_BOLD}Email (user.email):${C_NC} ")" email
+      [[ -n "${email// /}" ]] && break
+      log_error "Pole nie może być puste"
+    done
+
+    printf "[default]\nname  = %s\nemail = %s\n" "$name" "$email" > "$GC_CONFIG_FILE"
+    log_info "Plik $GC_CONFIG_FILE utworzony z profilem 'default'"
+  }
+
+  _gc_add_profile() {
+    local ctx_name name email
+
+    while true; do
+      read -rp "$(echo -e "${C_BOLD}Nazwa nowego profilu:${C_NC} ")" ctx_name
+      [[ -n "${ctx_name// /}" ]] && break
+      log_error "Nazwa profilu nie może być pusta"
+    done
+
+    if grep -q "^\[${ctx_name}\]" "$GC_CONFIG_FILE" 2>/dev/null; then
+      log_error "Profil '$ctx_name' już istnieje w $GC_CONFIG_FILE"
+      return 1
+    fi
+
+    log_man "\n${C_BOLD}Dane dla profilu '$ctx_name':${C_NC}"
+
+    while true; do
+      read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name
+      [[ -n "${name// /}" ]] && break
+      log_error "Pole nie może być puste"
+    done
+
+    while true; do
+      read -rp "$(echo -e "${C_BOLD}Email (user.email):${C_NC} ")" email
+      [[ -n "${email// /}" ]] && break
+      log_error "Pole nie może być puste"
+    done
+
+    printf "\n[%s]\nname  = %s\nemail = %s\n" "$ctx_name" "$name" "$email" >> "$GC_CONFIG_FILE"
+    log_info "Profil '$ctx_name' dodany do $GC_CONFIG_FILE"
+  }
+
   # ── Main logic ─────────────────────────────────────────────────────────
 
   # Deklaracja zmiennych - muszą być tutaj, zanim będą używane
@@ -198,12 +256,18 @@ EOF
   declare -A GC_CTX_EMAIL
   declare -a GC_CTX_ORDER
 
+  local GC_ADD_MODE=0
+
   # Parse arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
     -h | --help)
       _gc_usage
       return 0
+      ;;
+    -a | --add)
+      GC_ADD_MODE=1
+      shift
       ;;
     -*)
       log_error "Nieznana opcja: $1"
@@ -218,8 +282,21 @@ EOF
     esac
   done
 
-  # Validate environment
-  _gc_validate || return 1
+  _gc_validate_git_repo || return 1
+
+  if ((GC_ADD_MODE)); then
+    if [[ ! -f "$GC_CONFIG_FILE" ]]; then
+      log_error "Brak pliku konfiguracyjnego: $GC_CONFIG_FILE"
+      log_info "Uruchom git_context bez parametrów aby utworzyć plik konfiguracyjny"
+      return 1
+    fi
+    _gc_add_profile
+    return $?
+  fi
+
+  if [[ ! -f "$GC_CONFIG_FILE" ]]; then
+    _gc_create_config || return 1
+  fi
 
   # Parse configuration file
   _gc_parse_config || return 1
