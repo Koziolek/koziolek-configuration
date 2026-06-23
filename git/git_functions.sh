@@ -21,6 +21,7 @@ function git_project_name() {
   echo $name
 }
 
+# Deletes remote branches already merged into the default branch
 function git_delete_merged_remote() {
   local default_branch
   default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
@@ -52,6 +53,7 @@ function git_home() {
   git co ${home_branch_name} && git pull
 }
 
+# Installs multi-hook dispatcher for all standard git hook types in the current repo
 function git_init_multi_hooks() {
   find .git/hooks -maxdepth 1 -type f ! -name '*.sample' -delete
   hooks=(
@@ -100,6 +102,7 @@ function git_init() {
   fi
 }
 
+# Creates a typed branch (feature/fix/version/experimental), prepends project key if set, pushes to remote
 function git_new_branch() {
   local type="feature"
   case "$1" in
@@ -132,19 +135,24 @@ function git_new_branch() {
   git push -u origin "${branch_name}"
 }
 
+# Wrapper: git_new_branch with type=feature
 function git_new_feature_branch() {
   git_new_branch feature $*
 }
+# Wrapper: git_new_branch with type=version
 function git_new_version_branch() {
   git_new_branch version $*
 }
+# Wrapper: git_new_branch with type=fix
 function git_new_fix_branch() {
   git_new_branch fix $*
 }
+# Wrapper: git_new_branch with type=experimental
 function git_new_experimental_branch() {
   git_new_branch experimental $*
 }
 
+# Derives conventional commit prefix (type + ticket ref) from branch name; empty string if branch type unknown
 function git_commit_message_prefix() {
   local branch
   branch=$(git_current_branch 2>/dev/null)
@@ -181,6 +189,7 @@ function git_commit_message_prefix() {
   fi
 }
 
+# Stage all, commit with derived prefix, push to remote
 function git_vomit() {
   local branch_name=$(git_current_branch)
   local prefix
@@ -191,6 +200,7 @@ function git_vomit() {
   git push -u origin $branch_name
 }
 
+# Stage all, squash all branch commits into one with derived prefix, force-push
 function git_bleeh() {
   local branch_name=$(git_current_branch)
   local base_branch
