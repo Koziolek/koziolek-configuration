@@ -61,3 +61,4 @@ fi
 alias order66="exterminatus"
 alias omega-protocol="exterminatus"
 alias claude-local='ANTHROPIC_BASE_URL="http://localhost:11434" ANTHROPIC_API_KEY="ollama" claude --model qwen3-coder'
+alias rc="reload_config"
