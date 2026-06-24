@@ -132,5 +132,99 @@ testDoesNotRunOutsideGitRepo() {
 }
 
 # ---------------------------------------------------------------------------
+# Tworzenie pliku konfiguracyjnego od zera
+# ---------------------------------------------------------------------------
+
+testRefusesCreationReturnsNonZero() {
+    local cfg="$_FAKE_HOME/.config/git-context"
+    mv "$cfg" "$cfg.bak"
+    local rc=0
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf 'n\n' | git_context
+    ) >/dev/null 2>/dev/null || rc=$?
+    mv "$cfg.bak" "$cfg"
+    assertNotEquals 'odmowa tworzenia pliku musi zwrócić kod błędu' 0 "$rc"
+}
+
+testConfirmsCreationMakesFile() {
+    local cfg="$_FAKE_HOME/.config/git-context"
+    mv "$cfg" "$cfg.bak"
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
+    ) >/dev/null 2>/dev/null || true
+    local created=false
+    [[ -f "$cfg" ]] && created=true
+    mv "$cfg.bak" "$cfg"
+    assertTrue 'potwierdzenie tworzenia musi stworzyć plik konfiguracyjny' "$created"
+}
+
+testConfirmsCreationWritesDefaultSection() {
+    local cfg="$_FAKE_HOME/.config/git-context"
+    mv "$cfg" "$cfg.bak"
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
+    ) >/dev/null 2>/dev/null || true
+    local ok=false
+    grep -qE '^\[default\]' "$cfg" 2>/dev/null && ok=true
+    mv "$cfg.bak" "$cfg"
+    assertTrue 'nowo tworzony plik musi zawierać sekcję [default]' "$ok"
+}
+
+# ---------------------------------------------------------------------------
+# Tryb --add
+# ---------------------------------------------------------------------------
+
+testAddWithoutConfigFileReturnsNonZero() {
+    local cfg="$_FAKE_HOME/.config/git-context"
+    mv "$cfg" "$cfg.bak"
+    local rc=0
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf '' | git_context --add
+    ) >/dev/null 2>/dev/null || rc=$?
+    mv "$cfg.bak" "$cfg"
+    assertNotEquals '--add bez pliku konfiguracyjnego musi zwrócić kod błędu' 0 "$rc"
+}
+
+testAddAppendsNewProfile() {
+    local cfg="$_FAKE_HOME/.config/git-context"
+    local tmp_cfg
+    tmp_cfg="$(mktemp)"
+    cp "$cfg" "$tmp_cfg"
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf 'newprofile\nJan Pracownik\njan@firma.pl\n' | git_context --add
+    ) >/dev/null 2>/dev/null || true
+    local ok=false
+    grep -qE '^\[newprofile\]' "$cfg" 2>/dev/null && ok=true
+    cp "$tmp_cfg" "$cfg"
+    rm -f "$tmp_cfg"
+    assertTrue '--add musi dopisać nową sekcję do pliku konfiguracyjnego' "$ok"
+}
+
+testAddDuplicateProfileReturnsNonZero() {
+    local rc=0
+    ( export HOME="$_FAKE_HOME"
+      cd "$_FAKE_REPO"
+      printf 'work\n' | git_context --add
+    ) >/dev/null 2>/dev/null || rc=$?
+    assertNotEquals '--add z duplikatem nazwy musi zwrócić kod błędu' 0 "$rc"
+}
+
+testAddOutsideGitRepoReturnsNonZero() {
+    local not_a_repo rc=0
+    not_a_repo="$(mktemp -d)"
+    ( export HOME="$_FAKE_HOME"
+      cd "$not_a_repo"
+      printf '' | git_context --add
+    ) >/dev/null 2>/dev/null || rc=$?
+    rm -rf "$not_a_repo"
+    assertNotEquals '--add poza repo git musi zwrócić kod błędu' 0 "$rc"
+}
+
+# ---------------------------------------------------------------------------
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

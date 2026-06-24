@@ -60,6 +60,7 @@ Available functions:
   netconf_diag                 – diagnostyka sieci
   dżepetto -p PROMPT           – zapytanie do OpenAI ChatGPT
   update_asdf                  – sprawdza i instaluje nową wersję asdf jeśli dostępna
+  reload_config                – przeładowuje konfigurację powłoki z MAIN_CONFIGURATION_DIR/main.sh
 
   [Java]
   turn_async_profiler_on       – ustawia flagi jądra dla async-profilera JVM
@@ -214,11 +215,38 @@ function update_asdf() {
 source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
 
 ##
-# Export unexported „by default” functions so they remain available after 'source'
+# Reloads shell configuration from MAIN_CONFIGURATION_DIR/main.sh
+##
+function reload_config() {
+    if [ -z "$MAIN_CONFIGURATION_DIR" ]; then
+        log_error "MAIN_CONFIGURATION_DIR is not set — cannot reload"
+        return 1
+    fi
+
+    local main_script="$MAIN_CONFIGURATION_DIR/main.sh"
+    if [ ! -f "$main_script" ]; then
+        log_error "main.sh not found: $main_script"
+        return 1
+    fi
+
+    # Reset loaded flags so subsystems re-initialize
+    unset BASH_FUNCTIONS_LOADED
+
+    # shellcheck source=/dev/null
+    . "$main_script" || {
+        log_error "Błąd podczas ładowania $main_script"
+        return 1
+    }
+    log_info "Konfiguracja przeładowana z $main_script"
+}
+
+##
+# Export unexported „by default" functions so they remain available after 'source'
 ##
 export -f bash_customs_usage
 export -f supports_colors
 export -f update_asdf
+export -f reload_config
 
 # DONE we don't need sourcing anymore
 export BASH_FUNCTIONS_LOADED=1
