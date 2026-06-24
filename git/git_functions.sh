@@ -21,6 +21,7 @@ function git_project_name() {
   echo $name
 }
 
+# Deletes remote branches already merged into the default branch
 function git_delete_merged_remote() {
   local default_branch
   default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
@@ -35,7 +36,7 @@ function git_delete_merged_remote() {
 
 # Remove merged branches
 function git_exterminatus() {
-  local project_name=$(git_project_name);
+  local project_name=$(git_project_name)
   log_exterminatus "project of ${project_name}"
   git_delete_merged_remote
   git p
@@ -46,13 +47,14 @@ function git_exterminatus() {
 }
 
 # Git go home.
-function git_home(){
-  local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@');
+function git_home() {
+  local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
   log_info "Git go home at ${home_branch_name}"
-  git co ${home_branch_name} && git pull;
+  git co ${home_branch_name} && git pull
 }
 
-function git_init_multi_hooks(){
+# Installs multi-hook dispatcher for all standard git hook types in the current repo
+function git_init_multi_hooks() {
   find .git/hooks -maxdepth 1 -type f ! -name '*.sample' -delete
   hooks=(
     "applypatch-msg"
@@ -71,14 +73,14 @@ function git_init_multi_hooks(){
     "update"
   )
   for hook in "${hooks[@]}"; do
-    cat "${GIT_CONFIGURATION_DIR}/hook/multihooks-template.sh" > "./.git/hooks/${hook}"
+    cat "${GIT_CONFIGURATION_DIR}/hook/multihooks-template.sh" >"./.git/hooks/${hook}"
     mkdir -p "./.git/hooks/${hook}.d"
     chmod +x "./.git/hooks/${hook}"
   done
 }
 
 # Initialize repository in current dir like git init, and then setup additional stuff
-function git_init(){
+function git_init() {
   log_info "Initialisation of repository"
 
   read -p "${C_LBLUE}Enter project name:${C_NC} " project_name
@@ -86,7 +88,7 @@ function git_init(){
     log_warn "An empty project name may cause heretical behavior."
     local ars=$(are_you_sure 'n')
     if [ "$ars" == 'n' ]; then
-        return 1
+      return 1
     fi
   fi
 
@@ -94,22 +96,23 @@ function git_init(){
   local use_hooks=$(yes_or_no 'y')
   git init .
   git config project.name "$project_name"
-  
+
   if [[ "${use_hooks}" =~ ^(y|yes)$ ]]; then
     git_init_multi_hooks
   fi
 }
 
-function git_new_branch(){
+# Creates a typed branch (feature/fix/version/experimental), prepends project key if set, pushes to remote
+function git_new_branch() {
   local type="feature"
   case "$1" in
-    feature|version|fix|experimental)
-      type="$1"
-      shift
-      ;;
-    *)
-      type="feature"
-      ;;
+  feature | version | fix | experimental)
+    type="$1"
+    shift
+    ;;
+  *)
+    type="feature"
+    ;;
   esac
 
   local branch_name=$(to_ascii "$*")
@@ -132,27 +135,73 @@ function git_new_branch(){
   git push -u origin "${branch_name}"
 }
 
-function git_new_feature_branch(){
+# Wrapper: git_new_branch with type=feature
+function git_new_feature_branch() {
   git_new_branch feature $*
 }
-function git_new_version_branch(){
+# Wrapper: git_new_branch with type=version
+function git_new_version_branch() {
   git_new_branch version $*
 }
-function git_new_fix_branch(){
+# Wrapper: git_new_branch with type=fix
+function git_new_fix_branch() {
   git_new_branch fix $*
 }
-function git_new_experimental_branch(){
+# Wrapper: git_new_branch with type=experimental
+function git_new_experimental_branch() {
   git_new_branch experimental $*
 }
 
-function git_vomit(){
+# Derives conventional commit prefix (type + ticket ref) from branch name; empty string if branch type unknown
+function git_commit_message_prefix() {
+  local branch
+  branch=$(git_current_branch 2>/dev/null)
+  if [ -z "$branch" ]; then
+    return 1
+  fi
+
+  if [[ "$branch" != */* ]]; then
+    echo ""
+    return 0
+  fi
+
+  local type_raw="${branch%%/*}"
+  local rest="${branch#*/}"
+
+  local type_prefix
+  case "$type_raw" in
+  feature)      type_prefix="feat:" ;;
+  fix)          type_prefix="fix:" ;;
+  version)      type_prefix="ver:" ;;
+  experimental) type_prefix="exp:" ;;
+  *)            echo ""; return 0 ;;
+  esac
+
+  local ticket=""
+  if [[ "$rest" =~ ^([A-Z]+-[0-9]+)(-|$) ]]; then
+    ticket="${BASH_REMATCH[1]}"
+  fi
+
+  if [ -n "$ticket" ]; then
+    echo "${type_prefix} ${ticket}"
+  else
+    echo "${type_prefix}"
+  fi
+}
+
+# Stage all, commit with derived prefix, push to remote
+function git_vomit() {
   local branch_name=$(git_current_branch)
+  local prefix
+  prefix=$(git_commit_message_prefix)
+  local msg="${prefix:+${prefix} }$*"
   git add .
-  git ci -a -m "$*"
+  git ci -a -m "${msg}"
   git push -u origin $branch_name
 }
 
-function git_vomit_one(){
+# Stage all, squash all branch commits into one with derived prefix, force-push
+function git_bleeh() {
   local branch_name=$(git_current_branch)
   local base_branch
   base_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
@@ -163,15 +212,19 @@ function git_vomit_one(){
   local commit_count
   commit_count=$(git log "${base_branch}..HEAD" --oneline 2>/dev/null | wc -l)
 
+  local prefix
+  prefix=$(git_commit_message_prefix)
+  local new_msg="${prefix:+${prefix} }$*"
+
   git add .
 
   if [ "$commit_count" -gt 0 ]; then
     local old_messages
     old_messages=$(git log "${base_branch}..HEAD" --format="%s" --reverse)
     git reset --soft "HEAD~${commit_count}"
-    git ci -m "${old_messages}"$'\n'"$*"
+    git ci -m "${old_messages}"$'\n'"${new_msg}"
   else
-    git ci -m "$*"
+    git ci -m "${new_msg}"
   fi
 
   git push -u origin "${branch_name}" --force-with-lease
