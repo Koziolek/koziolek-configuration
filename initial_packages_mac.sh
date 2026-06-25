@@ -121,8 +121,10 @@ install_sdkman() {
         return 0
     fi
     curl -s "https://get.sdkman.io" | bash
+    set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
     sdk install java
     sdk install maven
     sdk install mvnd

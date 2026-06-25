@@ -172,7 +172,10 @@ install_rust_and_difft() {
 
 install_sdkman() {
     curl -s "https://get.sdkman.io" | bash
+    set +u
+    # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
     sdk i java
     sdk i maven
     sdk i mvnd
