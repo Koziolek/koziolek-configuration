@@ -128,6 +128,16 @@ install_sdkman() {
     sdk install mvnd
 }
 
+install_gh() {
+    if command -v gh &>/dev/null; then
+        echo "✓ gh już zainstalowany: $(gh --version | head -1)"
+        return 0
+    fi
+    echo "Instalacja GitHub CLI..."
+    brew install gh
+    echo "✓ gh zainstalowany: $(gh --version | head -1)"
+}
+
 install_docker() {
     if command -v docker &>/dev/null; then
         echo "✓ Docker już zainstalowany"
@@ -169,6 +179,7 @@ prepare_workspace
 install_asdf
 install_rust_and_difft
 install_sdkman
+install_gh
 install_docker
 prepare_bashrc
 

@@ -227,6 +227,30 @@ install_apps() {
 }
 
 
+install_gh() {
+    if command -v gh &>/dev/null; then
+        echo "✓ gh już zainstalowany: $(gh --version | head -1)"
+        return 0
+    fi
+
+    echo "Instalacja GitHub CLI..."
+    $SUDO mkdir -p -m 755 /etc/apt/keyrings
+
+    local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+    local tmpkey
+    tmpkey="$(mktemp)"
+    wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
+    rm -f "$tmpkey"
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
+        | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+    $SUDO apt-get -qq update
+    safe_apt_install gh
+    echo "✓ gh zainstalowany: $(gh --version | head -1)"
+}
+
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
     
@@ -308,6 +332,7 @@ install_asdf
 install_rust_and_difft
 install_sdkman
 install_apps
+install_gh
 install_docker
 prepare_bashrc
 
