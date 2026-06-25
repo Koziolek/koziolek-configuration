@@ -9,8 +9,11 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/bash/functions.d/010_function_log.sh"
 
-# Wyciągnij definicję reload_config bez uruchamiania reszty pliku
-eval "$(awk '/^function reload_config/,/^\}$/' "$PROJECT_ROOT/bash/bash_functions.sh")"
+# Source bash_functions.sh with empty functions.d to get reload_config without side effects
+_STUB_DIR="$(mktemp -d)"
+mkdir -p "$_STUB_DIR/functions.d"
+BASH_CONFIGURATION_DIR="$_STUB_DIR" . "$PROJECT_ROOT/bash/bash_functions.sh"
+rm -rf "$_STUB_DIR"; unset _STUB_DIR
 
 _LOG_MESSAGES=()
 _ORIG_MAIN_DIR=''
@@ -36,6 +39,7 @@ setUp() {
 tearDown() {
     rm -rf "$_TMP_DIR"
     unset BASH_FUNCTIONS_LOADED
+    export MAIN_CONFIGURATION_DIR="$_ORIG_MAIN_DIR"
 }
 
 # ---------------------------------------------------------------------------
@@ -109,7 +113,7 @@ testMainShIsDirectoryLogsError() {
 # ---------------------------------------------------------------------------
 
 testSuccessfulReloadReturnsZero() {
-    printf '' > "$_TMP_DIR/main.sh"
+    printf 'true\n' > "$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     local rc=99
     reload_config 2>/dev/null; rc=$?
@@ -204,6 +208,29 @@ testMultipleReloadsCallMainShEachTime() {
     reload_config 2>/dev/null
     assertEquals 'trzy reloady muszą wywołać main.sh trzy razy' '3' "$(cat "$count_file")"
     unset COUNT_FILE
+}
+
+# ---------------------------------------------------------------------------
+# SUPPRESS_SOURCING
+# ---------------------------------------------------------------------------
+
+testSuppressSourceingIsResetBeforeSource() {
+    local marker="$_TMP_DIR/sourced"
+    export SOURCED_MARKER="$marker"
+    printf 'touch "${SOURCED_MARKER}"\n' > "$_TMP_DIR/main.sh"
+    export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
+    export SUPPRESS_SOURCING=1
+    reload_config 2>/dev/null
+    assertTrue 'main.sh musi być sourcowany nawet gdy SUPPRESS_SOURCING=1' "[ -f '$marker' ]"
+    unset SOURCED_MARKER
+}
+
+testSuppressSourceingRestoredToZeroAfterReload() {
+    printf '' > "$_TMP_DIR/main.sh"
+    export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
+    export SUPPRESS_SOURCING=1
+    reload_config 2>/dev/null
+    assertEquals 'SUPPRESS_SOURCING musi być 0 po reload' '0' "${SUPPRESS_SOURCING:-}"
 }
 
 # ---------------------------------------------------------------------------

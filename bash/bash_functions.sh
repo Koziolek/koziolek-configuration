@@ -229,8 +229,11 @@ function reload_config() {
         return 1
     fi
 
-    # Reset loaded flags so subsystems re-initialize
+    # Unset BASH_FUNCTIONS_LOADED so bash/main.sh guard allows full re-initialization
     unset BASH_FUNCTIONS_LOADED
+
+    # Ensure bash/main.sh doesn't short-circuit on inherited SUPPRESS_SOURCING=1
+    export SUPPRESS_SOURCING=0
 
     # shellcheck source=/dev/null
     . "$main_script" || {
