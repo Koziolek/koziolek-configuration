@@ -4,8 +4,6 @@
 # Define and export our configuration directory
 
 # Load the primary helper functions
-[ -n "$BASH_FUNCTIONS_LOADED" ] && return 0
-
 if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
   # shellcheck source=/dev/null
   . "${BASH_CONFIGURATION_DIR}/bash_functions.sh"
