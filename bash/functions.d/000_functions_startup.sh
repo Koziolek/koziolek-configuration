@@ -71,6 +71,8 @@ function resize_to_full () {
 
         echo "Wayland session detected, but no supported window manager interface found (gdbus/swaymsg missing)"
         return 0
+    elif [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$XDG_SESSION_TYPE" ]; then
+        return 0  # WSL2, TTY lub brak sesji graficznej
     else
         echo "Unsupported session type: $XDG_SESSION_TYPE"
         return 0
