@@ -81,9 +81,42 @@ minimal_tools=(
     curl wget
 )
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=packages/brew_packages.sh
-source "$SCRIPT_DIR/packages/brew_packages.sh"
+# Homebrew musi istnieć przed czymkolwiek dalej (w tym przed brew-instalacją
+# minimal_tools poniżej) — przeniesione na początek, zamiast czekać do końca pliku.
+install_homebrew || exit 1
+
+# macOS ma curl wbudowany, ale nie wget — dociągamy oba przez brew od razu,
+# analogicznie do apt w initial_packages.sh (Linux).
+for _pkg in "${minimal_tools[@]}"; do
+    command -v "$_pkg" >/dev/null 2>&1 || brew install "$_pkg"
+done
+unset _pkg
+
+# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
+# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
+# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
+# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
+# donikąd — wtedy pobieramy ten sam plik z repo na GitHubie i source'ujemy
+# z pliku tymczasowego (patrz initial_packages.sh, ten sam fix).
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/brew_packages.sh" ]; then
+    # shellcheck source=packages/brew_packages.sh
+    source "$SCRIPT_DIR/packages/brew_packages.sh"
+else
+    echo "Brak lokalnej kopii packages/brew_packages.sh — pobieram z repo..."
+    _packages_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/brew_packages.sh" \
+        -o "$_packages_tmp"
+    # shellcheck disable=SC1090
+    source "$_packages_tmp"
+    rm -f "$_packages_tmp"
+    unset _packages_tmp
+fi
 
 install_brew_packages() {
     local pkg
@@ -222,8 +255,6 @@ fi
 EOF
     fi
 }
-
-install_homebrew || exit 1
 
 echo "=== Instalacja pakietów macOS ==="
 brew update

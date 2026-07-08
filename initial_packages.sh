@@ -80,9 +80,40 @@ minimal_tools=(
     curl wget
 )
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=packages/apt_packages.sh
-source "$SCRIPT_DIR/packages/apt_packages.sh"
+# Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
+# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
+# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
+$SUDO apt-get -qq update
+for _pkg in "${minimal_tools[@]}"; do
+    command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
+done
+unset _pkg
+
+# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
+# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
+# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
+# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
+# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
+# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/apt_packages.sh" ]; then
+    # shellcheck source=packages/apt_packages.sh
+    source "$SCRIPT_DIR/packages/apt_packages.sh"
+else
+    echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
+    _packages_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/apt_packages.sh" \
+        -o "$_packages_tmp"
+    # shellcheck disable=SC1090
+    source "$_packages_tmp"
+    rm -f "$_packages_tmp"
+    unset _packages_tmp
+fi
 
 all_packages=(
   "${minimal_tools[@]}"
