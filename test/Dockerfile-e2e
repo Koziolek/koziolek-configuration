@@ -11,6 +11,7 @@ RUN apt-get update && \
 
 # Lokalny skrypt zamiast curl z GitHub — testujemy bieżące zmiany
 COPY initial_packages.sh /initial_packages.sh
+COPY packages /packages
 RUN chmod +x /initial_packages.sh
 
 # Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
