@@ -1,6 +1,23 @@
 # Lista aliasów do różnych poleceń
 alias g=git
-alias git='hub'
+
+if ! command -v hub >/dev/null 2>&1; then
+    log_warn "hub nie znaleziony — instaluję..."
+    if [[ "$OS_TYPE" == "Darwin" ]]; then
+        command -v brew >/dev/null 2>&1 && brew install hub
+    else
+        make_me_sudo
+        $SUDO apt-get update -qq && $SUDO apt-get install -qqy hub
+        unmake_me_sudo
+    fi
+fi
+
+if command -v hub >/dev/null 2>&1; then
+    alias git='hub'
+else
+    log_warn "Nie udało się zainstalować hub — alias git='hub' pominięty, git działa bez niego"
+fi
+
 alias gst='git status'
 
 if [[ "$OS_TYPE" == "Darwin" ]]; then

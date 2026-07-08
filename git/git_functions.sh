@@ -50,7 +50,7 @@ function git_exterminatus() {
 function git_home() {
   local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
   log_info "Git go home at ${home_branch_name}"
-  git co ${home_branch_name} && git pull
+  git co "${home_branch_name}" && git pull
 }
 
 # Installs multi-hook dispatcher for all standard git hook types in the current repo
@@ -119,7 +119,7 @@ function git_new_branch() {
   branch_name=$(remove_special "$branch_name")
   branch_name=$(to_kebab_case "$branch_name")
 
-  if [ -z $branch_name ]; then
+  if [ -z "$branch_name" ]; then
     log_error "Branch need a name"
     return 1
   fi
@@ -197,7 +197,7 @@ function git_vomit() {
   local msg="${prefix:+${prefix} }$*"
   git add .
   git ci -a -m "${msg}"
-  git push -u origin $branch_name
+  git push -u origin "$branch_name"
 }
 
 # Stage all, squash all branch commits into one with derived prefix, force-push
@@ -232,13 +232,22 @@ function git_bleeh() {
 
 . ${GIT_CONFIGURATION_DIR}/hub_functions.sh
 
-"$@"
+## Dispatcher — tylko zadeklarowane funkcje z tego pliku (git_*) i hub_functions.sh (hub_*)
+## mogą być wywołane przez `git fun <nazwa>`. Bez tego "$@" uruchamiałoby DOWOLNE
+## polecenie systemowe podane po `git fun`.
+## Uruchamia się tylko, gdy plik jest wykonywany bezpośrednio (jak robi to alias `fun`),
+## nie gdy jest sourcowany (np. przez testy jednostkowe, które chcą tylko definicji funkcji).
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if [ $# -eq 0 ]; then
+    log_error "git fun: brak nazwy funkcji"
+    exit 1
+  fi
 
-## Dispatcher
-#if declare -f "$1" > /dev/null; then
-#
-#else
-#  log_error "Function '$1' not found.
-#    Available functions: push_upstream, single_push, branch_create, merge_with, go_to_branch, commit_and_push, merge_feature, remove_gone_branches"
-#  exit 1
-#fi
+  if declare -f "$1" > /dev/null && [[ "$1" == git_* || "$1" == hub_* ]]; then
+    "$@"
+  else
+    log_error "Nieznana funkcja: '$1'
+      Dostępne funkcje: $(declare -F | awk '{print $3}' | grep -E '^(git|hub)_' | tr '\n' ' ')"
+    exit 1
+  fi
+fi

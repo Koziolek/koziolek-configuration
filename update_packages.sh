@@ -11,35 +11,19 @@ if (( EUID != 0 )); then
 fi
 
 # ---------------------------------------------------------------------------
-# Package lists — keep in sync with initial_packages.sh
+# Package lists — wspólne z initial_packages.sh przez packages/apt_packages.sh
 # ---------------------------------------------------------------------------
 
-system_tools=(
-    curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
+minimal_tools=(
+    curl wget
 )
 
-security_tools=(
-    gnupg gnupg2 apt-transport-https ca-certificates
-)
-
-graphics_libs=(
-    libatomic1 libgl1-mesa-dri libglx-mesa0 libegl1-mesa libgles2-mesa
-    mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
-)
-
-gui_libs=(
-    gconf2-common gconf-service libgconf-2-4 libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
-)
-
-image_tools=(
-    libheif-examples
-)
-
-diag_tools=(
-    memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=packages/apt_packages.sh
+source "$SCRIPT_DIR/packages/apt_packages.sh"
 
 all_apt_packages=(
+    "${minimal_tools[@]}"
     "${system_tools[@]}"
     "${security_tools[@]}"
     "${graphics_libs[@]}"
@@ -66,33 +50,26 @@ apt_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qc "ok installed"
 }
 
-# Maps repo hostname → "key_url|keyring_path"
-# key_url may be armored (.asc) or binary (.gpg) — both handled via gpg --dearmor
-declare -A _APT_GPG_KNOWN_REPOS=(
-    ["repository.spotify.com"]="https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.gpg|/etc/apt/trusted.gpg.d/spotify.gpg"
-    ["cli.github.com"]="https://cli.github.com/packages/githubcli-archive-keyring.gpg|/etc/apt/keyrings/githubcli-archive-keyring.gpg"
-    ["download.docker.com"]="https://download.docker.com/linux/ubuntu/gpg|/etc/apt/keyrings/docker.gpg"
-)
-
 declare -a REPOS_DEAD=()
 
-_gpg_save_key() {
-    local src_file="$1" dst_path="$2"
-    local tmp_out
-    tmp_out="$(mktemp)"
-    # Dearmor only if ASCII-armored; binary keys pass through as-is
-    if grep -qE '^-----BEGIN' "$src_file" 2>/dev/null; then
-        gpg --dearmor < "$src_file" > "$tmp_out" 2>/dev/null || { rm -f "$tmp_out"; return 1; }
-    else
-        cp "$src_file" "$tmp_out"
-    fi
-    $SUDO mkdir -p "$(dirname "$dst_path")"
-    $SUDO install -o root -g root -m 644 "$tmp_out" "$dst_path"
-    rm -f "$tmp_out"
-}
+KEYSERVER="hkps://keyserver.ubuntu.com"
+KEYRING_DIR="/etc/apt/keyrings"
 
 refresh_apt_gpg_keys() {
     info "Sprawdzanie kluczy GPG repozytoriów apt..."
+    $SUDO mkdir -p "$KEYRING_DIR"
+
+    # Remove expired imported keys so they can be re-fetched fresh
+    local keyfile removed=0
+    for keyfile in "$KEYRING_DIR"/imported-*.gpg; do
+        [[ -f "$keyfile" ]] || continue
+        if gpg --show-keys "$keyfile" 2>/dev/null | grep -q '\[expired\]'; then
+            warn "Usuwanie wygasłego klucza: $(basename "$keyfile")"
+            $SUDO rm -f "$keyfile"
+            (( removed++ )) || true
+        fi
+    done
+    (( removed > 0 )) && info "Usunięto $removed wygasłych kluczy"
 
     local update_output
     update_output=$($SUDO apt-get update 2>&1 || true)
@@ -105,68 +82,78 @@ refresh_apt_gpg_keys() {
         REPOS_DEAD+=("$dead_url")
     done < <(echo "$update_output" | grep -E '404|nie ma pliku Release|does not have a Release file' || true)
 
-    local -A keys_to_fix=()
-    while IFS= read -r line; do
-        local key_id repo_url
-        key_id=$(echo "$line" | grep -oE 'NO_PUBKEY [0-9A-F]+' | awk '{print $2}' || true)
-        repo_url=$(echo "$line" | grep -oE 'https?://[^[:space:]]+' | head -1 || true)
-        [[ -z "$key_id" ]] && continue
-        keys_to_fix["$key_id"]="${repo_url:-unknown}"
-    done <<< "$update_output"
+    # Pair each missing key with the repo URL that reported it — needed to scope
+    # signed-by= to that one repo instead of trusting the key for all of apt.
+    local pairs
+    pairs=$(echo "$update_output" \
+        | grep -E 'GPG error' \
+        | grep -oE '[a-zA-Z]+://[^ ]+ .*NO_PUBKEY [0-9A-F]+' \
+        | sed -E 's#^([a-zA-Z]+://[^ ]+) .*NO_PUBKEY ([0-9A-F]+).*#\2 \1#' \
+        | sort -u || true)
 
-    if [ "${#keys_to_fix[@]}" -eq 0 ]; then
+    if [[ -z "$pairs" ]]; then
         ok "Klucze GPG w porządku"
         return 0
     fi
 
-    warn "Brakujące klucze GPG: ${!keys_to_fix[*]}"
+    warn "Brakujące klucze GPG:"
+    while read -r k u; do warn "  - $k ($u)"; done <<<"$pairs"
 
-    local key_id repo_url hostname fixed=0
-    for key_id in "${!keys_to_fix[@]}"; do
-        repo_url="${keys_to_fix[$key_id]}"
-        hostname=$(echo "$repo_url" | sed -E 's|https?://([^/]+).*|\1|' || true)
+    local fixed=0 unbound=0
+    while read -r key repo_url; do
+        [[ -z "$key" ]] && continue
 
-        info "Naprawa klucza $key_id (${hostname:-nieznane repo})..."
+        info "Pobieranie klucza $key z $KEYSERVER..."
+        local tmp_keyring
+        tmp_keyring=$(mktemp)
+        if ! gpg --no-default-keyring --keyring "$tmp_keyring" --keyserver "$KEYSERVER" --recv-keys "$key" 2>/dev/null; then
+            warn "Klucz $key: nie udało się pobrać z keyserver"
+            rm -f "$tmp_keyring" "${tmp_keyring}~"
+            continue
+        fi
+        info "Fingerprint klucza $key (repo: $repo_url):"
+        gpg --no-default-keyring --keyring "$tmp_keyring" --fingerprint
 
-        local known_entry="${_APT_GPG_KNOWN_REPOS[$hostname]:-}"
-        if [[ -n "$known_entry" ]]; then
-            local key_url keyring_path tmpkey
-            key_url="${known_entry%%|*}"
-            keyring_path="${known_entry##*|}"
-            tmpkey="$(mktemp)"
-            if wget -qO "$tmpkey" "$key_url" 2>/dev/null; then
-                _gpg_save_key "$tmpkey" "$keyring_path"
-                rm -f "$tmpkey"
-                ok "Klucz $key_id: pobrano z $key_url → $keyring_path"
-                (( fixed++ )) || true
+        local keyring_file="$KEYRING_DIR/imported-${key}.gpg"
+        gpg --no-default-keyring --keyring "$tmp_keyring" --export "$key" \
+            | $SUDO tee "$keyring_file" > /dev/null
+        $SUDO chmod 644 "$keyring_file"
+        rm -f "$tmp_keyring" "${tmp_keyring}~"
+
+        # Bind the key to the specific source file via signed-by= instead of
+        # trusting it globally through trusted.gpg.d.
+        local host bound=0 src_file
+        host=$(echo "$repo_url" | sed -E 's#^[a-zA-Z]+://([^/]+).*#\1#')
+        for src_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+            [[ -f "$src_file" ]] || continue
+            grep -q "$host" "$src_file" || continue
+            if grep -q 'signed-by=' "$src_file"; then
                 continue
             fi
-            rm -f "$tmpkey"
-            warn "Klucz $key_id: oficjalny URL niedostępny, próba keyserver..."
+            $SUDO sed -i -E \
+                -e "s#^(deb(-src)?)([[:space:]]+)\[#\1\3[signed-by=${keyring_file} #" \
+                -e "t" \
+                -e "s#^(deb(-src)?)([[:space:]]+)(https?://)#\1\3[signed-by=${keyring_file}] \4#" \
+                "$src_file"
+            ok "Klucz $key przypięty do $src_file (signed-by=${keyring_file})"
+            bound=1
+            break
+        done
+
+        if [[ $bound -eq 0 ]]; then
+            warn "Nie znaleziono pliku źródła dla $repo_url — klucz zapisany w $keyring_file, ale NIE dowiązany do repo."
+            (( unbound++ )) || true
         fi
 
-        local recovered=/etc/apt/trusted.gpg.d/recovered-keys.gpg
-        local tmprecovered
-        tmprecovered="$(mktemp)"
-        if gpg \
-                --keyserver keyserver.ubuntu.com \
-                --no-default-keyring \
-                --keyring "$tmprecovered" \
-                --recv-keys "$key_id" 2>/dev/null; then
-            _gpg_save_key "$tmprecovered" "$recovered"
-            rm -f "$tmprecovered"
-            ok "Klucz $key_id: pobrano z keyserver.ubuntu.com → $recovered"
-            (( fixed++ )) || true
-        else
-            rm -f "$tmprecovered"
-            warn "Klucz $key_id: nie udało się naprawić"
-        fi
-    done
+        (( fixed++ )) || true
+    done <<<"$pairs"
 
     if (( fixed > 0 )); then
         info "apt-get update po naprawie kluczy..."
         $SUDO apt-get -qq update 2>&1 | grep -v '^Pobieranie\|^Stary\|^Zign\|^Hit' || true
     fi
+
+    (( unbound > 0 )) && warn "$unbound klucz(e) nie dowiązano automatycznie — apt nadal będzie zgłaszał NO_PUBKEY."
 }
 
 # ---------------------------------------------------------------------------
@@ -343,16 +330,28 @@ update_docker() {
 
     info "Aktualizacja ctop..."
     local ctop_version
-    ctop_version=$(curl -s https://api.github.com/repos/bcicen/ctop/releases/latest \
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
         | grep '"tag_name":' | cut -d '"' -f 4)
-    if [ -n "$ctop_version" ]; then
-        $SUDO curl -sL \
-            "https://github.com/bcicen/ctop/releases/download/${ctop_version}/ctop-${ctop_version#v}-linux-amd64" \
-            -o /usr/local/bin/ctop
-        $SUDO chmod +x /usr/local/bin/ctop
-        ok "ctop zaktualizowany: $(ctop -v 2>&1 | head -1)"
-    else
+    if [ -z "$ctop_version" ]; then
         warn "Nie udało się pobrać wersji ctop"
+    else
+        local ctop_bin="ctop-${ctop_version#v}-linux-amd64"
+        local tmp_dir
+        tmp_dir=$(mktemp -d)
+
+        if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
+                -o "$tmp_dir/$ctop_bin"; then
+            warn "Nie udało się pobrać ctop ${ctop_version}, pomijam aktualizację"
+        elif ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
+                -o "$tmp_dir/sha256sums.txt"; then
+            warn "Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam aktualizację"
+        elif ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
+            warn "Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam aktualizację"
+        else
+            $SUDO install -m 755 "$tmp_dir/$ctop_bin" /usr/local/bin/ctop
+            ok "ctop zaktualizowany: $(ctop -v 2>&1 | head -1) (suma sha256 zweryfikowana)"
+        fi
+        rm -rf "$tmp_dir"
     fi
 }
 

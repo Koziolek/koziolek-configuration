@@ -14,7 +14,7 @@ function log_message() {
   shift
   local messages=("$@")
 
-  if [ -z "$level" ] || [ -z "$messages" ]; then
+  if [ -z "$level" ] || [ ${#messages[@]} -eq 0 ]; then
     echo "${C_RED}NOTHING TO LOG${C_NC}: Empty log call at ${FUNCNAME[*]}"
     return 0;
   fi

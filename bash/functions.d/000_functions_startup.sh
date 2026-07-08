@@ -28,7 +28,9 @@ function resize_to_full () {
 
         local _d="${DISPLAY//:/_}"
         local _xrandr_cache="$HOME/.cache/display_max_size_${_d//\//_}"
-        if [ ! -s "$_xrandr_cache" ]; then
+        # Cache wygasa po godzinie, żeby zmiana monitora (inna rozdzielczość natywna)
+        # nie została na stałe z nieaktualnym wpisem z poprzedniej sesji na tym $DISPLAY.
+        if [ ! -s "$_xrandr_cache" ] || [ -n "$(find "$_xrandr_cache" -mmin +60 2>/dev/null)" ]; then
             xrandr | awk '/\*/{print $1}' > "$_xrandr_cache"
         fi
         local max_size

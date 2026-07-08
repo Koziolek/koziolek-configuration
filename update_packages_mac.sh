@@ -4,32 +4,19 @@ set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 # ---------------------------------------------------------------------------
-# Package lists — keep in sync with initial_packages_mac.sh
+# Package lists — wspólne z initial_packages_mac.sh przez packages/brew_packages.sh
 # ---------------------------------------------------------------------------
 
-system_tools=(
-    curl wget git vim unzip zip tree tmux htop neofetch hub
+minimal_tools=(
+    curl wget
 )
 
-shell_tools=(
-    bash
-    thefuck
-    fd
-    gnu-time
-    gnu-sed
-    coreutils
-)
-
-image_tools=(
-    libheif
-    imagemagick
-)
-
-diag_tools=(
-    smartmontools
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=packages/brew_packages.sh
+source "$SCRIPT_DIR/packages/brew_packages.sh"
 
 all_brew_packages=(
+    "${minimal_tools[@]}"
     "${system_tools[@]}"
     "${shell_tools[@]}"
     "${image_tools[@]}"

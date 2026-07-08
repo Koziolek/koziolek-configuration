@@ -12,4 +12,4 @@ HISTSIZE=10000
 HISTFILESIZE=20000
 
 export HISTFILE="$HOME/.bash_history"
-chmod 600 "$HISTFILE"
+[ -f "$HISTFILE" ] && chmod 600 "$HISTFILE"

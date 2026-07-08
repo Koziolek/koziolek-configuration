@@ -175,9 +175,15 @@ Aliasy wymagające funkcji powłoki korzystają z wzorca `git fun <nazwa_funkcji
 `multihooks-template.sh` deleguje hooki do katalogów `<hookname>.d/`, umożliwiając wiele skryptów na jeden typ hooka.
 Instalacja przez `git i` w katalogu projektu.
 
-### Konfiguracja (`git/git_config`)
+### Konfiguracja (`git/templates/git_config.template`)
 
-Szablon globalnej konfiguracji git — kopiowany do `~/.gitconfig` jeśli plik nie istnieje lub szablon jest nowszy.
+Szablon globalnej konfiguracji git. Model include: szablon jest renderowany do `~/.gitconfig.generated`
+(nadpisywany swobodnie, gdy szablon jest nowszy — nigdy nie edytuj go ręcznie), a `~/.gitconfig` to
+stały "stub" z jednym wpisem `[include] path = ~/.gitconfig.generated`, tworzony tylko raz. Dzięki temu
+ręczne `git config --global ...` lądują w stubie i przeżywają aktualizacje repo, zamiast być cicho
+nadpisywane. Maszyny ze starym modelem (jeden w pełni generowany plik) migrują przez
+`bash git/migrate_gitconfig.sh` — bezpieczne do wielokrotnego uruchomienia, robi kopię zapasową
+i przenosi ręczne zmiany do nowego stuba.
 
 ## Podsystem serwisów (`services/`)
 
@@ -204,8 +210,11 @@ Projekt zawiera skrypty diagnostyczne, raporty i narzędzia do analizy stanu sta
 ## Testowanie
 
 ```bash
-./test.sh
+./test/run.sh              # testy unit + integration (Docker na Linux)
+./test/run.sh --native     # bezpośrednio na hoście, bez Dockera (wymagane na macOS)
+./test/run.sh --e2e        # dodatkowo e2e: initial_packages.sh w Ubuntu 24.04
+./test/run.sh --all        # wszystko
 ```
 
-Buduje obraz Docker (Ubuntu 24.04, `Dockerfile-test`) i uruchamia kontener. Wyjście zapisywane do `output.log`. Jedyny
-mechanizm testowania — brak testów jednostkowych.
+Testy jednostkowe/integracyjne (`shunit2`) w `test/unit/` i `test/integration/`, e2e w `test/e2e/`.
+Wyniki w `test/results/`. Uruchamiane automatycznie w CI (`.github/workflows/test.yml`).

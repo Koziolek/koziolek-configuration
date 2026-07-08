@@ -17,7 +17,7 @@ function hub_merge_pr() {
     return 1;
   fi
 
-  local to_merge=$(hub pr list -f %U%n | grep /$pr)
+  local to_merge=$(hub pr list -f %U%n | grep -E "/${pr}\$")
 
   if [ -z "$to_merge" ]; then
     log_error "Pull request with number ${pr} does not exists. Existing pull requests:"

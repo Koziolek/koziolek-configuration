@@ -58,8 +58,8 @@ testAliasesFileContainsAliasSection() {
 }
 
 testGitConfigTemplateIncludesAliasesFile() {
-    assertContains 'git_config musi dołączać plik aliases przez [include]' \
-        "$(cat "$PROJECT_ROOT/git/git_config")" 'aliases'
+    assertContains 'git_config.template musi dołączać plik aliases przez [include]' \
+        "$(cat "$PROJECT_ROOT/git/templates/git_config.template")" 'aliases'
 }
 
 # ---------------------------------------------------------------------------

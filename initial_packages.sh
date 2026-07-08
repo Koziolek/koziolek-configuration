@@ -15,32 +15,77 @@ prerequisites=(
     software-properties-common
 )
 
-system_tools=(
-  curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
+# Pobiera zdalny skrypt instalacyjny do pliku tymczasowego i próbuje zweryfikować
+# go przez sumę kontrolną (git blob sha1 zgodny z tym, co zgłasza GitHub API dla
+# danego pliku/repo/ref — działa tylko gdy skrypt jest hostowany na GitHubie).
+# Jeśli suma jest niedostępna (brak parametrów gh_* albo API nie odpowiada) ALBO
+# się nie zgadza — wypisuje ostrzeżenie i PYTA użytkownika o zgodę na kontynuację.
+# Bez zgody funkcja zwraca 1 i nic nie uruchamia.
+# Usage: verify_and_run_script "<opis>" "<url>" ["<gh_owner/repo>" "<sciezka>" "<ref>"]
+verify_and_run_script() {
+    local desc="$1" url="$2" gh_repo="${3:-}" gh_path="${4:-}" gh_ref="${5:-HEAD}"
+
+    local tmp_script
+    tmp_script=$(mktemp)
+    if ! curl -fsSL "$url" -o "$tmp_script"; then
+        echo "❌ Nie udało się pobrać: $desc ($url)"
+        rm -f "$tmp_script"
+        return 1
+    fi
+
+    local checksum_ok=false
+    local reason=""
+
+    if [ -n "$gh_repo" ]; then
+        local expected_sha actual_sha size
+        expected_sha=$(curl -sf "https://api.github.com/repos/${gh_repo}/contents/${gh_path}?ref=${gh_ref}" \
+            | grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
+        if [ -z "$expected_sha" ]; then
+            reason="Nie udało się pobrać oficjalnej sumy kontrolnej z GitHub API dla: $desc"
+        else
+            size=$(wc -c < "$tmp_script")
+            actual_sha=$( { printf 'blob %d\0' "$size"; cat "$tmp_script"; } | sha1sum | awk '{print $1}')
+            if [ "$actual_sha" = "$expected_sha" ]; then
+                checksum_ok=true
+            else
+                reason="Suma kontrolna NIE ZGADZA SIĘ dla: $desc (oczekiwano ${expected_sha}, jest ${actual_sha})"
+            fi
+        fi
+    else
+        reason="Brak dostępnej oficjalnej sumy kontrolnej dla: $desc"
+    fi
+
+    if ! $checksum_ok; then
+        echo "⚠️  $reason"
+        echo "⚠️  Uruchomienie niezweryfikowanego skryptu z sieci: $url"
+        local reply
+        read -r -p "Kontynuować mimo to? [y/N]: " -n 1 -r reply
+        echo
+        if [[ ! "$reply" =~ ^[Yy]$ ]]; then
+            echo "❌ Przerwano na życzenie użytkownika: $desc"
+            rm -f "$tmp_script"
+            return 1
+        fi
+    else
+        echo "✓ Suma kontrolna zweryfikowana (git blob sha1 zgodny z GitHub API): $desc"
+    fi
+
+    bash "$tmp_script"
+    local rc=$?
+    rm -f "$tmp_script"
+    return $rc
+}
+
+minimal_tools=(
+    curl wget
 )
 
-security_tools=(
-  gnupg gnupg2 apt-transport-https ca-certificates
-)
-
-graphics_libs=(
-  libatomic1 libgl1-mesa-dri libglx-mesa0 libegl1-mesa libgles2-mesa
-  mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
-)
-
-gui_libs=(
-  gconf2-common gconf-service libgconf-2-4 libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
-)
-
-image_tools=(
-  libheif-examples
-)
-
-diag_tools=(
-  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=packages/apt_packages.sh
+source "$SCRIPT_DIR/packages/apt_packages.sh"
 
 all_packages=(
+  "${minimal_tools[@]}"
   "${system_tools[@]}"
   "${security_tools[@]}"
   "${graphics_libs[@]}"
@@ -171,7 +216,9 @@ install_rust_and_difft() {
 }
 
 install_sdkman() {
-    curl -s "https://get.sdkman.io" | bash
+    # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
+    # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
+    verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
     set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -254,6 +301,46 @@ install_gh() {
     echo "✓ gh zainstalowany: $(gh --version | head -1)"
 }
 
+# Pobiera ctop, weryfikuje sumę sha256 z release'a i dopiero wtedy instaluje do
+# /usr/local/bin. Przy niezgodności sumy: warning i rezygnacja z instalacji
+# (nie zostawiamy niezweryfikowanej binarki w PATH roota).
+install_ctop() {
+    local ctop_version
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
+        | grep '"tag_name":' | cut -d '"' -f 4)
+    if [ -z "$ctop_version" ]; then
+        echo "⚠️ Nie udało się pobrać wersji ctop, pomijam instalację"
+        return 0
+    fi
+
+    local ctop_bin="ctop-${ctop_version#v}-linux-amd64"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
+            -o "$tmp_dir/$ctop_bin"; then
+        echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
+            -o "$tmp_dir/sha256sums.txt"; then
+        echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
+        echo "⚠️ Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    $SUDO install -m 755 "$tmp_dir/$ctop_bin" /usr/local/bin/ctop
+    rm -rf "$tmp_dir"
+    echo "✓ ctop ${ctop_version} zainstalowany (suma sha256 zweryfikowana)"
+}
+
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
     
@@ -292,15 +379,13 @@ install_docker() {
     
     # Zainstaluj docker-ctop
     echo "Instalacja docker-ctop..."
-    CTOP_VERSION=$(curl -s https://api.github.com/repos/bcicen/ctop/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
-    $SUDO curl -L "https://github.com/bcicen/ctop/releases/download/${CTOP_VERSION}/ctop-${CTOP_VERSION#v}-linux-amd64" -o /usr/local/bin/ctop
-    $SUDO chmod +x /usr/local/bin/ctop
-    
+    install_ctop
+
     # Sprawdź instalację
     echo "Sprawdzanie instalacji..."
     docker --version
     docker-compose --version
-    ctop -v
+    command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
     
     echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
     echo "Użytkownik $USER został dodany do grupy docker."
@@ -327,7 +412,7 @@ prepare_bashrc() {
     cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
 }
 
-cd $HOME/ || return
+cd "$HOME/" || exit 1
 
 install_initial_packages
 prepare_workspace
