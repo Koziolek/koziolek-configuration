@@ -28,3 +28,4 @@ podsumowanie/
 .~lock*
 .worktrees/
 code-review/
+commit-message.txt

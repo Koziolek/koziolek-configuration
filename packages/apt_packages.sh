@@ -29,5 +29,6 @@ image_tools=(
 )
 
 diag_tools=(
-  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli
+  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli gdb
+  libinput-tools rocminfo
 )

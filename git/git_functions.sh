@@ -189,45 +189,112 @@ function git_commit_message_prefix() {
   fi
 }
 
-# Stage all, commit with derived prefix, push to remote
-function git_vomit() {
-  local branch_name=$(git_current_branch)
+# Build commit message: derived prefix + given text. Not exported (no git_/hub_ name).
+function __git_build_commit_msg() {
   local prefix
   prefix=$(git_commit_message_prefix)
-  local msg="${prefix:+${prefix} }$*"
-  git add .
-  git ci -a -m "${msg}"
-  git push -u origin "$branch_name"
+  printf '%s' "${prefix:+${prefix} }$*"
 }
 
-# Stage all, squash all branch commits into one with derived prefix, force-push
+# Push current branch to origin, tracking. Extra args passed through (e.g. --force-with-lease).
+function __git_push_branch() {
+  git push -u origin "$(git_current_branch)" "$@"
+}
+
+# Przygotowuje commit-message.txt (w CWD) jako źródło wiadomości commita.
+# Argumenty: [-y|--yes] [słowa wiadomości...]
+# Wynik: ustawia $__GIT_COMMIT_FILE na ścieżkę pliku gotowego dla `git ci -F`.
+# Kod wyjścia !=0 → wołający przerywa (bez commita/pusha).
+function __git_prepare_commit_file() {
+  __GIT_COMMIT_FILE=""
+  local file="commit-message.txt"
+  local assume_yes=0
+  [ "${GIT_ASSUME_YES:-0}" = "1" ] && assume_yes=1
+  case "${1:-}" in
+  -y | --yes) assume_yes=1; shift ;;
+  esac
+
+  local msg_words="$*"
+  if [ -n "${msg_words// /}" ]; then
+    # --- ścieżka z parametrami: wstaw nową pierwszą linię z prefiksem ---
+    local line new
+    line=$(__git_build_commit_msg "$msg_words")
+    new=$(mktemp)
+    printf '%s\n' "$line" > "$new"
+    [ -f "$file" ] && cat "$file" >> "$new"
+    mv "$new" "$file"
+  else
+    # --- ścieżka bez parametrów ---
+    [ -f "$file" ] || { log_error "Brak $file i brak parametrów"; return 1; }
+    [ -n "$(tr -d '[:space:]' < "$file")" ] || { log_error "$file jest pusty"; return 1; }
+
+    # założenie 2: prefiks do pierwszej linii, jeśli brak
+    local first
+    first=$(head -n1 "$file")
+    if ! [[ "$first" =~ ^(feat|fix|ver|exp): ]]; then
+      local prefix
+      prefix=$(git_commit_message_prefix)
+      if [ -n "$prefix" ]; then
+        local rest tmp
+        rest=$(tail -n +2 "$file")
+        tmp=$(mktemp)
+        printf '%s %s\n' "$prefix" "$first" > "$tmp"
+        [ -n "$rest" ] && printf '%s\n' "$rest" >> "$tmp"
+        mv "$tmp" "$file"
+      fi
+    fi
+
+    # założenie 6: podgląd + potwierdzenie
+    if [ "$assume_yes" -ne 1 ]; then
+      local l
+      log_info "Treść commita ($file):"
+      log_info "----"
+      while IFS= read -r l; do log_info "  $l"; done < "$file"
+      log_info "----"
+      if [ ! -t 0 ]; then
+        log_error "Tryb nieinteraktywny bez -y/--yes ani GIT_ASSUME_YES=1 — przerwano"
+        return 1
+      fi
+      local ans
+      read -r -p "Kontynuować? [T/n] " ans
+      case "$ans" in
+      n | N | nie | no) log_warn "Przerwano przez użytkownika"; return 1 ;;
+      esac
+    fi
+  fi
+
+  __GIT_COMMIT_FILE="$file"
+}
+
+# Stage all, commit with message from commit-message.txt, push to remote
+function git_vomit() {
+  __git_prepare_commit_file "$@" || return 1
+  git add .
+  git ci -a -F "$__GIT_COMMIT_FILE"
+  : > "$__GIT_COMMIT_FILE"
+  __git_push_branch
+}
+
+# Stage all, squash all branch commits into one (message from commit-message.txt), force-push
 function git_bleeh() {
-  local branch_name=$(git_current_branch)
   local base_branch
   base_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-  if [ -z "$base_branch" ]; then
-    base_branch="master"
-  fi
+  base_branch="${base_branch:-master}"
 
   local commit_count
   commit_count=$(git log "${base_branch}..HEAD" --oneline 2>/dev/null | wc -l)
 
-  local prefix
-  prefix=$(git_commit_message_prefix)
-  local new_msg="${prefix:+${prefix} }$*"
+  __git_prepare_commit_file "$@" || return 1
 
   git add .
 
   if [ "$commit_count" -gt 0 ]; then
-    local old_messages
-    old_messages=$(git log "${base_branch}..HEAD" --format="%s" --reverse)
     git reset --soft "HEAD~${commit_count}"
-    git ci -m "${old_messages}"$'\n'"${new_msg}"
-  else
-    git ci -m "${new_msg}"
   fi
+  git ci -F "$__GIT_COMMIT_FILE"
+  : > "$__GIT_COMMIT_FILE"
 
-  git push -u origin "${branch_name}" --force-with-lease
+  __git_push_branch --force-with-lease
 }
 
 . ${GIT_CONFIGURATION_DIR}/hub_functions.sh

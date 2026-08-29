@@ -10,6 +10,7 @@
 system_tools=(
   git vim unzip zip tree tmux htop neofetch hub
   libpq
+  kubernetes-cli
 )
 
 shell_tools=(
@@ -28,4 +29,5 @@ image_tools=(
 
 diag_tools=(
   smartmontools
+  gdb
 )

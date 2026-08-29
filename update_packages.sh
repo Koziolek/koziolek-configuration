@@ -204,6 +204,16 @@ check_docker() {
     fi
 }
 
+check_kubectl() {
+    echo ""
+    echo "=== kubectl ==="
+    if command -v kubectl &>/dev/null; then
+        ok "kubectl: $(kubectl version --client 2>/dev/null | head -1)"
+    else
+        missing "kubectl: nie zainstalowany"
+    fi
+}
+
 check_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -355,6 +365,34 @@ update_docker() {
     fi
 }
 
+update_kubectl() {
+    echo ""
+    echo "=== kubectl ==="
+    local kubectl_version
+    kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
+    if [ -z "$kubectl_version" ]; then
+        warn "Nie udało się pobrać wersji kubectl"
+        return 0
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
+            -o "$tmp_dir/kubectl"; then
+        warn "Nie udało się pobrać kubectl ${kubectl_version}, pomijam aktualizację"
+    elif ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
+            -o "$tmp_dir/kubectl.sha256"; then
+        warn "Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam aktualizację"
+    elif ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
+        warn "Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam aktualizację"
+    else
+        $SUDO install -o root -g root -m 755 "$tmp_dir/kubectl" /usr/local/bin/kubectl
+        ok "kubectl zaktualizowany: $(kubectl version --client 2>/dev/null | head -1) (suma sha256 zweryfikowana)"
+    fi
+    rm -rf "$tmp_dir"
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -445,6 +483,7 @@ echo "======================================="
 check_apt_packages
 check_gh
 check_docker
+check_kubectl
 check_asdf
 check_difft
 check_sdkman
@@ -461,6 +500,7 @@ refresh_apt_gpg_keys
 update_apt_packages
 update_gh
 update_docker
+update_kubectl
 update_asdf
 update_difft
 update_sdkman

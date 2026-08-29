@@ -372,6 +372,45 @@ install_ctop() {
     echo "✓ ctop ${ctop_version} zainstalowany (suma sha256 zweryfikowana)"
 }
 
+# Pobiera kubectl z oficjalnego releasu Kubernetes (dl.k8s.io), weryfikuje sumę
+# sha256 opublikowaną obok binarki i dopiero wtedy instaluje do /usr/local/bin.
+# Nie ma go w domyślnych repo apt (bez dodawania cudzego repozytorium) — stąd
+# ta sama metoda co ctop, zamiast apt.
+install_kubectl() {
+    local kubectl_version
+    kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
+    if [ -z "$kubectl_version" ]; then
+        echo "⚠️ Nie udało się pobrać wersji kubectl, pomijam instalację"
+        return 0
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
+            -o "$tmp_dir/kubectl"; then
+        echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
+            -o "$tmp_dir/kubectl.sha256"; then
+        echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
+        echo "⚠️ Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    $SUDO install -o root -g root -m 755 "$tmp_dir/kubectl" /usr/local/bin/kubectl
+    rm -rf "$tmp_dir"
+    echo "✓ kubectl ${kubectl_version} zainstalowany (suma sha256 zweryfikowana)"
+}
+
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
     
@@ -452,6 +491,7 @@ install_rust_and_difft
 install_sdkman
 install_apps
 install_gh
+install_kubectl
 install_docker
 prepare_bashrc
 

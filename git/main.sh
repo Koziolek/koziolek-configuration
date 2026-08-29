@@ -22,3 +22,7 @@ fi
 unset GIT_CONFIG_TEMPLATE GIT_CONFIG_GENERATED GIT_CONFIG_STUB
 
 export GIT_FUNCTIONS="${GIT_CONFIGURATION_DIR}/git_functions.sh"
+
+# git_vomit/git_bleeh: domyślnie auto-akceptacja commit-message.txt (bez podglądu [T/n]).
+# Ustaw GIT_ASSUME_YES=0 (np. w ~/.senv), aby wymusić potwierdzenie.
+export GIT_ASSUME_YES="${GIT_ASSUME_YES:-0}"
