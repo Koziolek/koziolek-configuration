@@ -7,12 +7,12 @@ function to_ascii() {
 
 function to_kebab_case() {
   local input="$*"
-  echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /-/g' -e 's/^-//' -e 's/-$//'
+  echo "$input" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed -e 's/ /-/g' -e 's/^-//' -e 's/-$//'
 }
 
 function to_dot_case() {
   local input="$*"
-  echo "$input" | tr '[:upper:]' '[:lower:]' | sed -e 's/ /./g' -e 's/^\.//' -e 's/\.$//'
+  echo "$input" | tr '[:upper:]' '[:lower:]' | tr -s ' ' | sed -e 's/ /./g' -e 's/^\.//' -e 's/\.$//'
 }
 
 function remove_special() {

@@ -15,38 +15,70 @@ prerequisites=(
     software-properties-common
 )
 
-system_tools=(
-  curl wget git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
+minimal_tools=(
+    curl wget
 )
 
-security_tools=(
-  gnupg gnupg2 apt-transport-https ca-certificates
-)
+# Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
+# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
+# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
+$SUDO apt-get -qq update
+for _pkg in "${minimal_tools[@]}"; do
+    command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
+done
+unset _pkg
 
-graphics_libs=(
-  libatomic1 libgl1-mesa-dri libglx-mesa0 libegl1-mesa libgles2-mesa
-  mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
-)
+# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
+# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
+# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
+# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
+# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
+# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
-gui_libs=(
-  gconf2-common gconf-service libgconf-2-4 libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
-)
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/apt_packages.sh" ]; then
+    # shellcheck source=packages/apt_packages.sh
+    source "$SCRIPT_DIR/packages/apt_packages.sh"
+else
+    echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
+    _packages_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/apt_packages.sh" \
+        -o "$_packages_tmp"
+    # shellcheck disable=SC1090
+    source "$_packages_tmp"
+    rm -f "$_packages_tmp"
+    unset _packages_tmp
+fi
 
-image_tools=(
-  libheif-examples
-)
-
-diag_tools=(
-  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli
-)
+# verify_and_run_script — wspólna z initial_packages_mac.sh/initial_packages_vanilla.sh
+# (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+    # shellcheck source=packages/verify_and_run_script.sh
+    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+else
+    _vars_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
+        -o "$_vars_tmp"
+    # shellcheck disable=SC1090
+    source "$_vars_tmp"
+    rm -f "$_vars_tmp"
+    unset _vars_tmp
+fi
 
 all_packages=(
+  "${minimal_tools[@]}"
   "${system_tools[@]}"
   "${security_tools[@]}"
   "${graphics_libs[@]}"
   "${gui_libs[@]}"
   "${image_tools[@]}"
   "${diag_tools[@]}"
+  "${boxes_vm[@]}"
 )
 
 safe_apt_install() {
@@ -166,13 +198,21 @@ install_rust_and_difft() {
     fi
 
     echo "Instalacja difftastic..."
-    "$cargo_bin" install difftastic
+    # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
+    # zależności semver, a te (np. tree-sitter-language) wymuszają nowszego rustc
+    # niż daje asdf → "rustc X is not supported by the following packages".
+    "$cargo_bin" install --locked difftastic
     echo "difftastic zainstalowany pomyślnie"
 }
 
 install_sdkman() {
-    curl -s "https://get.sdkman.io" | bash
+    # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
+    # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
+    verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
+    set +u
+    # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
     sdk i java
     sdk i maven
     sdk i mvnd
@@ -185,23 +225,28 @@ install_apps() {
 
     echo "Instalacja aplikacji tylko przez .deb pakiety..."
 
-    # Spotify przez repozytorium
+    # Spotify przez repozytorium. Klucz scoped przez signed-by= (nie trusted.gpg.d —
+    # to zaufałoby kluczowi dla WSZYSTKICH repo apt, nie tylko Spotify).
     if ! command -v spotify >/dev/null 2>&1; then
         echo "Instalacja Spotify..."
-        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg | $SUDO gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/spotify.gpg
-        echo "deb https://repository.spotify.com stable non-free" | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
+        $SUDO mkdir -p /etc/apt/keyrings
+        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg \
+            | $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" \
+            | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
         $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
     fi
 
     cd "$DOWNLOAD_DIR" || return 1
 
     # Przygotuj listę aplikacji do pobrania
-    declare -A apps=(
+    local -A apps=(
         ["1password"]="https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb"
         ["steam"]="https://cdn.akamai.steamstatic.com/client/installer/steam.deb"
     )
 
     # Pobierz i zainstaluj każdą aplikację
+    local app deb_file
     for app in "${!apps[@]}"; do
         deb_file="${app}.deb"
 
@@ -226,6 +271,109 @@ install_apps() {
     echo "Wszystkie aplikacje zostały zainstalowane!"
 }
 
+
+install_gh() {
+    if command -v gh &>/dev/null; then
+        echo "✓ gh już zainstalowany: $(gh --version | head -1)"
+        return 0
+    fi
+
+    echo "Instalacja GitHub CLI..."
+    $SUDO mkdir -p -m 755 /etc/apt/keyrings
+
+    local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+    local tmpkey
+    tmpkey="$(mktemp)"
+    wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
+    rm -f "$tmpkey"
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
+        | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+    $SUDO apt-get -qq update
+    safe_apt_install gh
+    echo "✓ gh zainstalowany: $(gh --version | head -1)"
+}
+
+# Pobiera ctop, weryfikuje sumę sha256 z release'a i dopiero wtedy instaluje do
+# /usr/local/bin. Przy niezgodności sumy: warning i rezygnacja z instalacji
+# (nie zostawiamy niezweryfikowanej binarki w PATH roota).
+install_ctop() {
+    local ctop_version
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
+        | grep '"tag_name":' | cut -d '"' -f 4)
+    if [ -z "$ctop_version" ]; then
+        echo "⚠️ Nie udało się pobrać wersji ctop, pomijam instalację"
+        return 0
+    fi
+
+    local ctop_bin="ctop-${ctop_version#v}-linux-amd64"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
+            -o "$tmp_dir/$ctop_bin"; then
+        echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
+            -o "$tmp_dir/sha256sums.txt"; then
+        echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
+        echo "⚠️ Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    $SUDO install -m 755 "$tmp_dir/$ctop_bin" /usr/local/bin/ctop
+    rm -rf "$tmp_dir"
+    echo "✓ ctop ${ctop_version} zainstalowany (suma sha256 zweryfikowana)"
+}
+
+# Pobiera kubectl z oficjalnego releasu Kubernetes (dl.k8s.io), weryfikuje sumę
+# sha256 opublikowaną obok binarki i dopiero wtedy instaluje do /usr/local/bin.
+# Nie ma go w domyślnych repo apt (bez dodawania cudzego repozytorium) — stąd
+# ta sama metoda co ctop, zamiast apt.
+install_kubectl() {
+    local kubectl_version
+    kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
+    if [ -z "$kubectl_version" ]; then
+        echo "⚠️ Nie udało się pobrać wersji kubectl, pomijam instalację"
+        return 0
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
+            -o "$tmp_dir/kubectl"; then
+        echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
+            -o "$tmp_dir/kubectl.sha256"; then
+        echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
+        echo "⚠️ Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam instalację"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    $SUDO install -o root -g root -m 755 "$tmp_dir/kubectl" /usr/local/bin/kubectl
+    rm -rf "$tmp_dir"
+    echo "✓ kubectl ${kubectl_version} zainstalowany (suma sha256 zweryfikowana)"
+}
 
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
@@ -265,15 +413,13 @@ install_docker() {
     
     # Zainstaluj docker-ctop
     echo "Instalacja docker-ctop..."
-    CTOP_VERSION=$(curl -s https://api.github.com/repos/bcicen/ctop/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
-    $SUDO curl -L "https://github.com/bcicen/ctop/releases/download/${CTOP_VERSION}/ctop-${CTOP_VERSION#v}-linux-amd64" -o /usr/local/bin/ctop
-    $SUDO chmod +x /usr/local/bin/ctop
-    
+    install_ctop
+
     # Sprawdź instalację
     echo "Sprawdzanie instalacji..."
     docker --version
     docker-compose --version
-    ctop -v
+    command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
     
     echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
     echo "Użytkownik $USER został dodany do grupy docker."
@@ -300,7 +446,7 @@ prepare_bashrc() {
     cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
 }
 
-cd $HOME/ || return
+cd "$HOME/" || exit 1
 
 install_initial_packages
 prepare_workspace
@@ -308,6 +454,8 @@ install_asdf
 install_rust_and_difft
 install_sdkman
 install_apps
+install_gh
+install_kubectl
 install_docker
 prepare_bashrc
 

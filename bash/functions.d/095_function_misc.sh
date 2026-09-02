@@ -121,11 +121,8 @@ function weather() {
   printf "| %-15s | %-10s |\n" "Wind Speed" "${wind_speed}"
   echo "----------------------------------------"
 }
+# Wersja Linux (systemctl/lightdm). macOS cieniuje w bash/contexts/darwin.sh.
 function start_x() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "start_x: systemctl/lightdm niedostępne na macOS"
-    return 1
-  fi
   make_me_sudo
   $SUDO systemctl start lightdm
   unmake_me_sudo

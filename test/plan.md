@@ -1,4 +1,9 @@
-# Plan testów — git-configuration
+# Plan testów — koziolek-configuration
+
+> **Uwaga:** to artefakt planowania z początkowej budowy suite. Suite od tego czasu urosła —
+> m.in. testy kontekstów (`test/unit/test_context_detect.sh`, `test/unit/linux/test_vanilla_aliases.sh`,
+> `test/unit/linux/test_resize_to_full.sh`) oraz warianty `test/unit/{linux,darwin}/`. Aktualny
+> obraz: `README.md` → „Testowanie" i `CLAUDE.md`. Poniższy plan nie jest odświeżany 1:1.
 
 ## Założenia
 

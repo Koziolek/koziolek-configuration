@@ -5,33 +5,72 @@ trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 PROJECT_NAME='koziolek-configuration'
 
-if ! command -v brew >/dev/null 2>&1; then
-    echo "Instalacja Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"
+# Lokalizacja skryptu: potrzebna już tu (przed install_homebrew, które woła
+# verify_and_run_script) — nie tylko przy okazji brew_packages.sh niżej. Jeśli skrypt
+# leży na dysku (po `git clone`), source'ujemy pliki lokalnie względem ${BASH_SOURCE[0]}.
+# Gdy leci przez `curl ... | bash` (BASH_SOURCE puste), pobieramy je z repo na GitHubie.
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-system_tools=(
-    curl wget git vim unzip zip tree tmux htop neofetch hub
+# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_vanilla.sh
+# (packages/verify_and_run_script.sh).
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+    # shellcheck source=packages/verify_and_run_script.sh
+    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+else
+    _vars_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
+        -o "$_vars_tmp"
+    # shellcheck disable=SC1090
+    source "$_vars_tmp"
+    rm -f "$_vars_tmp"
+    unset _vars_tmp
+fi
+
+install_homebrew() {
+    if command -v brew >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "Instalacja Homebrew..."
+    verify_and_run_script "instalator Homebrew" \
+        "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" \
+        "Homebrew/install" "install.sh" "HEAD" || return 1
+    eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"
+}
+
+minimal_tools=(
+    curl wget
 )
 
-shell_tools=(
-    bash
-    thefuck
-    fd
-    gnu-time
-    gnu-sed
-    coreutils
-)
+# Homebrew musi istnieć przed czymkolwiek dalej (w tym przed brew-instalacją
+# minimal_tools poniżej) — przeniesione na początek, zamiast czekać do końca pliku.
+install_homebrew || exit 1
 
-image_tools=(
-    libheif
-    imagemagick
-)
+# macOS ma curl wbudowany, ale nie wget — dociągamy oba przez brew od razu,
+# analogicznie do apt w initial_packages.sh (Linux).
+for _pkg in "${minimal_tools[@]}"; do
+    command -v "$_pkg" >/dev/null 2>&1 || brew install "$_pkg"
+done
+unset _pkg
 
-diag_tools=(
-    smartmontools
-)
+# Wspólna lista pakietów: $SCRIPT_DIR już wyliczone na górze pliku (verify_and_run_script).
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/brew_packages.sh" ]; then
+    # shellcheck source=packages/brew_packages.sh
+    source "$SCRIPT_DIR/packages/brew_packages.sh"
+else
+    echo "Brak lokalnej kopii packages/brew_packages.sh — pobieram z repo..."
+    _packages_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/brew_packages.sh" \
+        -o "$_packages_tmp"
+    # shellcheck disable=SC1090
+    source "$_packages_tmp"
+    rm -f "$_packages_tmp"
+    unset _packages_tmp
+fi
 
 install_brew_packages() {
     local pkg
@@ -111,7 +150,9 @@ install_rust_and_difft() {
     cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
     [ -z "$cargo_bin" ] && { echo "Błąd: cargo niedostępne"; return 1; }
 
-    "$cargo_bin" install difftastic
+    # --locked: użyj Cargo.lock difftastica (inaczej nowsze zależności wymuszają
+    # nowszego rustc niż daje asdf).
+    "$cargo_bin" install --locked difftastic
     echo "✓ difftastic zainstalowany"
 }
 
@@ -120,12 +161,26 @@ install_sdkman() {
         echo "✓ SDKMAN już zainstalowany"
         return 0
     fi
-    curl -s "https://get.sdkman.io" | bash
+    # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
+    # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
+    verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
+    set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
     sdk install java
     sdk install maven
     sdk install mvnd
+}
+
+install_gh() {
+    if command -v gh &>/dev/null; then
+        echo "✓ gh już zainstalowany: $(gh --version | head -1)"
+        return 0
+    fi
+    echo "Instalacja GitHub CLI..."
+    brew install gh
+    echo "✓ gh zainstalowany: $(gh --version | head -1)"
 }
 
 install_docker() {
@@ -160,6 +215,7 @@ EOF
 echo "=== Instalacja pakietów macOS ==="
 brew update
 
+install_brew_packages "${minimal_tools[@]}"
 install_brew_packages "${system_tools[@]}"
 install_brew_packages "${shell_tools[@]}"
 install_brew_packages "${image_tools[@]}"
@@ -169,6 +225,7 @@ prepare_workspace
 install_asdf
 install_rust_and_difft
 install_sdkman
+install_gh
 install_docker
 prepare_bashrc
 

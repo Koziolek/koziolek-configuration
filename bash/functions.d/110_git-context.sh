@@ -19,7 +19,7 @@
 # ============================================================================
 
 function git_context() {
-  local readonly GC_CONFIG_FILE="${HOME}/.config/git-context"
+  local -r GC_CONFIG_FILE="${HOME}/.config/git-context"
 
   # ── Helper functions ───────────────────────────────────────────────────
 

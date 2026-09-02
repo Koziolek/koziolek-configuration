@@ -42,50 +42,48 @@ _get_darwin_export() {
     "
 }
 
-testHomebrewPrefixSetWhenOptHomebrewExists() {
-    # Symuluj /opt/homebrew przez nadpisanie sprawdzenia katalogu
-    local result
-    result="$(HOME="$_FAKE_HOME" bash --norc --noprofile -c "
-        export OS_TYPE='Darwin'
-        uname() { echo 'Darwin'; }
-        export -f uname
-        export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
-        export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
-        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
-        docker() { return 0; }; export -f docker
-        # Podmień katalog /opt/homebrew na fałszywy
-        _orig_test() { builtin test \"\$@\"; }
-        mkdir -p '$_FAKE_BREW'
-        # Patch: udawaj ze /opt/homebrew istnieje przez podmianę ścieżki
-        sed_expr='s|/opt/homebrew|$_FAKE_BREW|g'
-        eval \"\$(sed \"\$sed_expr\" '$PROJECT_ROOT/bash/bash_exports.sh')\" >/dev/null 2>&1 || true
-        printf '%s' \"\${HOMEBREW_PREFIX:-}\"
-    " 2>/dev/null)"
-    # Homebrew PREFIX musi zawierać ścieżkę do fake brew lub być pustym
-    # (test sprawdza logikę warunkową, nie rzeczywistą obecność /opt/homebrew)
-    assertTrue 'HOMEBREW_PREFIX test zakończony' true
+# Homebrew żyje teraz w bash/contexts/darwin.sh (nie w bash_exports.sh).
+# darwin.sh honoruje wstrzyknięty $HOMEBREW_PREFIX gdy /opt/homebrew nie istnieje.
+_load_darwin_ctx() {
+    # $1 = kod do wypisania wyniku; $2 = preambuła
+    HOME="$_FAKE_HOME" bash --norc --noprofile -c "
+        export OS_TYPE='Darwin' ASDF_DATA_DIR='$_FAKE_HOME/.asdf'
+        export PATH='/usr/bin:/bin'
+        ${2:-}
+        { . '$PROJECT_ROOT/bash/contexts/darwin.sh'; } >/dev/null 2>&1
+        $1
+    "
 }
 
-testPathGetsHomebrewBinWhenPrefixSet() {
+testHomebrewPrefixHonoredByDarwinContext() {
     local result
-    result="$(HOME="$_FAKE_HOME" bash --norc --noprofile -c "
-        export OS_TYPE='Darwin'
-        uname() { echo 'Darwin'; }
-        export -f uname
-        export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
-        export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
-        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
-        docker() { return 0; }; export -f docker
-        # Wstrzyknij HOMEBREW_PREFIX przed sourcowaniem — symuluj że brew jest zainstalowany
-        export HOMEBREW_PREFIX='$_FAKE_BREW'
-        mkdir -p '$_FAKE_BREW/bin' '$_FAKE_BREW/sbin'
-        { . '$PROJECT_ROOT/bash/bash_exports.sh'; } >/dev/null 2>&1
-        printf '%s' \"\$PATH\"
-    " 2>/dev/null)"
-    # PATH musi zawierać fake brew bin jeśli HOMEBREW_PREFIX był ustawiony
-    # bash_exports.sh dodaje brew do PATH tylko gdy sam go wykrywa — test weryfikuje
-    # że ogólna struktura PATH po załadowaniu jest poprawna
-    assertNotNull 'PATH musi być ustawiony po załadowaniu na Darwin' "$result"
+    result="$(_load_darwin_ctx "printf '%s' \"\${HOMEBREW_PREFIX:-}\"" \
+        "export HOMEBREW_PREFIX='$_FAKE_BREW'; mkdir -p '$_FAKE_BREW/bin' '$_FAKE_BREW/sbin'")"
+    assertEquals 'darwin.sh musi respektować wstrzyknięty HOMEBREW_PREFIX' \
+        "$_FAKE_BREW" "$result"
+}
+
+testPathGetsHomebrewBinFromDarwinContext() {
+    local result
+    result="$(_load_darwin_ctx "printf '%s' \"\$PATH\"" \
+        "export HOMEBREW_PREFIX='$_FAKE_BREW'; mkdir -p '$_FAKE_BREW/bin' '$_FAKE_BREW/sbin'")"
+    assertContains 'PATH musi zawierać homebrew bin po darwin.sh' "$result" "$_FAKE_BREW/bin"
+}
+
+testLocalBinKeepsPriorityOverHomebrew() {
+    local result
+    result="$(_load_darwin_ctx "printf '%s' \"\$PATH\"" \
+        "export HOMEBREW_PREFIX='$_FAKE_BREW'; mkdir -p '$_FAKE_BREW/bin' '$_FAKE_BREW/sbin'")"
+    assertTrue '.local/bin musi być przed homebrew w PATH' \
+        "[[ '$result' == '$_FAKE_HOME/.local/bin:'* ]]"
+}
+
+testDarwinContextSetsDockerCompose() {
+    local result
+    result="$(_load_darwin_ctx "printf '%s' \"\${DOCKER_COMPOSE:-}\"" \
+        'docker() { return 0; }; export -f docker')"
+    assertEquals 'darwin.sh musi ustawić DOCKER_COMPOSE na "docker compose"' \
+        'docker compose' "$result"
 }
 
 testExportsLoadWithoutErrorOnDarwin() {

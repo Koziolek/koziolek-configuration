@@ -14,8 +14,14 @@ if [[ -z "$CUTLINE" ]]; then
     exit 1
 fi
 
+# Sourcowane przez plik, nie przez process substitution: initial_packages.sh
+# lokalizuje packages/apt_packages.sh względem ${BASH_SOURCE[0]}, a process
+# substitution (/dev/fd/N) łamie to dirname'owanie.
+TMPSCRIPT="$(dirname "$SCRIPT")/.e2e-head-$$.sh"
+head -n $((CUTLINE - 1)) "$SCRIPT" > "$TMPSCRIPT"
 # shellcheck disable=SC1090
-. <(head -n $((CUTLINE - 1)) "$SCRIPT")
+. "$TMPSCRIPT"
+rm -f "$TMPSCRIPT"
 
 echo "=== FUNCTIONS_LOADED ==="
 

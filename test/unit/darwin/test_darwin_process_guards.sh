@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# macOS-specific: funkcje process na Darwin muszą zwracać błąd z komunikatem
+# macOS-specific: funkcje process na Darwin muszą zwracać błąd z komunikatem.
+# Guard nie jest już w functions.d/ — bash/contexts/darwin.sh cieniuje funkcje.
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
@@ -7,29 +8,31 @@ export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
 export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 export WORKSPACE_TOOLS="${WORKSPACE_TOOLS:-/tmp/fake_ws_$$}"
 
+# functions.d/ (wersja Linux) + contexts/darwin.sh (cieniowanie) — tak jak przy
+# realnym starcie powłoki na macOS.
 _run_with_darwin_uname() {
     bash --norc --noprofile -c "
-        uname() { echo 'Darwin'; }
-        export -f uname
+        uname() { echo 'Darwin'; }; export -f uname
+        hub() { :; }; export -f hub   # nie instaluj huba przez brew podczas testów
+        SUDO=''; RESET_SUDO=0
         . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
         . '$PROJECT_ROOT/bash/functions.d/020_function_process.sh' 2>/dev/null
+        . '$PROJECT_ROOT/bash/functions.d/030_function_java.sh' 2>/dev/null
+        . '$PROJECT_ROOT/bash/functions.d/096_apt_gpg.sh' 2>/dev/null
+        . '$PROJECT_ROOT/bash/contexts/darwin.sh' 2>/dev/null
         $1
         exit \$?
     " 2>&1
 }
 
 testReswapFailsOnDarwin() {
-    local rc
     _run_with_darwin_uname 'reswap' >/dev/null
-    rc=$?
-    assertNotEquals 'reswap musi zwrócić błąd na Darwin' 0 $rc
+    assertNotEquals 'reswap musi zwrócić błąd na Darwin' 0 $?
 }
 
 testWhoUseSwapFailsOnDarwin() {
-    local rc
     _run_with_darwin_uname 'who_use_swap' >/dev/null
-    rc=$?
-    assertNotEquals 'who_use_swap musi zwrócić błąd na Darwin' 0 $rc
+    assertNotEquals 'who_use_swap musi zwrócić błąd na Darwin' 0 $?
 }
 
 testReswapPrintsWarningOnDarwin() {
@@ -44,32 +47,32 @@ testWhoUseSwapPrintsWarningOnDarwin() {
     assertContains 'who_use_swap musi wypisać ostrzeżenie na Darwin' "$out" 'macOS'
 }
 
-testWhoUsePortUsesLsofOnDarwin() {
+testListeningSocketPairsUsesLsofOnDarwin() {
     local body
-    body="$(bash --norc --noprofile -c "
-        uname() { echo 'Darwin'; }
-        export -f uname
-        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
-        . '$PROJECT_ROOT/bash/functions.d/020_function_process.sh' 2>/dev/null
-        declare -f who_use_port
-    " 2>/dev/null)"
-    assertContains 'who_use_port na Darwin musi używać lsof' "$body" 'lsof'
+    body="$(_run_with_darwin_uname 'declare -f _listening_socket_pairs')"
+    assertContains '_listening_socket_pairs na Darwin musi używać lsof' "$body" 'lsof'
 }
 
 testAsyncProfilerOnFailsOnDarwin() {
-    local rc
-    bash --norc --noprofile -c "
-        uname() { echo 'Darwin'; }
-        export -f uname
-        SUDO=''
-        RESET_SUDO=0
-        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
-        . '$PROJECT_ROOT/bash/functions.d/020_function_process.sh' 2>/dev/null
-        . '$PROJECT_ROOT/bash/functions.d/030_function_java.sh' 2>/dev/null
-        turn_async_profiler_on
-    " >/dev/null 2>&1
-    rc=$?
-    assertNotEquals 'turn_async_profiler_on musi zwrócić błąd na Darwin' 0 $rc
+    _run_with_darwin_uname 'turn_async_profiler_on' >/dev/null
+    assertNotEquals 'turn_async_profiler_on musi zwrócić błąd na Darwin' 0 $?
+}
+
+testAsyncProfilerOnPrintsWarningOnDarwin() {
+    local out
+    out="$(_run_with_darwin_uname 'turn_async_profiler_on' 2>&1)"
+    assertContains 'turn_async_profiler_on musi wypisać ostrzeżenie na Darwin' "$out" 'macOS'
+}
+
+testRefreshAptGpgKeysFailsOnDarwin() {
+    _run_with_darwin_uname 'refresh_apt_gpg_keys' >/dev/null
+    assertNotEquals 'refresh_apt_gpg_keys musi zwrócić błąd na Darwin' 0 $?
+}
+
+testRefreshAptGpgKeysPrintsWarningOnDarwin() {
+    local out
+    out="$(_run_with_darwin_uname 'refresh_apt_gpg_keys' 2>&1)"
+    assertContains 'refresh_apt_gpg_keys musi wypisać ostrzeżenie na Darwin' "$out" 'macOS'
 }
 
 # shellcheck source=/dev/null

@@ -24,10 +24,17 @@ if [ -f "${BASH_CONFIGURATION_DIR}/bash_functions.sh" ]; then
     bash_exports \
     bash_completion \
     bash_start_window \
-    bash_chat \
-    bash_customs; do
+    bash_chat; do
     source_if_exists "$conf_file"
   done
+
+  # Nadpisania per-kontekst (linux/debian/ubuntu/vanilla/wsl/darwin) — po wspólnej
+  # konfiguracji, przed bash_customs (kontekst = poziom OS, customs = poziom maszyny).
+  if declare -F load_contexts >/dev/null 2>&1; then
+    load_contexts
+  fi
+
+  source_if_exists bash_customs
 else
   echo "Error: 'bash_functions.sh' not found in '${BASH_CONFIGURATION_DIR}'."
 fi

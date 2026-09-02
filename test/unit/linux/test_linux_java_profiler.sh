@@ -32,18 +32,18 @@ testAsyncProfilerOnWritesToProc() {
         "$body" '/proc/sys/kernel'
 }
 
-testAsyncProfilerOnHasDarwinGuard() {
+# Guard Darwin przeniesiony do bash/contexts/darwin.sh (cieniowanie) — wersja
+# w functions.d/ jest czysto linuksowa.
+testAsyncProfilerOnHasNoDarwinGuardOnLinux() {
     local body
     body="$(declare -f turn_async_profiler_on)"
-    assertContains 'turn_async_profiler_on musi mieć guard Darwin' \
-        "$body" 'Darwin'
+    assertNotContains 'wersja Linux nie może mieć guardu Darwin' "$body" 'Darwin'
 }
 
-testAsyncProfilerOffHasDarwinGuard() {
+testAsyncProfilerOffHasNoDarwinGuardOnLinux() {
     local body
     body="$(declare -f turn_async_profiler_off)"
-    assertContains 'turn_async_profiler_off musi mieć guard Darwin' \
-        "$body" 'Darwin'
+    assertNotContains 'wersja Linux nie może mieć guardu Darwin' "$body" 'Darwin'
 }
 
 # shellcheck source=/dev/null

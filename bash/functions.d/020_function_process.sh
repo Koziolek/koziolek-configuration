@@ -55,12 +55,32 @@ pray to Emperor and then:
   local _pids
   _pids=$(pgrep -f "$pattern")
   if [ -n "$_pids" ]; then
+    log_info "Trafione procesy:"
+    pgrep -af "$pattern" | while IFS= read -r _line; do log_info "  $_line"; done
     echo "$_pids" | $SUDO xargs kill -9
   fi
 
   if $root_mode; then
     unmake_me_sudo
   fi
+}
+
+##
+# Wypisuje pary PID:PORT nasłuchujących gniazd TCP/UDP — jedna para na linię.
+# Wersja Linux (ss -tulpn). macOS cieniuje w bash/contexts/darwin.sh (lsof).
+# Wymaga ustawionego $SUDO (make_me_sudo w wołającym).
+##
+function _listening_socket_pairs() {
+  $SUDO ss -tulpn 2>/dev/null \
+    | awk 'NR>1 {
+        split($5, a, ":")
+        p = a[length(a)]
+        gsub(/[^0-9]/, "", p)
+        if (p == "") next
+        pid = "?"
+        if (match($0, /pid=[0-9]+/)) { pid = substr($0, RSTART+4, RLENGTH-4) }
+        print pid":"p
+      }'
 }
 
 ##
@@ -84,7 +104,7 @@ function who_use_port() {
   port="$1"
 
   if [ -z "$port" ]; then
-    echo "Usage: who_use_port [--sudo] PORT"
+    log_man "Usage: who_use_port [--sudo] PORT"
     return 1
   fi
 
@@ -92,25 +112,51 @@ function who_use_port() {
     make_me_sudo
   fi
 
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    $SUDO lsof -i ":${port}" -n -P
-  else
-    $SUDO ss -tulpn | grep "$port" | awk '!seen[$0]++'
-  fi
+  # Zbiera pary PID:PORT niezależnie od narzędzia (ss/lsof) i dopasowania (dokładne
+  # vs podciąg) — dawne "grep PORT" na całej linii ss łapało też przypadkowe trafienia
+  # w PID-zie czy nazwie procesu, nie tylko w numerze portu.
+  local pairs
+  pairs=$(_listening_socket_pairs | sort -u)
 
   if $root_mode; then
     unmake_me_sudo
   fi
+
+  if [ -z "$pairs" ]; then
+    log_info "Brak nasłuchujących procesów"
+    return 0
+  fi
+
+  local exact=() partial=()
+  local pid pport
+  while IFS=: read -r pid pport; do
+    [ -z "$pport" ] && continue
+    if [[ "$pport" == "$port" ]]; then
+      exact+=("$pid:$pport")
+    elif [[ "$pport" == *"$port"* ]]; then
+      partial+=("$pid:$pport")
+    fi
+  done <<<"$pairs"
+
+  if [ ${#exact[@]} -eq 0 ] && [ ${#partial[@]} -eq 0 ]; then
+    log_info "Brak procesów nasłuchujących na porcie pasującym do '${port}'"
+    return 0
+  fi
+
+  printf "%-10s %-10s\n" "PID" "PORT"
+  local entry
+  for entry in "${exact[@]}"; do
+    printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
+  done
+  for entry in "${partial[@]}"; do
+    printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
+  done
 }
 
 ##
 # Clear swap by turn it off then on.
 ##
 function reswap() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "reswap: swapoff/swapon niedostępne na macOS"
-    return 1
-  fi
   make_me_sudo
 
   $SUDO swapoff -a
@@ -123,10 +169,6 @@ function reswap() {
 # Shows who use swap
 ##
 function who_use_swap() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "who_use_swap: /proc niedostępny na macOS"
-    return 1
-  fi
   for pid in /proc/[0-9]*; do
     name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
     swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)
@@ -137,6 +179,7 @@ function who_use_swap() {
 }
 
 export -f exterminatus
+export -f _listening_socket_pairs
 export -f who_use_port
 export -f make_me_sudo
 export -f unmake_me_sudo

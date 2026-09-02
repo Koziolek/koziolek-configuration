@@ -63,7 +63,21 @@ function dżepetto() {
         fi
 
         # Parse and display the response
-        echo "$response" | jq -r '.choices[0].message.content'
+        local error_msg
+        error_msg=$(echo "$response" | jq -r '.error.message // empty')
+        if [ -n "$error_msg" ]; then
+            echo "Error: $error_msg"
+            return 1
+        fi
+
+        local content
+        content=$(echo "$response" | jq -r '.choices[0].message.content // empty')
+        if [ -z "$content" ]; then
+            echo "Error: unexpected response from OpenAI API:"
+            echo "$response"
+            return 1
+        fi
+        echo "$content"
     }
 
     # Local precheck function to ensure the API key is set

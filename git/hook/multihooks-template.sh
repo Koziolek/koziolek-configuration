@@ -35,7 +35,9 @@ case "$hook_type" in
             exit 0
         fi
         for file in "${hooks[@]}"; do
-           [ -x "$file" ] && "$file" "$@" <<<"$stdin" || exit 2
+           if [ -x "$file" ]; then
+               "$file" "$@" <<<"$stdin" || exit 2
+           fi
         done
         exit 0
         ;;

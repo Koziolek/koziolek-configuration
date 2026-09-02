@@ -6,10 +6,7 @@ shopt -s checkwinsize
 # match all files and zero or more directories and subdirectories.
 #shopt -s globstar
 
-# make less more friendly for non-text input files, see lesspipe(1)
-if [[ "$OS_TYPE" != "Darwin" ]]; then
-    [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
-fi
+# lesspipe (less dla plików nie-tekstowych) przeniesione do bash/contexts/linux.sh
 
 # sometimes we misspell spell…
 if command -v thefuck >/dev/null 2>&1; then

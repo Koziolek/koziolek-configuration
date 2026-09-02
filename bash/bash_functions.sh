@@ -20,6 +20,7 @@ Available functions:
   reswap                       – wyłącza i włącza swap (czyści pamięć swap)
   who_use_swap                 – lista procesów używających swap
   who_use_port PORT            – lista procesów używających podany port
+  refresh_apt_gpg_keys         – naprawia brakujące/wygasłe klucze GPG repozytoriów apt
 
   [Logowanie]
   log_message LEVEL MSG        – log z poziomem: debug, info, warn, error, man
@@ -35,6 +36,7 @@ Available functions:
   yes_or_no PROMPT             – pyta o Y/N, zwraca 0/1
 
   [Docker]
+  check_docker_compose_availability – sprawdza dostępność pluginu docker compose
   check_container_status NAME  – sprawdza status kontenera
   check_compose_status         – sprawdza status usług docker compose
   check_all_services_healthy   – sprawdza czy wszystkie usługi są healthy
@@ -55,16 +57,20 @@ Available functions:
   weather                      – aktualna pogoda (wttr.in)
   start_x                      – uruchamia środowisko graficzne
   generate_month_dirs          – tworzy strukturę katalogów miesięcznych
+  tmux_dump [PLIK]             – zrzuca stan bieżącej sesji tmux do pliku
   get_and_build                – git pull + wykryj system budowania + zbuduj (gab)
   git_context                  – interaktywne przełączanie kontekstu git (user/email)
   netconf_diag                 – diagnostyka sieci
   dżepetto -p PROMPT           – zapytanie do OpenAI ChatGPT
   update_asdf                  – sprawdza i instaluje nową wersję asdf jeśli dostępna
   reload_config                – przeładowuje konfigurację powłoki z MAIN_CONFIGURATION_DIR/main.sh
+  install_lib -r URL [-t DIR] [-e PLIK] [-x]
+                                – klonuje bibliotekę do \$WORKSPACE_TOOLS (jeśli brak) i opcjonalnie ją sourcuje
 
   [Java]
   turn_async_profiler_on       – ustawia flagi jądra dla async-profilera JVM
   turn_async_profiler_off      – cofa flagi async-profilera
+  java_clear [KATALOG]         – mvn/gradle clean we wszystkich projektach pod KATALOG (domyślnie .)
 
 EOF
 }
@@ -136,7 +142,9 @@ function source_directory() {
 # used to calculate PS1 value do not export. Use git_current_branch instead
 ##
 function parse_git_branch() {
-    git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+    local branch
+    branch=$(git symbolic-ref --short -q HEAD 2>/dev/null) && { printf ' (%s)' "$branch"; return; }
+    branch=$(git rev-parse --short HEAD 2>/dev/null) && printf ' (HEAD detached at %s)' "$branch"
 }
 
 function check_workspace() {
@@ -153,7 +161,9 @@ function check_workspace() {
   done
 
   for name in "${ENV_VARS[@]}"; do
-    if [ -z "${!name}" ]; then
+    if [ -z "${!name}" ] \
+       && { command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1; }; then
+      # Ostrzegaj tylko o realnym braku: silnik kontenerowy jest, a compose nie ustawione.
       log_warn "Var $name is not set"
     fi
   done
@@ -193,12 +203,7 @@ function update_asdf() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
 
-    set +e
-    curl -L "$download_url" -o "$tmp_dir/$archive"
-    local curl_status=$?
-    set -e
-
-    if [ $curl_status -ne 0 ]; then
+    if ! curl -L "$download_url" -o "$tmp_dir/$archive"; then
         log_error "Nie udało się pobrać asdf $latest_tag"
         rm -rf "$tmp_dir"
         return 1
@@ -228,6 +233,11 @@ function reload_config() {
         log_error "main.sh not found: $main_script"
         return 1
     fi
+
+    # Resetuj stan przed reloadem — jeśli sourcowanie main.sh zawiedzie w środku,
+    # BASH_FUNCTIONS_LOADED ma uczciwie odzwierciedlać "nie załadowano", zamiast
+    # zostać z mylącym =1 z poprzedniej, już nieaktualnej sesji.
+    unset BASH_FUNCTIONS_LOADED
 
     # Ensure bash/main.sh doesn't short-circuit on inherited SUPPRESS_SOURCING=1
     export SUPPRESS_SOURCING=0

@@ -10,27 +10,29 @@ export WORKSPACE=$HOME/workspace
 export WORKSPACE_TOOLS=$WORKSPACE/tools
 
 export ASDF_DATA_DIR="$HOME/.asdf"
+
+# DOCKER_CLI / DOCKER_COMPOSE — neutralny probe (bez log_error). Konteksty
+# per-system (bash/contexts/{darwin,vanilla}.sh) mogą to nadpisać.
+# Funkcje w functions.d/ używają "${DOCKER_CLI:-docker}" zamiast gołego `docker`.
 if command -v docker >/dev/null 2>&1; then
-    export DOCKER_COMPOSE="docker compose"
+    export DOCKER_CLI="docker"
+elif command -v podman >/dev/null 2>&1; then
+    export DOCKER_CLI="podman"
 else
-    log_error "docker compose plugin nie jest dostępny. Zainstaluj docker-compose-plugin."
+    export DOCKER_CLI="docker"
+fi
+
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    export DOCKER_COMPOSE="docker compose"
+elif command -v podman-compose >/dev/null 2>&1; then
+    export DOCKER_COMPOSE="podman-compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    export DOCKER_COMPOSE="docker-compose"
+else
     export DOCKER_COMPOSE=""
 fi
 
-if [[ "$OS_TYPE" == "Darwin" ]]; then
-    if [ -d /opt/homebrew ]; then
-        export HOMEBREW_PREFIX="/opt/homebrew"
-    elif [ -d /usr/local/Homebrew ]; then
-        export HOMEBREW_PREFIX="/usr/local"
-    fi
-    if [ -n "$HOMEBREW_PREFIX" ]; then
-        export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
-        export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
-        export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX/Homebrew"
-        export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
-        export MANPATH="$HOMEBREW_PREFIX/share/man:${MANPATH:-}"
-    fi
-fi
+# Homebrew przeniesione do bash/contexts/darwin.sh (ładowane po tym pliku).
 
 export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 export PATH=$HOME/.local/bin:$PATH

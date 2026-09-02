@@ -1,6 +1,6 @@
 services:
   nginx-proxy:
-    image: nginx:latest
+    image: nginx:1.27.5
     container_name: nginx-proxy
     ports:
       - "443:443"
@@ -20,7 +20,7 @@ services:
     networks:
       - service-network
   nexus:
-    image: sonatype/nexus3:latest
+    image: sonatype/nexus3:3.81.1
     container_name: nexus
     user: 200:200
     volumes:
@@ -42,7 +42,7 @@ services:
     networks:
       - service-network
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.4
     container_name: pgadmin
     env_file:
       - ~/.senv
@@ -62,7 +62,7 @@ services:
     networks:
       - service-network
   home-db:
-    image: postgres:latest
+    image: postgres:17.5
     container_name: home-db
     environment:
       POSTGRES_USER: ${DB_USERNAME}
@@ -71,7 +71,7 @@ services:
     env_file:
       - ~/.senv
     ports:
-      - "16432:5432"
+      - "127.0.0.1:16432:5432"
     volumes:
       - $POSTGRES_DATA/init.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
     restart: always

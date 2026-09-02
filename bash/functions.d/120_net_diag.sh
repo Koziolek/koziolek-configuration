@@ -6,11 +6,8 @@
 #   sudo netconf_diag -d 30 -t 8.8.8.8
 #   sudo netconf_diag -i wlp2s0    # wymuszenie interfejsu
 
+# Wersja Linux (ip/iw/nmcli/journalctl). macOS cieniuje w bash/contexts/darwin.sh.
 function netconf_diag() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, journalctl) — niedostępnych na macOS"
-    return 1
-  fi
   make_me_sudo
   local DURATION_MIN=15
   local TARGET="1.1.1.1"

@@ -88,6 +88,28 @@ testDockerComposeEmptyWhenDockerAbsent() {
     assertEquals 'DOCKER_COMPOSE musi być pusty gdy docker niedostępny' '' "$result"
 }
 
+testDockerCliIsDockerWhenDockerPresent() {
+    local result
+    result="$(_get_export 'DOCKER_CLI' "$_WITH_DOCKER")"
+    assertEquals 'DOCKER_CLI = docker gdy docker dostępny' 'docker' "$result"
+}
+
+testDockerCliFallsBackToDockerWhenNothingPresent() {
+    local fake_bin result
+    fake_bin="$(mktemp -d)"
+    cp /usr/bin/chmod "$fake_bin/"
+    result="$(HOME="$_FAKE_HOME" bash -c "
+        export PATH='$fake_bin'
+        export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
+        export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
+        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
+        { . '$PROJECT_ROOT/bash/bash_exports.sh'; } >/dev/null 2>&1
+        printf '%s' \"\${DOCKER_CLI}\"
+    ")"
+    rm -rf "$fake_bin"
+    assertEquals 'DOCKER_CLI domyślnie = docker' 'docker' "$result"
+}
+
 testClaudeSkillConfigExported() {
     local result
     result="$(_get_export 'CLAUDE_SKILL_CONFIG' "$_WITH_DOCKER")"
