@@ -66,6 +66,24 @@ pray to Emperor and then:
 }
 
 ##
+# Wypisuje pary PID:PORT nasłuchujących gniazd TCP/UDP — jedna para na linię.
+# Wersja Linux (ss -tulpn). macOS cieniuje w bash/contexts/darwin.sh (lsof).
+# Wymaga ustawionego $SUDO (make_me_sudo w wołającym).
+##
+function _listening_socket_pairs() {
+  $SUDO ss -tulpn 2>/dev/null \
+    | awk 'NR>1 {
+        split($5, a, ":")
+        p = a[length(a)]
+        gsub(/[^0-9]/, "", p)
+        if (p == "") next
+        pid = "?"
+        if (match($0, /pid=[0-9]+/)) { pid = substr($0, RSTART+4, RLENGTH-4) }
+        print pid":"p
+      }'
+}
+
+##
 # List processes that use given PORT if --sudo is set then run it as sudo.
 ##
 function who_use_port() {
@@ -98,27 +116,7 @@ function who_use_port() {
   # vs podciąg) — dawne "grep PORT" na całej linii ss łapało też przypadkowe trafienia
   # w PID-zie czy nazwie procesu, nie tylko w numerze portu.
   local pairs
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    pairs=$($SUDO lsof -iTCP -iUDP -sTCP:LISTEN -n -P 2>/dev/null \
-      | awk 'NR>1 && match($0, /:[0-9]+[[:space:]]*\(LISTEN\)/) {
-          seg = substr($0, RSTART, RLENGTH)
-          p = seg
-          gsub(/[^0-9]/, "", p)
-          if (p != "") print $2":"p
-        }')
-  else
-    pairs=$($SUDO ss -tulpn 2>/dev/null \
-      | awk 'NR>1 {
-          split($5, a, ":")
-          p = a[length(a)]
-          gsub(/[^0-9]/, "", p)
-          if (p == "") next
-          pid = "?"
-          if (match($0, /pid=[0-9]+/)) { pid = substr($0, RSTART+4, RLENGTH-4) }
-          print pid":"p
-        }')
-  fi
-  pairs=$(echo "$pairs" | sort -u)
+  pairs=$(_listening_socket_pairs | sort -u)
 
   if $root_mode; then
     unmake_me_sudo
@@ -159,10 +157,6 @@ function who_use_port() {
 # Clear swap by turn it off then on.
 ##
 function reswap() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "reswap: swapoff/swapon niedostępne na macOS"
-    return 1
-  fi
   make_me_sudo
 
   $SUDO swapoff -a
@@ -175,10 +169,6 @@ function reswap() {
 # Shows who use swap
 ##
 function who_use_swap() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    log_warn "who_use_swap: /proc niedostępny na macOS"
-    return 1
-  fi
   for pid in /proc/[0-9]*; do
     name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
     swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)
@@ -189,6 +179,7 @@ function who_use_swap() {
 }
 
 export -f exterminatus
+export -f _listening_socket_pairs
 export -f who_use_port
 export -f make_me_sudo
 export -f unmake_me_sudo

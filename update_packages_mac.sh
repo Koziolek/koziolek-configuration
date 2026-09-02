@@ -259,7 +259,9 @@ update_difft() {
         return 0
     fi
     info "Aktualizacja difftastic..."
-    "$asdf_bin" exec cargo install difftastic
+    # --locked: użyj Cargo.lock difftastica (inaczej nowsze zależności wymuszają
+    # nowszego rustc niż daje asdf).
+    "$asdf_bin" exec cargo install --locked difftastic
     ok "difftastic zaktualizowany: $(difft --version)"
 }
 

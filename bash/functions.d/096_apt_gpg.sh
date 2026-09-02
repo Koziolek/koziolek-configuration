@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Wersja apt (Debian/Ubuntu/Vanilla). macOS cieniuje w bash/contexts/darwin.sh.
 
 KEYSERVER="hkps://keyserver.ubuntu.com"
 KEYRING_DIR="/etc/apt/keyrings"

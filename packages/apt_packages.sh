@@ -32,3 +32,7 @@ diag_tools=(
   memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli gdb
   libinput-tools rocminfo
 )
+
+boxes_vm=(
+  gnome-boxes qemu-kvm libvirt-daemon-system
+)

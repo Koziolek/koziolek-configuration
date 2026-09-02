@@ -128,17 +128,15 @@ Znalezione problemy:
 
 ## Istniejąca detekcja środowiska w repo
 
-Nie ma osobnej, współdzielonej funkcji — ale `resize_to_full`
-(`bash/functions.d/000_functions_startup.sh`) ma **podobną, ale nietożsamą** logikę inline
-(inna kolejność: X11-first zamiast GNOME-first, plus obsługa `sway`). Nie ujednolicono jej
-z tym zadaniem — różne gałęzie robią różne rzeczy (xdotool/F11 vs DPMS/gdbus power state),
-scalenie to osobne, bardziej ryzykowne zadanie z własnym testowaniem.
+Współdzielona funkcja: `detect_display_env()` w `bash/functions.d/130_function_screen.sh` —
+zwraca (echo) jedno słowo: `darwin`, `gnome`, `sway`, `wlroots`, `x11`, `wayland`, albo pusty
+string + status 1. Sprawdza `WAYLAND_DISPLAY`/`XDG_SESSION_TYPE` przed `$DISPLAY` (Xwayland
+ustawia `$DISPLAY=:0`, więc heurystyka „DISPLAY => X11" była fałszywa pod Wayland).
 
-Wydzielona nowa, współdzielona funkcja: `detect_display_env()` w
-`bash/functions.d/130_function_screen.sh` — zwraca (echo) jedno słowo:
-`darwin`, `gnome`, `sway`, `wlroots`, `x11`, `wayland`, albo pusty string + status 1.
-Przetestowana na tej maszynie: zwraca `gnome`. Pełny test suite repo dalej zielony (19/19
-unit+integration, 7/7 e2e, 11/11 e2e-local) po dodaniu nowego pliku.
+`resize_to_full` (`000_functions_startup.sh`) **routuje już przez `detect_display_env`** —
+`case` na wykryte środowisko (gnome→gdbus Eval, sway→swaymsg, x11→xdotool F11, reszta→no-op).
+`fake_poweroff` (poniżej, jeszcze niezaimplementowane) ma pójść tym samym wzorcem: `env=$(detect_display_env)`
+zamiast własnej detekcji z linii 15-26.
 
 ## Plan wdrożenia (do zrobienia, nie zrobione jeszcze)
 

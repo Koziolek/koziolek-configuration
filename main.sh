@@ -15,6 +15,17 @@ export BASH_CONFIGURATION_DIR="$MAIN_CONFIGURATION_DIR/bash"
 export GIT_CONFIGURATION_DIR="$MAIN_CONFIGURATION_DIR/git"
 export SERVICES_CONFIGURATION_DIR="$MAIN_CONFIGURATION_DIR/services"
 export TMUX_CONFIGURATION_DIR="$MAIN_CONFIGURATION_DIR/tmux"
+export CONTEXTS_DIR="$BASH_CONFIGURATION_DIR/contexts"
+
+# Kontekst środowiska (patrz bash/contexts/detect.sh). Ustawiane tu — przed
+# podsystemami — żeby $CONFIG_CONTEXT/context_is były dostępne też w git/services/tmux,
+# gdyby któryś z tych podsystemów kiedyś tego potrzebował. Na razie żaden z nich z tego
+# nie korzysta — całe różnicowanie per-system mieszka w bash/contexts/*.sh. Pliki
+# per-kontekst ładuje load_contexts() z bash/main.sh (potrzebuje helperów z bash_functions.sh).
+if [ -r "$CONTEXTS_DIR/detect.sh" ]; then
+    . "$CONTEXTS_DIR/detect.sh"
+    export CONFIG_CONTEXT="$(detect_context)"
+fi
 
 . "$BASH_CONFIGURATION_DIR/main.sh"
 . "$GIT_CONFIGURATION_DIR/main.sh"

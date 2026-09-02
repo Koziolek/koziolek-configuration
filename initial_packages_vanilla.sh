@@ -1,4 +1,30 @@
 #!/usr/bin/env bash
+#
+# Instalacja początkowa dla Vanilla OS 2 ("Orchid" i nowsze).
+#
+# ── Gdzie to leci ────────────────────────────────────────────────────────────
+# Vanilla OS jest immutable (ABRoot) — na hoście nie ma `sudo`, `/usr` i `/etc`
+# bazy są tylko do odczytu, a `apt` żyje w subsystemie `apx` (kontener podman,
+# obraz debianowy). Ten skrypt musi więc lecieć WEWNĄTRZ subsystemu:
+#
+#     vso shell            # albo:  apx enter
+#     bash initial_packages_vanilla.sh
+#
+# W subsystemie `sudo` działa (rootless podman, użytkownik ma sudo w kontenerze).
+#
+# ── Czym różni się od initial_packages.sh (Ubuntu) ───────────────────────────
+#   • baza to Debian sid, NIE Ubuntu → brak `add-apt-repository universe`
+#     (wszystko jest w `main`);
+#   • silnik kontenerów: `podman` + `podman-compose` zamiast Dockera
+#     (natywne dla Vanilli, rootless, bez grupy `docker`, bez systemd w kontenerze);
+#   • brak `systemctl start/enable`, brak `usermod -aG docker`, brak `reboot`;
+#   • po `git clone` uruchamiamy `git/migrate_gitconfig.sh` — model include
+#     `~/.gitconfig` nie migruje się sam, a stary symlink psuł `git config`;
+#   • Steam pominięty (rootless kontener bez przekazania GPU / i386 — bez sensu;
+#     na Vanilli to zadanie dla flatpaka na hoście: `com.valvesoftware.Steam`).
+#
+# Wspólna lista pakietów apt: packages/apt_packages.sh (ta sama co Ubuntu —
+# kontener jest debianowy).
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
@@ -6,8 +32,19 @@ trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 PROJECT_NAME='koziolek-configuration'
 export DEBIAN_FRONTEND=noninteractive
 
+# ── Guard: subsystem, nie immutable host ────────────────────────────────────
+if [ ! -f /run/.containerenv ] && [ -z "${container:-}" ]; then
+    echo "❌ Ten skrypt musi lecieć WEWNĄTRZ subsystemu apx (kontener), nie na immutable hoście Vanilla OS."
+    echo "   Wejdź:   vso shell     (albo:  apx enter)"
+    echo "   i dopiero wtedy:   bash $0"
+    exit 1
+fi
+if [ -f /etc/os-release ] && ! grep -qE '^ID_LIKE=.*debian|^ID=(debian|vanilla|ubuntu)' /etc/os-release; then
+    echo "⚠️  /etc/os-release nie wygląda na debianową bazę — apt może nie zadziałać."
+fi
+
 SUDO=''
-if (( $EUID != 0 )); then
+if (( EUID != 0 )); then
     SUDO='sudo'
 fi
 
@@ -20,20 +57,14 @@ minimal_tools=(
 )
 
 # Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
-# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
-# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
 $SUDO apt-get -qq update
 for _pkg in "${minimal_tools[@]}"; do
     command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
 done
 unset _pkg
 
-# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
-# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
-# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
-# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
-# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
-# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
+# Lokalizacja wspólnej listy pakietów: lokalnie względem ${BASH_SOURCE[0]} po
+# `git clone`, albo z repo na GitHubie gdy skrypt leci przez `curl ... | bash`.
 SCRIPT_DIR=""
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,7 +85,7 @@ else
     unset _packages_tmp
 fi
 
-# verify_and_run_script — wspólna z initial_packages_mac.sh/initial_packages_vanilla.sh
+# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_mac.sh
 # (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
     # shellcheck source=packages/verify_and_run_script.sh
@@ -78,7 +109,6 @@ all_packages=(
   "${gui_libs[@]}"
   "${image_tools[@]}"
   "${diag_tools[@]}"
-  "${boxes_vm[@]}"
 )
 
 safe_apt_install() {
@@ -100,10 +130,9 @@ safe_apt_install() {
 }
 
 install_initial_packages() {
-    # we need some universe repos
     $SUDO apt-get -qq update
     safe_apt_install "${prerequisites[@]}"
-    $SUDO add-apt-repository -y universe
+    # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update
     safe_apt_install "${all_packages[@]}"
 }
@@ -119,10 +148,22 @@ prepare_workspace() {
         ln -sfn "$HOME/workspace/${PROJECT_NAME}" "$HOME/.${PROJECT_NAME}"
     fi
 
-    if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
-        ln -sfn $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
+    if [ ! -L "$HOME/.${PROJECT_NAME}" ] && [ ! -d "$HOME/.${PROJECT_NAME}" ]; then
+        ln -sfn "$HOME/workspace/${PROJECT_NAME}" "$HOME/.${PROJECT_NAME}"
     fi
     set +e
+}
+
+# Model include ~/.gitconfig (stub -> ~/.gitconfig.generated) nie migruje się sam.
+# Maszyna zainicjowana pod starym modelem ma martwy symlink ~/.gitconfig, który
+# psuje `git config` przy każdym starcie powłoki. migrate_gitconfig.sh jest
+# bezpieczne do wielokrotnego uruchomienia.
+migrate_gitconfig() {
+    local mig="$HOME/.${PROJECT_NAME}/git/migrate_gitconfig.sh"
+    if [ -f "$mig" ]; then
+        echo "Migracja ~/.gitconfig na model include..."
+        bash "$mig" || echo "⚠️ migrate_gitconfig.sh zakończone błędem — sprawdź ~/.gitconfig ręcznie"
+    fi
 }
 
 install_asdf() {
@@ -165,10 +206,6 @@ install_asdf() {
     rm -f "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
 
     echo "asdf $LATEST_TAG został pomyślnie zainstalowany w $HOME/.local/bin/"
-    echo "Dodaj następujące linie do swojego .bashrc:"
-    echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
-    echo "source \$HOME/.local/bin/asdf/asdf.sh"
-    echo "source \$HOME/.local/bin/asdf/completions/asdf.bash"
 }
 
 install_rust_and_difft() {
@@ -206,8 +243,6 @@ install_rust_and_difft() {
 }
 
 install_sdkman() {
-    # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
-    # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
     set +u
     # shellcheck source=/dev/null
@@ -216,61 +251,50 @@ install_sdkman() {
     sdk i java
     sdk i maven
     sdk i mvnd
-
 }
 
 install_apps() {
     local DOWNLOAD_DIR="$HOME/Pobrane"
     mkdir -p "$DOWNLOAD_DIR"
 
-    echo "Instalacja aplikacji tylko przez .deb pakiety..."
+    echo "Instalacja aplikacji przez .deb / repozytoria (bez Steam — patrz nagłówek)..."
 
-    # Spotify przez repozytorium. Klucz scoped przez signed-by= (nie trusted.gpg.d —
+    # Spotify — przez repozytorium. Klucz scoped przez signed-by= (nie trusted.gpg.d —
     # to zaufałoby kluczowi dla WSZYSTKICH repo apt, nie tylko Spotify).
     if ! command -v spotify >/dev/null 2>&1; then
         echo "Instalacja Spotify..."
+        set +e
         $SUDO mkdir -p /etc/apt/keyrings
         curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg \
             | $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
         echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" \
             | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
         $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
+        [ $? -ne 0 ] && echo "⚠️ Spotify — instalacja nieudana, pomijam"
+        set -e
     fi
 
     cd "$DOWNLOAD_DIR" || return 1
 
-    # Przygotuj listę aplikacji do pobrania
     local -A apps=(
         ["1password"]="https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb"
-        ["steam"]="https://cdn.akamai.steamstatic.com/client/installer/steam.deb"
     )
 
-    # Pobierz i zainstaluj każdą aplikację
     local app deb_file
     for app in "${!apps[@]}"; do
         deb_file="${app}.deb"
-
+        set +e
         if [ ! -f "$deb_file" ] || [ $(($(date +%s) - $(stat -c %Y "$deb_file" 2>/dev/null || echo 0))) -gt 86400 ]; then
             echo "Pobieranie $app..."
             wget -O "$deb_file" "${apps[$app]}"
         fi
-
         echo "Instalacja $app..."
-        $SUDO apt-get install -qqy "./$deb_file"
+        $SUDO apt-get install -qqy "./$deb_file" || echo "⚠️ $app — instalacja nieudana, pomijam"
+        set -e
     done
 
-    # Specjalna konfiguracja dla Steam (architektura 32-bit)
-    if [ -f "steam.deb" ]; then
-        echo "Konfiguracja Steam (biblioteki 32-bit)..."
-        $SUDO dpkg --add-architecture i386
-        $SUDO apt-get update
-        $SUDO apt-get install -qqy lib32gcc-s1 libc6-i386
-        $SUDO apt-get install -fqqy  # napraw zależności
-    fi
-
-    echo "Wszystkie aplikacje zostały zainstalowane!"
+    echo "Aplikacje przetworzone."
 }
-
 
 install_gh() {
     if command -v gh &>/dev/null; then
@@ -296,9 +320,8 @@ install_gh() {
     echo "✓ gh zainstalowany: $(gh --version | head -1)"
 }
 
-# Pobiera ctop, weryfikuje sumę sha256 z release'a i dopiero wtedy instaluje do
-# /usr/local/bin. Przy niezgodności sumy: warning i rezygnacja z instalacji
-# (nie zostawiamy niezweryfikowanej binarki w PATH roota).
+# Pobiera ctop, weryfikuje sumę sha256 z release'a i instaluje do /usr/local/bin.
+# ctop działa też z podmanem (docker-compat API socket).
 install_ctop() {
     local ctop_version
     ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
@@ -315,20 +338,16 @@ install_ctop() {
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
             -o "$tmp_dir/$ctop_bin"; then
         echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
             -o "$tmp_dir/sha256sums.txt"; then
         echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
-
     if ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
         echo "⚠️ Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
 
     $SUDO install -m 755 "$tmp_dir/$ctop_bin" /usr/local/bin/ctop
@@ -336,10 +355,7 @@ install_ctop() {
     echo "✓ ctop ${ctop_version} zainstalowany (suma sha256 zweryfikowana)"
 }
 
-# Pobiera kubectl z oficjalnego releasu Kubernetes (dl.k8s.io), weryfikuje sumę
-# sha256 opublikowaną obok binarki i dopiero wtedy instaluje do /usr/local/bin.
-# Nie ma go w domyślnych repo apt (bez dodawania cudzego repozytorium) — stąd
-# ta sama metoda co ctop, zamiast apt.
+# Pobiera kubectl z dl.k8s.io, weryfikuje sumę sha256 i instaluje do /usr/local/bin.
 install_kubectl() {
     local kubectl_version
     kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
@@ -354,20 +370,16 @@ install_kubectl() {
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
             -o "$tmp_dir/kubectl"; then
         echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
             -o "$tmp_dir/kubectl.sha256"; then
         echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
-
     if ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
         echo "⚠️ Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
+        rm -rf "$tmp_dir"; return 0
     fi
 
     $SUDO install -o root -g root -m 755 "$tmp_dir/kubectl" /usr/local/bin/kubectl
@@ -375,88 +387,55 @@ install_kubectl() {
     echo "✓ kubectl ${kubectl_version} zainstalowany (suma sha256 zweryfikowana)"
 }
 
-install_docker() {
-    echo "Instalacja Docker i docker-ctop..."
-    
-    # Usuń stare wersje Docker jeśli istnieją
-    echo "Usuwanie starych wersji Docker..."
-    $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
-
-    
-    # Dodaj klucz GPG Docker
-    echo "Dodawanie klucza GPG Docker..."
-    $SUDO mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    
-    # Dodaj repozytorium Docker
-    echo "Dodawanie repozytorium Docker..."
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # Aktualizuj listę pakietów z nowym repozytorium
-    $SUDO apt-get -qq update
-    
-    # Zainstaluj Docker Engine
-    echo "Instalacja Docker Engine..."
-    safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
-    # Uruchom i włącz Docker service
-    echo "Uruchamianie Docker service..."
-    $SUDO systemctl start docker
-    $SUDO systemctl enable docker
-    
-    # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
-    echo "Dodawanie użytkownika $USER do grupy docker..."
-    $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
-    $SUDO usermod -aG docker $USER
-    
-    # Zainstaluj docker-ctop
-    echo "Instalacja docker-ctop..."
+# Vanilla: podman + podman-compose zamiast Dockera. Rootless, bez grupy `docker`,
+# bez systemd w kontenerze. Podpięcie DOCKER_HOST/socketu do narzędzi mówiących
+# po docker-API (ctop, services/) → to zadanie dla kontekstu `vanilla`.
+install_podman_compose() {
+    echo "Instalacja podman + podman-compose (silnik kontenerów VanillaOS)..."
+    safe_apt_install podman podman-compose
     install_ctop
 
-    # Sprawdź instalację
-    echo "Sprawdzanie instalacji..."
-    docker --version
-    docker-compose --version
-    command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
-    
-    echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
-    echo "Użytkownik $USER został dodany do grupy docker."
+    echo "Weryfikacja:"
+    command -v podman         >/dev/null 2>&1 && podman --version         || echo "  podman: niedostępny"
+    command -v podman-compose >/dev/null 2>&1 && podman-compose --version || echo "  podman-compose: niedostępny"
     echo ""
-}
-
-maybe_restart() {
-    echo "UWAGA: Aby móc uruchamiać Docker bez sudo, musisz się wylogować i zalogować ponownie,"
-    echo "lub zrestartować komputer, żeby zmiany w grupach zostały zaaplikowane."
-    echo ""
-    read -p "Czy chcesz zrestartować komputer teraz? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[YyTt]$ ]]; then
-        echo "Restartowanie systemu..."
-        $SUDO reboot
-    else
-        echo "Pamiętaj o wylogowaniu i ponownym zalogowaniu lub restarcie systemu!"
-        echo "Możesz też uruchomić: newgrp docker"
-    fi
+    echo "ℹ️  podman jest rootless. Dla narzędzi po docker-API (ctop, docker compose):"
+    echo "    systemctl --user enable --now podman.socket"
+    echo "    export DOCKER_HOST=unix://\$XDG_RUNTIME_DIR/podman/podman.sock"
+    echo "    (kontekst 'vanilla' ustawi to automatycznie — krok 6 planu)"
 }
 
 prepare_bashrc() {
-    cd $HOME/ || return
+    cd "$HOME/" || return
     cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
+}
+
+final_notes() {
+    echo ""
+    echo "======================================================================"
+    echo "  Instalacja początkowa VanillaOS zakończona."
+    echo "======================================================================"
+    echo "  • Przeładuj powłokę:   exec bash -l"
+    echo "  • Docker/Compose:      podman + podman-compose (rootless)."
+    echo "  • Steam:               na Vanilli przez flatpak na HOŚCIE, nie tutaj:"
+    echo "                           flatpak install flathub com.valvesoftware.Steam"
+    echo "  • Narzędzia sprzętowe z diag_tools (dmidecode, nvme-cli, smartmontools)"
+    echo "    w rootless-kontenerze mają ograniczony dostęp do /dev — pełna"
+    echo "    diagnostyka sprzętu: projekt fix-comp (patrz README)."
+    echo ""
 }
 
 cd "$HOME/" || exit 1
 
 install_initial_packages
 prepare_workspace
+migrate_gitconfig
 install_asdf
 install_rust_and_difft
 install_sdkman
 install_apps
 install_gh
 install_kubectl
-install_docker
+install_podman_compose
 prepare_bashrc
-
-maybe_restart
+final_notes

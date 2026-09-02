@@ -10,9 +10,15 @@ _ALIASES=''
 
 oneTimeSetUp() {
     _ALIASES="$(bash --norc --noprofile -c "
-        export OS_TYPE='Darwin'
+        export OS_TYPE='Darwin' CONFIG_CONTEXT_FORCE='darwin' CONFIG_CONTEXT='darwin'
+        uname() { echo 'Darwin'; }; export -f uname
         shopt -s expand_aliases
+        hub() { :; }; export -f hub   # udawaj, że hub jest — pomiń instalację per-kontekst
+        . '$PROJECT_ROOT/bash/contexts/detect.sh' 2>/dev/null
         . '$PROJECT_ROOT/bash/bash_aliases.sh' 2>/dev/null
+        for c in \$(context_chain); do
+            . \"$PROJECT_ROOT/bash/contexts/\$c.sh\" 2>/dev/null || true
+        done
         alias
     " 2>/dev/null)"
 }

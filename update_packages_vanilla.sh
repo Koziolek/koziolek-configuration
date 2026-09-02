@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
+#
+# Aktualizacja pakietów dla Vanilla OS 2 — leci WEWNĄTRZ subsystemu `apx`
+# (kontener podman, baza debianowa). Na immutable hoście `apt` nie działa.
+#
+#     vso shell            # albo:  apx enter
+#     bash update_packages_vanilla.sh
+#
+# Różnice wobec update_packages.sh (Ubuntu):
+#   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
+#   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
+#     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany;
+#   • reszta (asdf, difft, sdkman, gh, kubectl, klucze GPG) — jak w wersji Ubuntu,
+#     bo kontener jest debianowy.
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 export DEBIAN_FRONTEND=noninteractive
+
+if [ ! -f /run/.containerenv ] && [ -z "${container:-}" ]; then
+    echo "❌ Ten skrypt musi lecieć WEWNĄTRZ subsystemu apx, nie na immutable hoście Vanilla OS."
+    echo "   Wejdź:   vso shell     (albo:  apx enter)"
+    exit 1
+fi
 
 SUDO=''
 if (( EUID != 0 )); then
@@ -11,7 +30,7 @@ if (( EUID != 0 )); then
 fi
 
 # ---------------------------------------------------------------------------
-# Package lists — wspólne z initial_packages.sh przez packages/apt_packages.sh
+# Package lists — wspólne z initial_packages_vanilla.sh przez packages/apt_packages.sh
 # ---------------------------------------------------------------------------
 
 minimal_tools=(
@@ -52,9 +71,36 @@ apt_installed() {
 
 declare -a REPOS_DEAD=()
 
-# refresh_apt_gpg_keys — wspólna z update_packages_vanilla.sh (packages/gpg_fix.sh).
+# refresh_apt_gpg_keys — wspólna z update_packages.sh (packages/gpg_fix.sh).
 # shellcheck source=packages/gpg_fix.sh
 source "$SCRIPT_DIR/packages/gpg_fix.sh"
+
+# Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
+# są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest
+# zainstalowany — na Vanilli używamy podmana.
+cleanup_stale_sources() {
+    echo ""
+    echo "=== Martwe źródła apt ==="
+    local removed=0
+
+    if [ -f /etc/apt/sources.list.d/docker.list ] && ! command -v docker >/dev/null 2>&1; then
+        warn "docker.list obecny, ale Docker niezainstalowany (Vanilla używa podmana)."
+        local reply=n
+        read -r -p "Usunąć /etc/apt/sources.list.d/docker.list (+ keyring)? [y/N]: " -n 1 -r reply || reply=n
+        echo
+        if [[ "$reply" =~ ^[YyTt]$ ]]; then
+            $SUDO rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
+            ok "docker.list usunięty"
+            (( removed++ )) || true
+        fi
+    fi
+
+    if (( removed > 0 )); then
+        $SUDO apt-get -qq update || true
+    else
+        ok "Brak martwych źródeł do wyczyszczenia"
+    fi
+}
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
@@ -89,13 +135,18 @@ check_gh() {
     fi
 }
 
-check_docker() {
+check_podman() {
     echo ""
-    echo "=== Docker ==="
-    if command -v docker &>/dev/null; then
-        ok "docker: $(docker --version)"
+    echo "=== podman / podman-compose ==="
+    if command -v podman &>/dev/null; then
+        ok "podman: $(podman --version)"
     else
-        missing "docker: nie zainstalowany"
+        missing "podman: nie zainstalowany"
+    fi
+    if command -v podman-compose &>/dev/null; then
+        ok "podman-compose: $(podman-compose --version 2>&1 | head -1)"
+    else
+        missing "podman-compose: nie zainstalowany"
     fi
     if command -v ctop &>/dev/null; then
         ok "ctop: $(ctop -v 2>&1 | head -1)"
@@ -160,11 +211,6 @@ check_apps() {
     else
         missing "1password: nie zainstalowany"
     fi
-    if command -v steam &>/dev/null || apt_installed steam; then
-        ok "steam"
-    else
-        missing "steam: nie zainstalowany"
-    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -226,16 +272,16 @@ update_gh() {
     fi
 }
 
-update_docker() {
+update_podman_compose() {
     echo ""
-    echo "=== Docker ==="
-    if command -v docker &>/dev/null; then
-        info "Aktualizacja Docker Engine..."
-        $SUDO apt-get install -qqy --only-upgrade \
-            docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null || true
-        ok "Docker zaktualizowany: $(docker --version)"
+    echo "=== podman / podman-compose ==="
+    if command -v podman &>/dev/null; then
+        info "Aktualizacja podman + podman-compose..."
+        $SUDO apt-get install -qqy --only-upgrade podman podman-compose 2>/dev/null || true
+        ok "podman: $(podman --version)"
     else
-        warn "Docker nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
+        info "Instalacja podman + podman-compose..."
+        safe_apt_install podman podman-compose
     fi
 
     info "Aktualizacja ctop..."
@@ -298,7 +344,7 @@ update_asdf() {
     echo "=== asdf ==="
     local asdf_bin="$HOME/.local/bin/asdf"
     if [ ! -x "$asdf_bin" ]; then
-        warn "asdf nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
+        warn "asdf nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
         return 0
     fi
 
@@ -351,11 +397,10 @@ update_sdkman() {
     echo ""
     echo "=== SDKMAN ==="
     if [ ! -d "$HOME/.sdkman" ]; then
-        warn "SDKMAN nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
+        warn "SDKMAN nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
         return 0
     fi
     info "Aktualizacja SDKMAN..."
-    # Run in subshell — sdk selfupdate may call exit internally
     (
         set +eu
         # shellcheck source=/dev/null
@@ -380,12 +425,12 @@ update_sdkman() {
 # ---------------------------------------------------------------------------
 
 echo "======================================="
-echo "  update_packages — raport stanu"
+echo "  update_packages_vanilla — raport stanu"
 echo "======================================="
 
 check_apt_packages
 check_gh
-check_docker
+check_podman
 check_kubectl
 check_asdf
 check_difft
@@ -400,9 +445,10 @@ echo "======================================="
 echo ""
 echo "=== Klucze GPG ==="
 refresh_apt_gpg_keys
+cleanup_stale_sources
 update_apt_packages
 update_gh
-update_docker
+update_podman_compose
 update_kubectl
 update_asdf
 update_difft

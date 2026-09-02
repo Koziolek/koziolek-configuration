@@ -22,19 +22,20 @@ testWhoUseSwapDefinedOnLinux() {
     assertTrue 'who_use_swap musi być zdefiniowana na Linux' $?
 }
 
-testWhoUsePortUsesSSOnLinux() {
+testWhoUsePortDelegatesToListeningSocketPairs() {
     local body
     body="$(declare -f who_use_port)"
-    assertContains 'who_use_port na Linux musi używać ss -tulpn' \
-        "$body" 'ss -tulpn'
+    assertContains 'who_use_port musi wołać _listening_socket_pairs' \
+        "$body" '_listening_socket_pairs'
 }
 
-testWhoUsePortHasBothSSAndLsofBranches() {
-    # Funkcja ma if/else: ss dla Linux, lsof dla Darwin — oba muszą być w ciele
+testListeningSocketPairsUsesSSOnLinux() {
     local body
-    body="$(declare -f who_use_port)"
-    assertContains 'who_use_port musi mieć gałąź ss (Linux)' "$body" 'ss -tulpn'
-    assertContains 'who_use_port musi mieć gałąź lsof (Darwin)' "$body" 'lsof'
+    body="$(declare -f _listening_socket_pairs)"
+    assertContains '_listening_socket_pairs na Linux musi używać ss -tulpn' \
+        "$body" 'ss -tulpn'
+    assertNotContains 'wersja Linux nie może używać lsof (to macOS)' \
+        "$body" 'lsof'
 }
 
 testExterminatusWithNoMatchReturns0() {

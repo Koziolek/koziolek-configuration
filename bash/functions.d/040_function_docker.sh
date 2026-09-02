@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
+#
+# Silnik kontenerów bierzemy ze zmiennej ${DOCKER_CLI:-docker} (ustawia bash_exports.sh,
+# kontekst vanilla nadpisuje na `podman`), a compose z ${DOCKER_COMPOSE}.
 
 # Function checking docker compose availability
 function check_docker_compose_availability() {
-    if docker compose version &>/dev/null; then
-        echo "docker compose"
+    if [ -n "${DOCKER_COMPOSE:-}" ] && $DOCKER_COMPOSE version &>/dev/null; then
+        echo "$DOCKER_COMPOSE"
         return 0
     else
-        log_error "docker compose plugin nie jest dostępny. Zainstaluj docker-compose-plugin."
+        log_error "compose niedostępny (DOCKER_COMPOSE='${DOCKER_COMPOSE:-}')"
         return 1
     fi
 }
@@ -22,7 +25,7 @@ function check_container_status() {
 
   local status
 
-  if status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null); then
+  if status=$("${DOCKER_CLI:-docker}" inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null); then
       echo "${C_GREEN}The '$container_name': $status${C_NC}"
       return 0
   else
@@ -61,7 +64,7 @@ function check_all_services_healthy() {
         local container_name
         container_name=$($DOCKER_COMPOSE -f "$compose_file" ps -q "$service" 2>/dev/null)
         if [ -n "$container_name" ]; then
-            local status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null)
+            local status=$("${DOCKER_CLI:-docker}" inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null)
 
             if [ "$status" != "running" ]; then
                 failed_services+=("$service ($status)")

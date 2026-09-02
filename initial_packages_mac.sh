@@ -5,66 +5,30 @@ trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 PROJECT_NAME='koziolek-configuration'
 
-# Pobiera zdalny skrypt instalacyjny do pliku tymczasowego i próbuje zweryfikować
-# go przez sumę kontrolną (git blob sha1 zgodny z tym, co zgłasza GitHub API dla
-# danego pliku/repo/ref — działa tylko gdy skrypt jest hostowany na GitHubie).
-# Jeśli suma jest niedostępna (brak parametrów gh_* albo API nie odpowiada) ALBO
-# się nie zgadza — wypisuje ostrzeżenie i PYTA użytkownika o zgodę na kontynuację.
-# Bez zgody funkcja zwraca 1 i nic nie uruchamia.
-# Usage: verify_and_run_script "<opis>" "<url>" ["<gh_owner/repo>" "<sciezka>" "<ref>"]
-verify_and_run_script() {
-    local desc="$1" url="$2" gh_repo="${3:-}" gh_path="${4:-}" gh_ref="${5:-HEAD}"
+# Lokalizacja skryptu: potrzebna już tu (przed install_homebrew, które woła
+# verify_and_run_script) — nie tylko przy okazji brew_packages.sh niżej. Jeśli skrypt
+# leży na dysku (po `git clone`), source'ujemy pliki lokalnie względem ${BASH_SOURCE[0]}.
+# Gdy leci przez `curl ... | bash` (BASH_SOURCE puste), pobieramy je z repo na GitHubie.
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
-    local tmp_script
-    tmp_script=$(mktemp)
-    if ! curl -fsSL "$url" -o "$tmp_script"; then
-        echo "❌ Nie udało się pobrać: $desc ($url)"
-        rm -f "$tmp_script"
-        return 1
-    fi
-
-    local checksum_ok=false
-    local reason=""
-
-    if [ -n "$gh_repo" ]; then
-        local expected_sha actual_sha size
-        expected_sha=$(curl -sf "https://api.github.com/repos/${gh_repo}/contents/${gh_path}?ref=${gh_ref}" \
-            | grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
-        if [ -z "$expected_sha" ]; then
-            reason="Nie udało się pobrać oficjalnej sumy kontrolnej z GitHub API dla: $desc"
-        else
-            size=$(wc -c < "$tmp_script")
-            actual_sha=$( { printf 'blob %d\0' "$size"; cat "$tmp_script"; } | sha1sum | awk '{print $1}')
-            if [ "$actual_sha" = "$expected_sha" ]; then
-                checksum_ok=true
-            else
-                reason="Suma kontrolna NIE ZGADZA SIĘ dla: $desc (oczekiwano ${expected_sha}, jest ${actual_sha})"
-            fi
-        fi
-    else
-        reason="Brak dostępnej oficjalnej sumy kontrolnej dla: $desc"
-    fi
-
-    if ! $checksum_ok; then
-        echo "⚠️  $reason"
-        echo "⚠️  Uruchomienie niezweryfikowanego skryptu z sieci: $url"
-        local reply
-        read -r -p "Kontynuować mimo to? [y/N]: " -n 1 -r reply
-        echo
-        if [[ ! "$reply" =~ ^[Yy]$ ]]; then
-            echo "❌ Przerwano na życzenie użytkownika: $desc"
-            rm -f "$tmp_script"
-            return 1
-        fi
-    else
-        echo "✓ Suma kontrolna zweryfikowana (git blob sha1 zgodny z GitHub API): $desc"
-    fi
-
-    bash "$tmp_script"
-    local rc=$?
-    rm -f "$tmp_script"
-    return $rc
-}
+# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_vanilla.sh
+# (packages/verify_and_run_script.sh).
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+    # shellcheck source=packages/verify_and_run_script.sh
+    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+else
+    _vars_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
+        -o "$_vars_tmp"
+    # shellcheck disable=SC1090
+    source "$_vars_tmp"
+    rm -f "$_vars_tmp"
+    unset _vars_tmp
+fi
 
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -92,17 +56,7 @@ for _pkg in "${minimal_tools[@]}"; do
 done
 unset _pkg
 
-# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
-# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
-# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
-# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
-# donikąd — wtedy pobieramy ten sam plik z repo na GitHubie i source'ujemy
-# z pliku tymczasowego (patrz initial_packages.sh, ten sam fix).
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
-
+# Wspólna lista pakietów: $SCRIPT_DIR już wyliczone na górze pliku (verify_and_run_script).
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/brew_packages.sh" ]; then
     # shellcheck source=packages/brew_packages.sh
     source "$SCRIPT_DIR/packages/brew_packages.sh"
@@ -196,7 +150,9 @@ install_rust_and_difft() {
     cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
     [ -z "$cargo_bin" ] && { echo "Błąd: cargo niedostępne"; return 1; }
 
-    "$cargo_bin" install difftastic
+    # --locked: użyj Cargo.lock difftastica (inaczej nowsze zależności wymuszają
+    # nowszego rustc niż daje asdf).
+    "$cargo_bin" install --locked difftastic
     echo "✓ difftastic zainstalowany"
 }
 

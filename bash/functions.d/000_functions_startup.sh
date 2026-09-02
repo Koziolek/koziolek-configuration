@@ -4,9 +4,39 @@
 # and using xdotool ow gdbus ir swaymsg on Wayland
 ##
 function resize_to_full () {
-    [[ "$(uname -s)" == "Darwin" ]] && return 0
-    # Only run if X11 session or if DISPLAY exists
-    if [ "$XDG_SESSION_TYPE" = "x11" ] || [ -n "$DISPLAY" ]; then
+    # Routing po detect_display_env (130_function_screen.sh) zamiast heurystyki
+    # "$DISPLAY => X11" — pod Wayland Xwayland ustawia $DISPLAY=:0, przez co
+    # xdotool był wołany w sesji Wayland i sypał błędami XGetWindowProperty.
+    local _disp
+    if declare -F detect_display_env >/dev/null 2>&1; then
+        _disp="$(detect_display_env)" || return 0
+    elif [ -n "${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+        _disp="wayland"
+    elif [ "${XDG_SESSION_TYPE:-}" = "x11" ] || [ -n "${DISPLAY:-}" ]; then
+        _disp="x11"
+    else
+        return 0
+    fi
+
+    case "$_disp" in
+        darwin|""|wayland|wlroots)
+            return 0
+            ;;
+        gnome)
+            command -v gdbus >/dev/null 2>&1 || return 0
+            gdbus call --session \
+              --dest org.gnome.Shell \
+              --object-path /org/gnome/Shell \
+              --method org.gnome.Shell.Eval \
+              'global.display.focus_window.toggle_fullscreen();' \
+              >/dev/null 2>&1
+            return 0
+            ;;
+        sway)
+            command -v swaymsg >/dev/null 2>&1 && swaymsg fullscreen toggle >/dev/null 2>&1
+            return 0
+            ;;
+        x11)
         # Check if xdotool is installed
         if ! command -v xdotool >/dev/null 2>&1; then
             return 0
@@ -51,34 +81,9 @@ function resize_to_full () {
         if [[ $is_max -eq 0 ]]; then
              xdotool key F11
         fi
-    elif [ "$XDG_SESSION_TYPE" = "wayland" ]; then
-        # --- GNOME ---
-        if command -v gdbus >/dev/null 2>&1; then
-            echo "Attempting to toggle fullscreen in GNOME"
-            gdbus call --session \
-              --dest org.gnome.Shell \
-              --object-path /org/gnome/Shell \
-              --method org.gnome.Shell.Eval \
-              'global.display.focus_window.toggle_fullscreen();' \
-              >/dev/null 2>&1
-            return $?
-        fi
-
-        # --- sway / wlroots-based compositor ---
-        if command -v swaymsg >/dev/null 2>&1; then
-            echo "Attempting to toggle fullscreen in Sway"
-            swaymsg fullscreen toggle
-            return $?
-        fi
-
-        echo "Wayland session detected, but no supported window manager interface found (gdbus/swaymsg missing)"
         return 0
-    elif [ "$XDG_SESSION_TYPE" = "tty" ] || [ -z "$XDG_SESSION_TYPE" ]; then
-        return 0  # WSL2, TTY lub brak sesji graficznej
-    else
-        echo "Unsupported session type: $XDG_SESSION_TYPE"
-        return 0
-    fi
+            ;;
+    esac
 }
 
 ##

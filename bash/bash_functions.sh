@@ -161,7 +161,9 @@ function check_workspace() {
   done
 
   for name in "${ENV_VARS[@]}"; do
-    if [ -z "${!name}" ]; then
+    if [ -z "${!name}" ] \
+       && { command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1; }; then
+      # Ostrzegaj tylko o realnym braku: silnik kontenerowy jest, a compose nie ustawione.
       log_warn "Var $name is not set"
     fi
   done
