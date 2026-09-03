@@ -25,12 +25,15 @@ oneTimeTearDown() {
 
 setUp() {
     : > "$_GIT_LOG"
+    unset _LS_REMOTE_RC
     # shellcheck source=/dev/null
     . "$PROJECT_ROOT/bash/functions.d/095_function_misc.sh"
 
-    # Mock git — loguje wywołania zamiast wykonywać
+    # Mock git — loguje wywołania zamiast wykonywać. `ls-remote` zwraca kod
+    # sterowany $_LS_REMOTE_RC (domyślnie sukces) — do testów flagi -p.
     git() {
         echo "GIT $*" >> "$_GIT_LOG"
+        [ "$1" = "ls-remote" ] && return "${_LS_REMOTE_RC:-0}"
         return 0
     }
 }
@@ -95,6 +98,37 @@ testFastPathReturnsZero() {
     rc=$?
     assertEquals 'fast-path musi zwracać 0' 0 "$rc"
     rm -rf "$_FAKE_TOOLS/fastlib"
+}
+
+# --- -p (bezpieczne klonowanie repo prywatnego) -----------------------------
+
+testSafeFlagSkipsCloneWhenNoAccess() {
+    rm -rf "$_FAKE_TOOLS/privlib"
+    _LS_REMOTE_RC=1
+    local rc=99 out
+    out=$(install_lib -r "https://example.com/privlib.git" -t "privlib" -p 2>&1)
+    rc=$?
+    assertEquals 'brak dostępu (-p) NIE jest błędem — return 0' 0 "$rc"
+    assertContains 'ma być komunikat o braku dostępu' "$out" 'brak dostępu'
+    assertNotContains 'clone NIE powinno być wywołane bez dostępu' "$(cat "$_GIT_LOG")" 'clone'
+    unset _LS_REMOTE_RC
+}
+
+testSafeFlagClonesWhenAccessOk() {
+    rm -rf "$_FAKE_TOOLS/privlib2"
+    _LS_REMOTE_RC=0
+    install_lib -r "https://example.com/privlib2.git" -t "privlib2" -p >/dev/null 2>&1
+    assertContains 'z dostępem (-p) clone MA być wywołane' "$(cat "$_GIT_LOG")" 'clone'
+    unset _LS_REMOTE_RC
+}
+
+testWithoutSafeFlagSkipsAccessCheck() {
+    rm -rf "$_FAKE_TOOLS/publiclib"
+    _LS_REMOTE_RC=1
+    install_lib -r "https://example.com/publiclib.git" -t "publiclib" >/dev/null 2>&1
+    assertNotContains 'bez -p nie sprawdzamy dostępu (ls-remote)' "$(cat "$_GIT_LOG")" 'ls-remote'
+    assertContains 'bez -p clone leci normalnie mimo _LS_REMOTE_RC=1' "$(cat "$_GIT_LOG")" 'clone'
+    unset _LS_REMOTE_RC
 }
 
 # ---------------------------------------------------------------------------
