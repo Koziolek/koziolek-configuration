@@ -1,0 +1,15 @@
+FROM rockylinux:9
+
+# --allowerasing: obraz bazowy ma curl-minimal, konfliktuje z pełnym curl.
+RUN yum install -y --allowerasing \
+    curl \
+    sudo \
+    && yum clean all
+
+# Lokalny skrypt zamiast curl z GitHub — testujemy bieżące zmiany
+COPY initial_packages_redhat.sh /initial_packages_redhat.sh
+COPY packages /packages
+RUN chmod +x /initial_packages_redhat.sh
+
+# Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
+CMD ["/initial_packages_redhat.sh"]

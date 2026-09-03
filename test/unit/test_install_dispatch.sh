@@ -34,6 +34,10 @@ testWslPicksLinuxScript() {
     assertEquals 'initial_packages.sh' "$(_dispatch wsl)"
 }
 
+testRedhatPicksRedhatScript() {
+    assertEquals 'initial_packages_redhat.sh' "$(_dispatch redhat)"
+}
+
 testVanillaSubsystemPicksVanillaScript() {
     # marker kontenera + /run/host/etc/os-release z ID=vanilla → subsystem apx
     local host_os="$_TMP/host-os-release"

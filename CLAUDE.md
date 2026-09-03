@@ -12,26 +12,31 @@ zmienna `PROJECT_NAME` w skryptach instalacyjnych. Stara nazwa `git-configuratio
 przekierowania GitHuba — nowy kod używa nowej.
 
 Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**, **Vanilla OS 2** (kontener `apx`),
-**WSL**. Elementy swoiste dla systemu są wydzielone do `bash/contexts/<system>.sh`; nie dodawaj rozgałęzień
-`if [[ "$(uname -s)" == "Darwin" ]]` w kodzie wspólnym.
+**WSL**, **RedHat/CentOS/Fedora** (rodzina yum). Elementy swoiste dla systemu są wydzielone do
+`bash/contexts/<system>.sh`; nie dodawaj rozgałęzień `if [[ "$(uname -s)" == "Darwin" ]]` w kodzie wspólnym.
 
 ## Testowanie
 
 ```bash
-./test/run.sh              # testy unit + integration (Docker na Linux, wymagane --native na macOS)
-./test/run.sh --native     # uruchom bezpośrednio na hoście, bez Dockera (macOS)
-./test/run.sh --e2e        # dodatkowo e2e: initial_packages.sh w Ubuntu 24.04 (wolne)
-./test/run.sh --e2e-local  # e2e z lokalnym projektem podpiętym jako volume
-./test/run.sh --all        # unit + integration + oba e2e
+./test/run.sh               # testy unit + integration (Docker na Linux, wymagane --native na macOS)
+./test/run.sh --native      # uruchom bezpośrednio na hoście, bez Dockera (macOS)
+./test/run.sh --e2e         # dodatkowo e2e: initial_packages.sh w Ubuntu 24.04 (wolne)
+./test/run.sh --e2e-local   # e2e z lokalnym projektem podpiętym jako volume
+./test/run.sh --e2e-redhat  # e2e: initial_packages_redhat.sh w rockylinux:9 (wolne)
+./test/run.sh --all         # unit + integration + wszystkie e2e
 ./test/run.sh --filter <wzorzec>  # tylko pliki testowe pasujące do wzorca
 ```
 
 Runner (`test/run.sh`) sprawdza/przygotowuje środowisko Docker (obrazy, sieć), buduje obrazy testowe z
-`test/Dockerfile-unit` i `test/Dockerfile-e2e`, i deleguje do `test/run-inside.sh`, który odpala pliki
-`test_*.sh` z `test/unit/`, `test/integration/` (oraz warianty `linux/`/`darwin/` zależnie od `uname -s`)
-przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e (`test/e2e/`) budują obraz z lokalnym
-`initial_packages.sh` (`COPY`, nie curl z GitHuba) — testują bieżące, niezacommitowane zmiany.
-Uruchamiane też w CI: `.github/workflows/test.yml` (unit+integration na push/PR do `master`).
+`test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`, i deleguje do
+`test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`, `test/integration/` (oraz warianty
+`linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e
+(`test/e2e/`) budują obraz z lokalnym `initial_packages.sh`/`initial_packages_redhat.sh` (`COPY`, nie curl
+z GitHuba) — testują bieżące, niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla obu (skrypt
+docelowy przez `INIT_SCRIPT`), zawężony do bezpiecznych funkcji (`install_initial_packages`,
+`prepare_workspace`, `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od
+`systemctl`/sieci). Uruchamiane też w CI: `.github/workflows/test.yml` (unit+integration na push/PR do
+`master`; e2e pozostaje lokalne/manualne — wymaga Dockera i sieci).
 
 ## Architektura
 
@@ -82,25 +87,27 @@ rozwiązuj tak, by **jak najwięcej zostało wspólne**:
 ### Konteksty (`bash/contexts/`)
 
 `$OS_TYPE` (`uname -s`) rozróżnia tylko Darwin/Linux — za mało dla różnic Ubuntu / Debian /
-Vanilla OS / WSL. `bash/contexts/detect.sh` dokłada warstwę:
+Vanilla OS / WSL / RedHat. `bash/contexts/detect.sh` dokłada warstwę:
 
-- **`detect_context()`** → jedno słowo (liść): `darwin` / `ubuntu` / `debian` / `vanilla` / `wsl` / `linux`.
-  Źródła: `uname`, `/etc/os-release` (`ID`/`ID_LIKE`), `/proc/version`, `$WSL_DISTRO_NAME`.
-  Wynik w `$CONFIG_CONTEXT` (eksport z `main.sh`). Wymuszenie w testach: `CONFIG_CONTEXT_FORCE=…`,
-  podmiana pliku: `OS_RELEASE_FILE=…`.
+- **`detect_context()`** → jedno słowo (liść): `darwin` / `ubuntu` / `debian` / `vanilla` / `wsl` /
+  `redhat` / `linux`. Źródła: `uname`, `/etc/os-release` (`ID`/`ID_LIKE`), `/proc/version`,
+  `$WSL_DISTRO_NAME`. Wynik w `$CONFIG_CONTEXT` (eksport z `main.sh`). Wymuszenie w testach:
+  `CONFIG_CONTEXT_FORCE=…`, podmiana pliku: `OS_RELEASE_FILE=…`.
 - **`context_chain()`** rozwija liść w łańcuch ogólny→szczegółowy: `vanilla → linux debian vanilla`,
   `ubuntu → linux debian ubuntu`, `wsl → linux debian wsl` (WSL jest w praktyce zawsze
-  Ubuntu/Debian pod spodem — dziedziczy apt/hub z `debian.sh`), `darwin → darwin`.
+  Ubuntu/Debian pod spodem — dziedziczy apt/hub z `debian.sh`), `redhat → linux redhat`
+  (RHEL/CentOS/Fedora/Rocky/Alma — rodzina yum, osobna od debian), `darwin → darwin`.
 - **`load_contexts()`** (z `bash/main.sh`, po wspólnej konfiguracji, przed `bash_customs`) sourcuje
   `contexts/<c>.sh` dla każdego ogniwa — plik szczegółowy nadpisuje ogólniejszy.
 - **`context_is <name>`** — czy `<name>` jest w łańcuchu (`context_is debian` jest prawdą i dla
   `ubuntu`, i dla `vanilla`).
 
-Pliki `contexts/{linux,debian,ubuntu,vanilla,wsl,darwin}.sh` trzymają **tylko** nadpisania swojej
-warstwy (aliasy, `export`, redefinicje funkcji). Wspólne rzeczy zostają w `bash_*.sh` / `functions.d/`.
-Stan: `linux` (aliasy), `debian` (hub/apt), `vanilla` (`DOCKER_CLI`/`DOCKER_COMPOSE`/`fix-net`),
-`wsl` (`in-window`→`wslview`), `darwin` (Homebrew, hub/brew, redefinicje funkcji); `ubuntu` pusty.
-Testy: `test/unit/test_context_detect.sh`, `test/unit/linux/test_{vanilla_aliases,vanilla_context,debian_context,wsl_context}.sh`.
+Pliki `contexts/{linux,debian,ubuntu,vanilla,wsl,redhat,darwin}.sh` trzymają **tylko** nadpisania
+swojej warstwy (aliasy, `export`, redefinicje funkcji). Wspólne rzeczy zostają w `bash_*.sh` /
+`functions.d/`. Stan: `linux` (aliasy), `debian` (hub/apt), `vanilla` (`DOCKER_CLI`/`DOCKER_COMPOSE`/`fix-net`),
+`wsl` (`in-window`→`wslview`), `redhat` (hub/yum), `darwin` (Homebrew, hub/brew, redefinicje funkcji);
+`ubuntu` pusty. Testy: `test/unit/test_context_detect.sh`,
+`test/unit/linux/test_{vanilla_aliases,vanilla_context,debian_context,wsl_context,redhat_context}.sh`.
 
 ### System pluginów `get_and_build` (gab)
 
@@ -149,7 +156,8 @@ nie commituj tu danych uwierzytelniających. Plik `.senv.template` pokazuje ocze
 ## Bootstrap pakietów (per system)
 
 Instalacja i aktualizacja narzędzi — osobny skrypt na system. Wspólne listy pakietów:
-`packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS).
+`packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS),
+`packages/yum_packages.sh` (RedHat/CentOS/Fedora).
 
 **`install.sh`** (root repo) — dispatcher pod `curl … | bash`: `ensure_git` → wykrywa kontekst
 (pobiera `bash/contexts/detect.sh`, `detect_context`) → rozróżnia host vs subsystem Vanilla
@@ -168,6 +176,7 @@ i trzy `initial_packages*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `apt_
 | Ubuntu / Debian | `initial_packages.sh` | `update_packages.sh` | apt + Docker |
 | macOS | `initial_packages_mac.sh` | `update_packages_mac.sh` | Homebrew |
 | Vanilla OS 2 | `initial_packages_vanilla.sh` | `update_packages_vanilla.sh` | apt (subsystem `apx`) + podman |
+| RedHat / CentOS / Fedora | `initial_packages_redhat.sh` | `update_packages_redhat.sh` | yum + Docker |
 
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
 `apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija

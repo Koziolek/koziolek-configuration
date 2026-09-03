@@ -53,6 +53,23 @@ testDebianLikeFallsBackToDebian() {
     assertEquals 'debian' "$(_detect_with Linux "$(_mk_os_release linuxmint 'ubuntu debian')")"
 }
 
+testDetectsFedora() {
+    assertEquals 'redhat' "$(_detect_with Linux "$(_mk_os_release fedora)")"
+}
+
+testDetectsCentos() {
+    assertEquals 'redhat' "$(_detect_with Linux "$(_mk_os_release centos 'rhel fedora')")"
+}
+
+testDetectsRhel() {
+    assertEquals 'redhat' "$(_detect_with Linux "$(_mk_os_release rhel fedora)")"
+}
+
+testRedhatLikeFallsBackToRedhat() {
+    # Oracle Linux — ID nie jest na jawnej liście, tylko ID_LIKE="fedora"
+    assertEquals 'redhat' "$(_detect_with Linux "$(_mk_os_release ol fedora)")"
+}
+
 testUnknownLinuxFallsBackToLinux() {
     assertEquals 'linux' "$(_detect_with Linux "$(_mk_os_release arch)")"
 }
@@ -89,6 +106,10 @@ testChainWsl() {
     assertEquals 'linux debian wsl' "$(context_chain wsl | tr '\n' ' ' | sed 's/ $//')"
 }
 
+testChainRedhat() {
+    assertEquals 'linux redhat' "$(context_chain redhat | tr '\n' ' ' | sed 's/ $//')"
+}
+
 testChainUnknownFallsBackToLinux() {
     assertEquals 'linux' "$(context_chain nonsense | tr '\n' ' ' | sed 's/ $//')"
 }
@@ -113,6 +134,11 @@ testContextIsDebianFalseForDarwin() {
 testContextIsLeafMatches() {
     CONFIG_CONTEXT='vanilla' context_is vanilla
     assertEquals 'context_is vanilla musi być prawdą dla vanilla' 0 $?
+}
+
+testContextIsRedhatFalseForDebianFamily() {
+    CONFIG_CONTEXT='ubuntu' context_is redhat
+    assertNotEquals 'context_is redhat musi być fałszem dla ubuntu' 0 $?
 }
 
 # --- load_contexts (sourcing łańcucha) ----------------------------------

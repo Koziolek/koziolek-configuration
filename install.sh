@@ -103,6 +103,7 @@ select_script() {
         darwin)                 echo "initial_packages_mac.sh" ;;
         vanilla)                echo "initial_packages_vanilla.sh" ;;
         ubuntu|debian|wsl)      echo "initial_packages.sh" ;;
+        redhat)                 echo "initial_packages_redhat.sh" ;;
         *)                      return 1 ;;
     esac
 }
@@ -124,7 +125,7 @@ main() {
 
     if ! script=$(select_script "$ctx"); then
         echo "❌ Nieobsługiwany system (kontekst: '$ctx')." >&2
-        echo "   Obsługiwane: Ubuntu/Debian, macOS, Vanilla OS 2, WSL." >&2
+        echo "   Obsługiwane: Ubuntu/Debian, macOS, Vanilla OS 2, WSL, RedHat/CentOS/Fedora." >&2
         exit 1
     fi
 
