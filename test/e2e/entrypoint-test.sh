@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Uruchamiany wewnątrz kontenera e2e.
-# Sourcuje tylko definicje funkcji z initial_packages.sh (bez top-level calls)
+# Sourcuje tylko definicje funkcji z initial_packages*.sh (bez top-level calls)
 # i wykonuje tylko bezpieczne funkcje.
+#
+# SCRIPT sparametryzowany przez INIT_SCRIPT — ten sam entrypoint obsługuje
+# initial_packages.sh (Ubuntu, domyślnie) i initial_packages_redhat.sh
+# (INIT_SCRIPT=/initial_packages_redhat.sh) — nazwy funkcji są identyczne.
 
 set -euo pipefail
 
-SCRIPT=/initial_packages.sh
+SCRIPT="${INIT_SCRIPT:-/initial_packages.sh}"
 
 # Znajdź linię z pierwszym top-level call (cd $HOME/) — sourcujemy tylko przed nią
 CUTLINE=$(grep -n "^cd " "$SCRIPT" | head -1 | cut -d: -f1)

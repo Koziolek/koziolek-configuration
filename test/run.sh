@@ -5,9 +5,10 @@
 #   ./test/run.sh [opcje]
 #
 # Opcje:
-#   --all               Uruchom wszystkie testy (unit + e2e + e2e-local)
+#   --all               Uruchom wszystkie testy (unit + e2e + e2e-local + e2e-redhat)
 #   --e2e               Uruchom testy e2e (initial_packages.sh + GitHub clone, wolne)
 #   --e2e-local         Uruchom testy e2e z lokalnym projektem podpiętym jako volume
+#   --e2e-redhat        Uruchom testy e2e dla initial_packages_redhat.sh (rockylinux:9, wolne)
 #   --native            Uruchom testy bezpośrednio na hoście (bez Docker) — wymagane na macOS
 #   --filter <wzorzec>  Uruchom tylko pliki pasujące do wzorca (unit/integration)
 #   --rebuild           Wymuś przebudowanie obrazów Docker
@@ -21,9 +22,11 @@ RESULTS_DIR="$TEST_DIR/results"
 
 UNIT_IMAGE="koziolek-test-unit"
 E2E_IMAGE="koziolek-test-e2e"
+E2E_REDHAT_IMAGE="koziolek-test-e2e-redhat"
 
 RUN_E2E=false
 RUN_E2E_LOCAL=false
+RUN_E2E_REDHAT=false
 RUN_NATIVE=false
 TEST_FILTER=""
 REBUILD=false
@@ -36,13 +39,14 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all)       RUN_E2E=true; RUN_E2E_LOCAL=true; shift ;;
-        --e2e)       RUN_E2E=true; shift ;;
-        --e2e-local) RUN_E2E_LOCAL=true; shift ;;
-        --native)    RUN_NATIVE=true; shift ;;
-        --filter)    TEST_FILTER="$2"; shift 2 ;;
-        --rebuild)   REBUILD=true; shift ;;
-        --help|-h)   usage ;;
+        --all)        RUN_E2E=true; RUN_E2E_LOCAL=true; RUN_E2E_REDHAT=true; shift ;;
+        --e2e)        RUN_E2E=true; shift ;;
+        --e2e-local)  RUN_E2E_LOCAL=true; shift ;;
+        --e2e-redhat) RUN_E2E_REDHAT=true; shift ;;
+        --native)     RUN_NATIVE=true; shift ;;
+        --filter)     TEST_FILTER="$2"; shift 2 ;;
+        --rebuild)    REBUILD=true; shift ;;
+        --help|-h)    usage ;;
         *) echo "Nieznana opcja: $1"; exit 1 ;;
     esac
 done
@@ -130,11 +134,17 @@ _preflight_docker() {
     if $RUN_E2E || $RUN_E2E_LOCAL; then
         _check_base_image "ubuntu:24.04" || base_ok=false
     fi
+    if $RUN_E2E_REDHAT; then
+        _check_base_image "rockylinux:9" || base_ok=false
+    fi
     $base_ok || { echo ""; echo "  Brakujące obrazy bazowe — przerwanie."; exit 1; }
 
     _check_test_image "$UNIT_IMAGE" "$TEST_DIR/Dockerfile-unit"
     if $RUN_E2E || $RUN_E2E_LOCAL; then
         _check_test_image "$E2E_IMAGE" "$TEST_DIR/Dockerfile-e2e"
+    fi
+    if $RUN_E2E_REDHAT; then
+        _check_test_image "$E2E_REDHAT_IMAGE" "$TEST_DIR/Dockerfile-e2e-redhat"
     fi
 
     echo "======================================="
@@ -222,7 +232,19 @@ else
     echo "▶ Testy e2e-local pominięte (--e2e-local aby uruchomić)"
 fi
 
+# --- Testy e2e-redhat (rockylinux:9) ---
+if $RUN_E2E_REDHAT; then
+    echo ""
+    echo "▶ Uruchamianie testów e2e-redhat..."
+    RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
+        bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh"
+    E2E_REDHAT_EXIT=$?
+else
+    E2E_REDHAT_EXIT=0
+    echo "▶ Testy e2e-redhat pominięte (--e2e-redhat aby uruchomić)"
+fi
+
 echo ""
 echo "Wyniki: $RESULTS_DIR/"
 
-[[ $UNIT_EXIT -eq 0 && $E2E_EXIT -eq 0 && $E2E_LOCAL_EXIT -eq 0 ]]
+[[ $UNIT_EXIT -eq 0 && $E2E_EXIT -eq 0 && $E2E_LOCAL_EXIT -eq 0 && $E2E_REDHAT_EXIT -eq 0 ]]

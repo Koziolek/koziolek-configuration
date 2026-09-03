@@ -7,9 +7,13 @@
 # (best-effort `yum install -y epel-release`, brakujące pakiety pomijane przez
 # `safe_yum_install`). Celowo NIE ma tu curl/wget — jak w apt_packages.sh, to
 # minimalny bootstrap instalowany osobno w każdym skrypcie (`minimal_tools`).
+#
+# Zweryfikowane e2e na rockylinux:9 (test/e2e/test_initial_packages_redhat.sh) —
+# `hub` i `gnome-boxes` pozostają niedostępne bez repo CodeReady Builder (CRB),
+# poza samym EPEL; `safe_yum_install` pomija je z ostrzeżeniem, nie przerywa.
 
 system_tools=(
-  git vim unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql
+  git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql
 )
 
 security_tools=(
