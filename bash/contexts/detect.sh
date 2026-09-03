@@ -15,6 +15,8 @@
 #     debian  -> linux debian
 #     wsl     -> linux debian wsl (WSL jest w praktyce zawsze Ubuntu/Debian pod spodem —
 #                                   dziedziczy apt/hub z debian.sh)
+#     redhat  -> linux redhat     (RHEL/CentOS/Fedora/Rocky/Alma — rodzina yum,
+#                                   osobna od debian)
 #     linux   -> linux            (fallback)
 #
 # `load_contexts()` sourcuje `bash/contexts/<c>.sh` w tej kolejności — plik
@@ -59,10 +61,12 @@ detect_context() {
         vanilla) printf 'vanilla\n'; return 0 ;;
         ubuntu)  printf 'ubuntu\n';  return 0 ;;
         debian)  printf 'debian\n';  return 0 ;;
+        rhel|centos|fedora|rocky|almalinux) printf 'redhat\n'; return 0 ;;
     esac
 
     case " $id_like " in
         *" debian "*|*" ubuntu "*) printf 'debian\n'; return 0 ;;
+        *" rhel "*|*" fedora "*)   printf 'redhat\n'; return 0 ;;
     esac
 
     printf 'linux\n'
@@ -76,6 +80,7 @@ context_chain() {
         ubuntu)  printf 'linux\ndebian\nubuntu\n' ;;
         wsl)     printf 'linux\ndebian\nwsl\n' ;;
         debian)  printf 'linux\ndebian\n' ;;
+        redhat)  printf 'linux\nredhat\n' ;;
         linux|*) printf 'linux\n' ;;
     esac
 }
