@@ -151,6 +151,18 @@ nie commituj tu danych uwierzytelniających. Plik `.senv.template` pokazuje ocze
 Instalacja i aktualizacja narzędzi — osobny skrypt na system. Wspólne listy pakietów:
 `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS).
 
+**`install.sh`** (root repo) — dispatcher pod `curl … | bash`: `ensure_git` → wykrywa kontekst
+(pobiera `bash/contexts/detect.sh`, `detect_context`) → rozróżnia host vs subsystem Vanilla
+(markery `/run/.containerenv` + `/run/host/etc/os-release` z `ID=vanilla`; na immutable hoście
+przerywa) → klonuje repo (`packages/prepare_workspace.sh`) → `bash ~/.<projekt>/initial_packages*.sh`.
+Zmienne: `KOZIOLEK_REF` (gałąź), `INSTALL_DISPATCH_DRY_RUN` (wypisz wybrany skrypt i wyjdź — testy),
+`CONTAINERENV_FILE`/`HOST_OS_RELEASE_FILE` (pośrednictwo dla testów). Test:
+`test/unit/test_install_dispatch.sh`.
+
+`packages/prepare_workspace.sh` — wspólna, sourcowana funkcja `prepare_workspace()` (klon repo do
+`~/workspace/<projekt>` + symlink `~/.<projekt>`; idempotentna, bez `pull`). Reużywana przez `install.sh`
+i trzy `initial_packages*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `apt_packages.sh`.
+
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
 | Ubuntu / Debian | `initial_packages.sh` | `update_packages.sh` | apt + Docker |

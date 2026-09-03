@@ -108,22 +108,21 @@ install_initial_packages() {
     safe_apt_install "${all_packages[@]}"
 }
 
-prepare_workspace() {
-    set -e
-
-    [ -d "$HOME/workspace/" ] || mkdir "$HOME/workspace/"
-    cd "$HOME/workspace/" || return
-
-    if [ ! -d "$HOME/workspace/${PROJECT_NAME}" ]; then
-        git clone "https://github.com/Koziolek/${PROJECT_NAME}.git"
-        ln -sfn "$HOME/workspace/${PROJECT_NAME}" "$HOME/.${PROJECT_NAME}"
-    fi
-
-    if [ ! -L $HOME/.${PROJECT_NAME} ] && [ ! -d $HOME/.${PROJECT_NAME} ]; then
-        ln -sfn $HOME/workspace/${PROJECT_NAME} $HOME/.${PROJECT_NAME}
-    fi
-    set +e
-}
+# prepare_workspace — wspólna z install.sh/initial_packages_mac.sh/initial_packages_vanilla.sh
+# (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/prepare_workspace.sh" ]; then
+    # shellcheck source=packages/prepare_workspace.sh
+    source "$SCRIPT_DIR/packages/prepare_workspace.sh"
+else
+    _pw_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/prepare_workspace.sh" \
+        -o "$_pw_tmp"
+    # shellcheck disable=SC1090
+    source "$_pw_tmp"
+    rm -f "$_pw_tmp"
+    unset _pw_tmp
+fi
 
 install_asdf() {
     echo "Pobieranie informacji o najnowszej wersji asdf..."

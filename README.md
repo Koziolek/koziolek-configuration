@@ -7,6 +7,23 @@ Obsługuje Ubuntu/Debian, macOS, Vanilla OS 2 i WSL — różnice per-system w `
 
 ## Instalacja
 
+### Szybko (jeden plik)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Koziolek/koziolek-configuration/master/install.sh | bash
+# albo:  wget -qO- https://raw.githubusercontent.com/Koziolek/koziolek-configuration/master/install.sh | bash
+```
+
+`install.sh` wykrywa system (`bash/contexts/detect.sh`), klonuje repo do
+`~/workspace/koziolek-configuration` (symlink `~/.koziolek-configuration`) i uruchamia właściwy
+`initial_packages*.sh` — ten instaluje pakiety i stawia `~/.bashrc` z szablonu.
+Gałąź do pobrania: zmienna `KOZIOLEK_REF` (domyślnie `master`).
+
+Na **Vanilla OS 2** uruchom ten sam one-liner **wewnątrz subsystemu** (`vso shell` / `apx enter`) —
+na immutable hoście `install.sh` przerwie z instrukcją.
+
+### Ręcznie
+
 ```bash
 git clone git@github.com:Koziolek/koziolek-configuration.git ~/.koziolek-configuration
 ```
@@ -30,8 +47,9 @@ uprawnieniami 400. Wzorzec zmiennych: `.senv.template`.
 
 ### Bootstrap pakietów (per system)
 
-Instalacja narzędzi i aktualizacje mają osobny skrypt na każdy system. Wspólne listy pakietów:
-`packages/apt_packages.sh` (Debian/Ubuntu/Vanilla) i `packages/brew_packages.sh` (macOS).
+Instalacja narzędzi i aktualizacje mają osobny skrypt na każdy system (`install.sh` sam wybiera właściwy).
+Wspólne listy pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla) i `packages/brew_packages.sh`
+(macOS). Klon repo + symlink: wspólny `packages/prepare_workspace.sh`.
 
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
