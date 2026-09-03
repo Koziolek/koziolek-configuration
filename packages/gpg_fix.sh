@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspólna funkcja refresh_apt_gpg_keys dla update_packages.sh i update_packages_vanilla.sh.
+# Wspólna funkcja refresh_apt_gpg_keys dla update_packages_ubuntu.sh i update_packages_vanilla.sh.
 # Sourcowane, nie wykonywane. Wersja NIEINTERAKTYWNA (loguje i importuje bez pytania) —
 # odpowiednik dla powłoki (z are_you_sure, log_*) mieszka osobno w
 # bash/functions.d/096_apt_gpg.sh, bo tamten kontekst ma dostęp do helperów powłoki.

@@ -1,461 +1,52 @@
 #!/usr/bin/env bash
+#
+# Dispatcher: wykrywa system i uruchamia właściwy packages/initial_packages_<ctx>.sh.
+# Do użycia w już sklonowanym repo (`./initial_packages.sh`). Dla świeżej maszyny
+# bez klonu — jednoplikowy bootstrap `install.sh` (curl | bash).
+#
+# Mapowanie kontekst → sufiks: context_package_suffix() w bash/contexts/detect.sh
+# (jedyne źródło prawdy — install.sh trzyma własną, celowo zduplikowaną kopię, bo
+# musi działać w 100% offline pod `curl | bash`, bez lokalnego repo do sourcowania).
+#
+# PACKAGES_DISPATCH_DRY_RUN — jeśli ustawione: wypisz wybrany skrypt i wyjdź (testy).
 
 set -Eeuo pipefail
-trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
+trap 'echo "❌ initial_packages.sh: błąd w linii $LINENO"; exit 1' ERR
 
-PROJECT_NAME='koziolek-configuration'
-export DEBIAN_FRONTEND=noninteractive
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-SUDO=''
-if (( $EUID != 0 )); then
-    SUDO='sudo'
+# shellcheck source=bash/contexts/detect.sh
+source "$SCRIPT_DIR/bash/contexts/detect.sh"
+
+ctx="$(detect_context)"
+
+# Vanilla: rozróżnij immutable host od subsystemu apx (patrz resolve_vanilla_subsystem).
+rc=0
+ctx="$(resolve_vanilla_subsystem "$ctx")" || rc=$?
+if [ "$rc" -eq 2 ]; then
+    echo "❌ Jesteś na immutable hoście Vanilla OS — apt/instalacja tu nie zadziała." >&2
+    echo "   Wejdź do subsystemu:   vso shell        (albo:  apx enter)" >&2
+    echo "   i ponów:   ./initial_packages.sh" >&2
+    exit 1
 fi
 
-prerequisites=(
-    software-properties-common
-)
-
-minimal_tools=(
-    curl wget
-)
-
-# Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
-# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
-# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
-$SUDO apt-get -qq update
-for _pkg in "${minimal_tools[@]}"; do
-    command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
-done
-unset _pkg
-
-# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
-# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
-# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
-# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
-# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
-# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! suffix="$(context_package_suffix "$ctx")"; then
+    echo "❌ Nieobsługiwany system (kontekst: '$ctx')." >&2
+    echo "   Obsługiwane: Ubuntu/Debian, macOS, Vanilla OS 2, WSL, RedHat/CentOS/Fedora." >&2
+    exit 1
 fi
 
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/apt_packages.sh" ]; then
-    # shellcheck source=packages/apt_packages.sh
-    source "$SCRIPT_DIR/packages/apt_packages.sh"
-else
-    echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
-    _packages_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/apt_packages.sh" \
-        -o "$_packages_tmp"
-    # shellcheck disable=SC1090
-    source "$_packages_tmp"
-    rm -f "$_packages_tmp"
-    unset _packages_tmp
+target="$SCRIPT_DIR/packages/initial_packages_${suffix}.sh"
+if [ ! -f "$target" ]; then
+    echo "❌ Brak $target." >&2
+    exit 1
 fi
 
-# verify_and_run_script — wspólna z initial_packages_mac.sh/initial_packages_vanilla.sh
-# (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
-    # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
-else
-    _vars_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
-        -o "$_vars_tmp"
-    # shellcheck disable=SC1090
-    source "$_vars_tmp"
-    rm -f "$_vars_tmp"
-    unset _vars_tmp
+echo "▶ System: $ctx  →  packages/initial_packages_${suffix}.sh"
+
+if [ -n "${PACKAGES_DISPATCH_DRY_RUN:-}" ]; then
+    echo "packages/initial_packages_${suffix}.sh"
+    exit 0
 fi
 
-all_packages=(
-  "${minimal_tools[@]}"
-  "${system_tools[@]}"
-  "${security_tools[@]}"
-  "${graphics_libs[@]}"
-  "${gui_libs[@]}"
-  "${image_tools[@]}"
-  "${diag_tools[@]}"
-  "${boxes_vm[@]}"
-)
-
-safe_apt_install() {
-  local pkg ok_list=()
-  for pkg in "$@"; do
-    if apt-cache show "$pkg" >/dev/null 2>&1; then
-      ok_list+=("$pkg")
-    else
-      echo "⚠️ Package '$pkg' not found, skipping"
-    fi
-  done
-
-  if [ "${#ok_list[@]}" -gt 0 ]; then
-    echo "Installing: ${ok_list[*]}"
-    $SUDO apt-get install -qqy "${ok_list[@]}"
-  else
-    echo "❌ No valid packages to install."
-  fi
-}
-
-install_initial_packages() {
-    # we need some universe repos
-    $SUDO apt-get -qq update
-    safe_apt_install "${prerequisites[@]}"
-    $SUDO add-apt-repository -y universe
-    $SUDO apt-get -qq update
-    safe_apt_install "${all_packages[@]}"
-}
-
-# prepare_workspace — wspólna z install.sh/initial_packages_mac.sh/initial_packages_vanilla.sh
-# (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/prepare_workspace.sh" ]; then
-    # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/packages/prepare_workspace.sh"
-else
-    _pw_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/prepare_workspace.sh" \
-        -o "$_pw_tmp"
-    # shellcheck disable=SC1090
-    source "$_pw_tmp"
-    rm -f "$_pw_tmp"
-    unset _pw_tmp
-fi
-
-install_asdf() {
-    echo "Pobieranie informacji o najnowszej wersji asdf..."
-
-    LATEST_TAG=$(curl -s https://api.github.com/repos/asdf-vm/asdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-
-    if [ -z "$LATEST_TAG" ]; then
-        echo "Błąd: nie udało się pobrać informacji o najnowszej wersji"
-        return 1
-    fi
-
-    echo "Najnowsza wersja: $LATEST_TAG"
-    mkdir -p "$HOME/.local/bin"
-
-    DOWNLOAD_URL="https://github.com/asdf-vm/asdf/releases/download/${LATEST_TAG}/asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-
-    echo "Pobieranie asdf z: $DOWNLOAD_URL"
-    cd "$HOME/.local/bin"
-    set +e
-    curl -L "$DOWNLOAD_URL" -o "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-    local curl_status=$?
-    set -e
-    if [ $curl_status -ne 0 ]; then
-        echo "Błąd: nie udało się pobrać archiwum"
-        return 1
-    fi
-    if [ -d "asdf" ]; then
-        echo "Usuwanie poprzedniej instalacji asdf..."
-        rm -rf "asdf"
-    fi
-    set +e
-    tar -xzf "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-    local tar_status=$?
-    set -e
-    if [ $tar_status -ne 0 ]; then
-        echo "Błąd: nie udało się rozpakować archiwum"
-        return 1
-    fi
-    rm -f "asdf-${LATEST_TAG}-linux-amd64.tar.gz"
-
-    echo "asdf $LATEST_TAG został pomyślnie zainstalowany w $HOME/.local/bin/"
-    echo "Dodaj następujące linie do swojego .bashrc:"
-    echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
-    echo "source \$HOME/.local/bin/asdf/asdf.sh"
-    echo "source \$HOME/.local/bin/asdf/completions/asdf.bash"
-}
-
-install_rust_and_difft() {
-    if command -v difft &>/dev/null; then
-        echo "difftastic już zainstalowany: $(difft --version)"
-        return 0
-    fi
-
-    local asdf_bin="$HOME/.local/bin/asdf"
-    if [ ! -x "$asdf_bin" ]; then
-        echo "Błąd: asdf nie jest zainstalowany. Uruchom najpierw install_asdf."
-        return 1
-    fi
-
-    echo "Dodawanie pluginu rust dla asdf..."
-    "$asdf_bin" plugin add rust https://github.com/asdf-community/asdf-rust.git 2>/dev/null || true
-
-    echo "Instalacja najnowszej wersji Rust..."
-    "$asdf_bin" install rust latest
-    "$asdf_bin" global rust latest
-
-    local cargo_bin
-    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
-    if [ -z "$cargo_bin" ]; then
-        echo "Błąd: cargo niedostępne po instalacji Rust"
-        return 1
-    fi
-
-    echo "Instalacja difftastic..."
-    # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
-    # zależności semver, a te (np. tree-sitter-language) wymuszają nowszego rustc
-    # niż daje asdf → "rustc X is not supported by the following packages".
-    "$cargo_bin" install --locked difftastic
-    echo "difftastic zainstalowany pomyślnie"
-}
-
-install_sdkman() {
-    # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
-    # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
-    verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
-    set +u
-    # shellcheck source=/dev/null
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
-    set -u
-    sdk i java
-    sdk i maven
-    sdk i mvnd
-
-}
-
-install_apps() {
-    local DOWNLOAD_DIR="$HOME/Pobrane"
-    mkdir -p "$DOWNLOAD_DIR"
-
-    echo "Instalacja aplikacji tylko przez .deb pakiety..."
-
-    # Spotify przez repozytorium. Klucz scoped przez signed-by= (nie trusted.gpg.d —
-    # to zaufałoby kluczowi dla WSZYSTKICH repo apt, nie tylko Spotify).
-    if ! command -v spotify >/dev/null 2>&1; then
-        echo "Instalacja Spotify..."
-        $SUDO mkdir -p /etc/apt/keyrings
-        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg \
-            | $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" \
-            | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
-        $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
-    fi
-
-    cd "$DOWNLOAD_DIR" || return 1
-
-    # Przygotuj listę aplikacji do pobrania
-    local -A apps=(
-        ["1password"]="https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb"
-        ["steam"]="https://cdn.akamai.steamstatic.com/client/installer/steam.deb"
-    )
-
-    # Pobierz i zainstaluj każdą aplikację
-    local app deb_file
-    for app in "${!apps[@]}"; do
-        deb_file="${app}.deb"
-
-        if [ ! -f "$deb_file" ] || [ $(($(date +%s) - $(stat -c %Y "$deb_file" 2>/dev/null || echo 0))) -gt 86400 ]; then
-            echo "Pobieranie $app..."
-            wget -O "$deb_file" "${apps[$app]}"
-        fi
-
-        echo "Instalacja $app..."
-        $SUDO apt-get install -qqy "./$deb_file"
-    done
-
-    # Specjalna konfiguracja dla Steam (architektura 32-bit)
-    if [ -f "steam.deb" ]; then
-        echo "Konfiguracja Steam (biblioteki 32-bit)..."
-        $SUDO dpkg --add-architecture i386
-        $SUDO apt-get update
-        $SUDO apt-get install -qqy lib32gcc-s1 libc6-i386
-        $SUDO apt-get install -fqqy  # napraw zależności
-    fi
-
-    echo "Wszystkie aplikacje zostały zainstalowane!"
-}
-
-
-install_gh() {
-    if command -v gh &>/dev/null; then
-        echo "✓ gh już zainstalowany: $(gh --version | head -1)"
-        return 0
-    fi
-
-    echo "Instalacja GitHub CLI..."
-    $SUDO mkdir -p -m 755 /etc/apt/keyrings
-
-    local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
-    local tmpkey
-    tmpkey="$(mktemp)"
-    wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-    $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
-    rm -f "$tmpkey"
-
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
-        | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-
-    $SUDO apt-get -qq update
-    safe_apt_install gh
-    echo "✓ gh zainstalowany: $(gh --version | head -1)"
-}
-
-# Pobiera ctop, weryfikuje sumę sha256 z release'a i dopiero wtedy instaluje do
-# /usr/local/bin. Przy niezgodności sumy: warning i rezygnacja z instalacji
-# (nie zostawiamy niezweryfikowanej binarki w PATH roota).
-install_ctop() {
-    local ctop_version
-    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
-        | grep '"tag_name":' | cut -d '"' -f 4)
-    if [ -z "$ctop_version" ]; then
-        echo "⚠️ Nie udało się pobrać wersji ctop, pomijam instalację"
-        return 0
-    fi
-
-    local ctop_bin="ctop-${ctop_version#v}-linux-amd64"
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
-            -o "$tmp_dir/$ctop_bin"; then
-        echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-    if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
-            -o "$tmp_dir/sha256sums.txt"; then
-        echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-
-    if ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
-        echo "⚠️ Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-
-    $SUDO install -m 755 "$tmp_dir/$ctop_bin" /usr/local/bin/ctop
-    rm -rf "$tmp_dir"
-    echo "✓ ctop ${ctop_version} zainstalowany (suma sha256 zweryfikowana)"
-}
-
-# Pobiera kubectl z oficjalnego releasu Kubernetes (dl.k8s.io), weryfikuje sumę
-# sha256 opublikowaną obok binarki i dopiero wtedy instaluje do /usr/local/bin.
-# Nie ma go w domyślnych repo apt (bez dodawania cudzego repozytorium) — stąd
-# ta sama metoda co ctop, zamiast apt.
-install_kubectl() {
-    local kubectl_version
-    kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
-    if [ -z "$kubectl_version" ]; then
-        echo "⚠️ Nie udało się pobrać wersji kubectl, pomijam instalację"
-        return 0
-    fi
-
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
-            -o "$tmp_dir/kubectl"; then
-        echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-    if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
-            -o "$tmp_dir/kubectl.sha256"; then
-        echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-
-    if ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
-        echo "⚠️ Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam instalację"
-        rm -rf "$tmp_dir"
-        return 0
-    fi
-
-    $SUDO install -o root -g root -m 755 "$tmp_dir/kubectl" /usr/local/bin/kubectl
-    rm -rf "$tmp_dir"
-    echo "✓ kubectl ${kubectl_version} zainstalowany (suma sha256 zweryfikowana)"
-}
-
-install_docker() {
-    echo "Instalacja Docker i docker-ctop..."
-    
-    # Usuń stare wersje Docker jeśli istnieją
-    echo "Usuwanie starych wersji Docker..."
-    $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
-
-    
-    # Dodaj klucz GPG Docker
-    echo "Dodawanie klucza GPG Docker..."
-    $SUDO mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    
-    # Dodaj repozytorium Docker
-    echo "Dodawanie repozytorium Docker..."
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # Aktualizuj listę pakietów z nowym repozytorium
-    $SUDO apt-get -qq update
-    
-    # Zainstaluj Docker Engine
-    echo "Instalacja Docker Engine..."
-    safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
-    # Uruchom i włącz Docker service
-    echo "Uruchamianie Docker service..."
-    $SUDO systemctl start docker
-    $SUDO systemctl enable docker
-    
-    # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
-    echo "Dodawanie użytkownika $USER do grupy docker..."
-    $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
-    $SUDO usermod -aG docker $USER
-    
-    # Zainstaluj docker-ctop
-    echo "Instalacja docker-ctop..."
-    install_ctop
-
-    # Sprawdź instalację
-    echo "Sprawdzanie instalacji..."
-    docker --version
-    docker-compose --version
-    command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
-    
-    echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
-    echo "Użytkownik $USER został dodany do grupy docker."
-    echo ""
-}
-
-maybe_restart() {
-    echo "UWAGA: Aby móc uruchamiać Docker bez sudo, musisz się wylogować i zalogować ponownie,"
-    echo "lub zrestartować komputer, żeby zmiany w grupach zostały zaaplikowane."
-    echo ""
-    read -p "Czy chcesz zrestartować komputer teraz? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[YyTt]$ ]]; then
-        echo "Restartowanie systemu..."
-        $SUDO reboot
-    else
-        echo "Pamiętaj o wylogowaniu i ponownym zalogowaniu lub restarcie systemu!"
-        echo "Możesz też uruchomić: newgrp docker"
-    fi
-}
-
-prepare_bashrc() {
-    cd $HOME/ || return
-    cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
-}
-
-cd "$HOME/" || exit 1
-
-install_initial_packages
-prepare_workspace
-install_asdf
-install_rust_and_difft
-install_sdkman
-install_apps
-install_gh
-install_kubectl
-install_docker
-prepare_bashrc
-
-maybe_restart
+exec bash "$target" "$@"

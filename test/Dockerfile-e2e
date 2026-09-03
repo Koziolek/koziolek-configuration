@@ -9,10 +9,10 @@ RUN apt-get update && \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Lokalny skrypt zamiast curl z GitHub — testujemy bieżące zmiany
-COPY initial_packages.sh /initial_packages.sh
+# Lokalny katalog packages/ (skrypt + wspólne listy) zamiast curl z GitHub —
+# testujemy bieżące zmiany.
 COPY packages /packages
-RUN chmod +x /initial_packages.sh
+RUN chmod +x /packages/initial_packages_ubuntu.sh
 
 # Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
-CMD ["/initial_packages.sh"]
+CMD ["/packages/initial_packages_ubuntu.sh"]

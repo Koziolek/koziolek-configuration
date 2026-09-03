@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspólna lista pakietów apt dla initial_packages.sh i update_packages.sh.
+# Wspólna lista pakietów apt dla initial_packages_ubuntu.sh i update_packages_ubuntu.sh.
 # Sourcowane, nie wykonywane — tylko deklaracje tablic.
 #
 # Celowo NIE ma tu curl/wget: to minimalny bootstrap, który musi zostać

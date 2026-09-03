@@ -4,12 +4,12 @@
 # i wykonuje tylko bezpieczne funkcje.
 #
 # SCRIPT sparametryzowany przez INIT_SCRIPT — ten sam entrypoint obsługuje
-# initial_packages.sh (Ubuntu, domyślnie) i initial_packages_redhat.sh
-# (INIT_SCRIPT=/initial_packages_redhat.sh) — nazwy funkcji są identyczne.
+# initial_packages_ubuntu.sh (domyślnie) i initial_packages_redhat.sh
+# (INIT_SCRIPT=/packages/initial_packages_redhat.sh) — nazwy funkcji są identyczne.
 
 set -euo pipefail
 
-SCRIPT="${INIT_SCRIPT:-/initial_packages.sh}"
+SCRIPT="${INIT_SCRIPT:-/packages/initial_packages_ubuntu.sh}"
 
 # Znajdź linię z pierwszym top-level call (cd $HOME/) — sourcujemy tylko przed nią
 CUTLINE=$(grep -n "^cd " "$SCRIPT" | head -1 | cut -d: -f1)
@@ -18,7 +18,7 @@ if [[ -z "$CUTLINE" ]]; then
     exit 1
 fi
 
-# Sourcowane przez plik, nie przez process substitution: initial_packages.sh
+# Sourcowane przez plik, nie przez process substitution: initial_packages_*.sh
 # lokalizuje packages/apt_packages.sh względem ${BASH_SOURCE[0]}, a process
 # substitution (/dev/fd/N) łamie to dirname'owanie.
 TMPSCRIPT="$(dirname "$SCRIPT")/.e2e-head-$$.sh"

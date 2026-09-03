@@ -94,6 +94,55 @@ context_is() {
     return 1
 }
 
+# context_package_suffix [ctx] — mapuje kontekst (liść z detect_context) na
+# sufiks pliku bootstrapu pakietów: packages/{initial,update}_packages_<sufiks>.sh.
+# Kod 1 = kontekst nieobsługiwany (np. sam 'linux', bez konkretnej dystrybucji).
+# Jedyne miejsce tego mapowania — konsumują je install.sh (curl | bash, przez
+# zdalny fetch tego pliku) i root-owe initial_packages.sh/update_packages.sh
+# (lokalny dispatcher po sklonowaniu repo).
+context_package_suffix() {
+    local ctx="${1:-${CONFIG_CONTEXT:-$(detect_context)}}"
+    case "$ctx" in
+        darwin)            printf 'mac\n' ;;
+        vanilla)           printf 'vanilla\n' ;;
+        redhat)            printf 'redhat\n' ;;
+        ubuntu|debian|wsl) printf 'ubuntu\n' ;;
+        *)                 return 1 ;;
+    esac
+}
+
+# resolve_vanilla_subsystem <ctx> — rozróżnia immutable host Vanilla OS od
+# subsystemu apx. detect_context zwraca 'vanilla' tylko na hoście (ID=vanilla
+# w /etc/os-release); wewnątrz subsystemu apx /etc/os-release mówi 'debian' —
+# rozpoznajemy to po /run/host/etc/os-release (bind z hosta). Zwraca
+# (ewentualnie skorygowany) kontekst na stdout. Kod 2 = jesteśmy na immutable
+# hoście Vanilla OS (instalacja tu niemożliwa) — wołający ma przerwać.
+# Pośrednictwo dla testów: CONTAINERENV_FILE, HOST_OS_RELEASE_FILE.
+resolve_vanilla_subsystem() {
+    local ctx="$1"
+    local containerenv_file="${CONTAINERENV_FILE:-/run/.containerenv}"
+    local host_os_release_file="${HOST_OS_RELEASE_FILE:-/run/host/etc/os-release}"
+
+    local in_container=0
+    { [ -f "$containerenv_file" ] || [ -n "${container:-}" ]; } && in_container=1
+
+    if [ "$ctx" = "vanilla" ] && [ "$in_container" -eq 0 ]; then
+        printf '%s\n' "$ctx"
+        return 2
+    fi
+
+    if [ "$in_container" -eq 1 ] && [ -r "$host_os_release_file" ]; then
+        local host_id host_like
+        host_id=$(sed -n 's/^ID=//p' "$host_os_release_file" | tr -d '"' | head -1)
+        host_like=$(sed -n 's/^ID_LIKE=//p' "$host_os_release_file" | tr -d '"' | head -1)
+        case " $host_id $host_like " in
+            *" vanilla "*) ctx="vanilla" ;;
+        esac
+    fi
+
+    printf '%s\n' "$ctx"
+}
+
 # load_contexts — sourcuje bash/contexts/<c>.sh dla każdego ogniwa łańcucha.
 # Wołane z bash/main.sh (po załadowaniu bash_functions.sh — potrzebuje source_if_exists).
 load_contexts() {
@@ -108,3 +157,5 @@ export -f detect_context
 export -f context_chain
 export -f context_is
 export -f load_contexts
+export -f context_package_suffix
+export -f resolve_vanilla_subsystem

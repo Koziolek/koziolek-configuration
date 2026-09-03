@@ -20,7 +20,7 @@ Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**,
 ```bash
 ./test/run.sh               # testy unit + integration (Docker na Linux, wymagane --native na macOS)
 ./test/run.sh --native      # uruchom bezpośrednio na hoście, bez Dockera (macOS)
-./test/run.sh --e2e         # dodatkowo e2e: initial_packages.sh w Ubuntu 24.04 (wolne)
+./test/run.sh --e2e         # dodatkowo e2e: initial_packages_ubuntu.sh w Ubuntu 24.04 (wolne)
 ./test/run.sh --e2e-local   # e2e z lokalnym projektem podpiętym jako volume
 ./test/run.sh --e2e-redhat  # e2e: initial_packages_redhat.sh w rockylinux:9 (wolne)
 ./test/run.sh --all         # unit + integration + wszystkie e2e
@@ -31,7 +31,7 @@ Runner (`test/run.sh`) sprawdza/przygotowuje środowisko Docker (obrazy, sieć),
 `test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`, i deleguje do
 `test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`, `test/integration/` (oraz warianty
 `linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e
-(`test/e2e/`) budują obraz z lokalnym `initial_packages.sh`/`initial_packages_redhat.sh` (`COPY`, nie curl
+(`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/`initial_packages_redhat.sh` (`COPY`, nie curl
 z GitHuba) — testują bieżące, niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla obu (skrypt
 docelowy przez `INIT_SCRIPT`), zawężony do bezpiecznych funkcji (`install_initial_packages`,
 `prepare_workspace`, `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od
@@ -101,6 +101,12 @@ Vanilla OS / WSL / RedHat. `bash/contexts/detect.sh` dokłada warstwę:
   `contexts/<c>.sh` dla każdego ogniwa — plik szczegółowy nadpisuje ogólniejszy.
 - **`context_is <name>`** — czy `<name>` jest w łańcuchu (`context_is debian` jest prawdą i dla
   `ubuntu`, i dla `vanilla`).
+- **`context_package_suffix [ctx]`** — mapuje kontekst na sufiks
+  `packages/{initial,update}_packages_<sufiks>.sh` (`darwin→mac`, `vanilla→vanilla`, `redhat→redhat`,
+  `ubuntu|debian|wsl→ubuntu`; kod 1 dla nieobsługiwanego). Jedyne źródło prawdy tego mapowania —
+  konsumują je root-owe `initial_packages.sh`/`update_packages.sh` (patrz „Bootstrap pakietów”).
+- **`resolve_vanilla_subsystem <ctx>`** — rozróżnia immutable host Vanilla OS od subsystemu `apx`
+  (markery `/run/.containerenv` + `/run/host/etc/os-release`); kod 2 = immutable host, przerwij.
 
 Pliki `contexts/{linux,debian,ubuntu,vanilla,wsl,redhat,darwin}.sh` trzymają **tylko** nadpisania
 swojej warstwy (aliasy, `export`, redefinicje funkcji). Wspólne rzeczy zostają w `bash_*.sh` /
@@ -155,25 +161,40 @@ nie commituj tu danych uwierzytelniających. Plik `.senv.template` pokazuje ocze
 
 ## Bootstrap pakietów (per system)
 
-Instalacja i aktualizacja narzędzi — osobny skrypt na system. Wspólne listy pakietów:
-`packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS),
+Instalacja i aktualizacja narzędzi — osobny skrypt na system, wszystkie w `packages/`. Wspólne listy
+pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS),
 `packages/yum_packages.sh` (RedHat/CentOS/Fedora).
 
-**`install.sh`** (root repo) — dispatcher pod `curl … | bash`: `ensure_git` → wykrywa kontekst
-(pobiera `bash/contexts/detect.sh`, `detect_context`) → rozróżnia host vs subsystem Vanilla
-(markery `/run/.containerenv` + `/run/host/etc/os-release` z `ID=vanilla`; na immutable hoście
-przerywa) → klonuje repo (`packages/prepare_workspace.sh`) → `bash ~/.<projekt>/initial_packages*.sh`.
+**`install.sh`** (root repo) — dispatcher pod `curl … | bash`, dla maszyny bez klonu: `ensure_git` →
+wykrywa kontekst (pobiera `bash/contexts/detect.sh`, `detect_context`) → rozróżnia host vs subsystem
+Vanilla (markery `/run/.containerenv` + `/run/host/etc/os-release` z `ID=vanilla`; na immutable hoście
+przerywa) → klonuje repo (`packages/prepare_workspace.sh`) → `bash ~/.<projekt>/packages/initial_packages*.sh`.
 Zmienne: `KOZIOLEK_REF` (gałąź), `INSTALL_DISPATCH_DRY_RUN` (wypisz wybrany skrypt i wyjdź — testy),
 `CONTAINERENV_FILE`/`HOST_OS_RELEASE_FILE` (pośrednictwo dla testów). Test:
-`test/unit/test_install_dispatch.sh`.
+`test/unit/test_install_dispatch.sh`. Musi działać w 100% offline pod `CONFIG_CONTEXT_FORCE` (testy) —
+dlatego trzyma własną, celowo zduplikowaną kopię mapowania kontekst→skrypt i rozróżnienia
+host/subsystem Vanilla zamiast fetchować je z `context_package_suffix`/`resolve_vanilla_subsystem`
+(patrz niżej): fetch samego pliku `detect.sh` już wymaga sieci, więc dalszy fetch byłby zbędnym
+narzutem na ścieżce, którą testy celowo omijają.
+
+**`initial_packages.sh`** / **`update_packages.sh`** (root repo) — te same dispatchery co `install.sh`,
+ale dla repo już sklonowanego: sourcują lokalny `bash/contexts/detect.sh` (bez sieci) i wołają wprost
+`context_package_suffix()` + `resolve_vanilla_subsystem()` — tu nie ma powodu do duplikacji, bo lokalne
+sourcowanie nic nie kosztuje. Zmienna `PACKAGES_DISPATCH_DRY_RUN` (analog `INSTALL_DISPATCH_DRY_RUN`).
+Test: `test/unit/test_packages_dispatch.sh`; same funkcje `detect.sh` mają testy w
+`test/unit/test_context_detect.sh`.
 
 `packages/prepare_workspace.sh` — wspólna, sourcowana funkcja `prepare_workspace()` (klon repo do
 `~/workspace/<projekt>` + symlink `~/.<projekt>`; idempotentna, bez `pull`). Reużywana przez `install.sh`
-i trzy `initial_packages*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `apt_packages.sh`.
+i cztery `initial_packages*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `apt_packages.sh` — teraz
+sąsiadów w tym samym katalogu, więc sourcowanie idzie względem `${BASH_SOURCE[0]}` bez podkatalogu
+`packages/`.
+
+Wszystkie ścieżki niżej są względem `packages/`.
 
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
-| Ubuntu / Debian | `initial_packages.sh` | `update_packages.sh` | apt + Docker |
+| Ubuntu / Debian | `initial_packages_ubuntu.sh` | `update_packages_ubuntu.sh` | apt + Docker |
 | macOS | `initial_packages_mac.sh` | `update_packages_mac.sh` | Homebrew |
 | Vanilla OS 2 | `initial_packages_vanilla.sh` | `update_packages_vanilla.sh` | apt (subsystem `apx`) + podman |
 | RedHat / CentOS / Fedora | `initial_packages_redhat.sh` | `update_packages_redhat.sh` | yum + Docker |

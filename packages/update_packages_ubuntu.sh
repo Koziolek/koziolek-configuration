@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-#
-# Raport stanu + aktualizacja dla rodziny RedHat (RHEL/CentOS/Fedora/Rocky/Alma).
-# Mirror update_packages.sh — yum zamiast apt. Sekcja "Klucze GPG"
-# (refresh_apt_gpg_keys/gpg_fix.sh) pominięta — nie dotyczy modelu kluczy rpm.
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
+
+export DEBIAN_FRONTEND=noninteractive
 
 SUDO=''
 if (( EUID != 0 )); then
@@ -13,7 +11,7 @@ if (( EUID != 0 )); then
 fi
 
 # ---------------------------------------------------------------------------
-# Package lists — wspólne z initial_packages_redhat.sh przez packages/yum_packages.sh
+# Package lists — wspólne z initial_packages_ubuntu.sh przez packages/apt_packages.sh
 # ---------------------------------------------------------------------------
 
 minimal_tools=(
@@ -21,10 +19,10 @@ minimal_tools=(
 )
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=packages/yum_packages.sh
-source "$SCRIPT_DIR/packages/yum_packages.sh"
+# shellcheck source=packages/apt_packages.sh
+source "$SCRIPT_DIR/apt_packages.sh"
 
-all_yum_packages=(
+all_apt_packages=(
     "${minimal_tools[@]}"
     "${system_tools[@]}"
     "${security_tools[@]}"
@@ -32,7 +30,6 @@ all_yum_packages=(
     "${gui_libs[@]}"
     "${image_tools[@]}"
     "${diag_tools[@]}"
-    "${boxes_vm[@]}"
 )
 
 # ---------------------------------------------------------------------------
@@ -49,29 +46,35 @@ missing() { printf "${C_RED}✗${C_NC} %s\n" "$*"; }
 warn()    { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
 info()    { printf "  %s\n" "$*"; }
 
-yum_installed() {
-    rpm -q "$1" >/dev/null 2>&1
+apt_installed() {
+    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qc "ok installed"
 }
+
+declare -a REPOS_DEAD=()
+
+# refresh_apt_gpg_keys — wspólna z update_packages_vanilla.sh (packages/gpg_fix.sh).
+# shellcheck source=packages/gpg_fix.sh
+source "$SCRIPT_DIR/gpg_fix.sh"
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
 # ---------------------------------------------------------------------------
 
-declare -a YUM_MISSING=()
-declare -a YUM_INSTALLED=()
+declare -a APT_MISSING=()
+declare -a APT_INSTALLED=()
 declare -a PACKAGES_UNAVAILABLE=()
 
-check_yum_packages() {
+check_apt_packages() {
     echo ""
-    echo "=== Pakiety yum ==="
+    echo "=== Pakiety apt ==="
     local pkg
-    for pkg in "${all_yum_packages[@]}"; do
-        if yum_installed "$pkg"; then
+    for pkg in "${all_apt_packages[@]}"; do
+        if apt_installed "$pkg"; then
             ok "$pkg"
-            YUM_INSTALLED+=("$pkg")
+            APT_INSTALLED+=("$pkg")
         else
             missing "$pkg"
-            YUM_MISSING+=("$pkg")
+            APT_MISSING+=("$pkg")
         fi
     done
 }
@@ -144,38 +147,58 @@ check_sdkman() {
     fi
 }
 
+check_apps() {
+    echo ""
+    echo "=== Aplikacje ==="
+    if command -v spotify &>/dev/null || apt_installed spotify-client; then
+        ok "spotify"
+    else
+        missing "spotify: nie zainstalowany"
+    fi
+    if apt_installed 1password; then
+        ok "1password"
+    else
+        missing "1password: nie zainstalowany"
+    fi
+    if command -v steam &>/dev/null || apt_installed steam; then
+        ok "steam"
+    else
+        missing "steam: nie zainstalowany"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # Phase 2: Update / install
 # ---------------------------------------------------------------------------
 
-safe_yum_install() {
+safe_apt_install() {
     local pkg
     for pkg in "$@"; do
-        if ! yum list "$pkg" >/dev/null 2>&1; then
+        if ! apt-cache show "$pkg" >/dev/null 2>&1; then
             warn "Pakiet '$pkg' niedostępny w repozytoriach, pomijam"
             PACKAGES_UNAVAILABLE+=("$pkg")
             continue
         fi
-        if ! $SUDO yum install -y "$pkg" 2>/dev/null; then
-            warn "Instalacja '$pkg' nieudana (błąd zależności)"
+        if ! $SUDO apt-get install -qqy "$pkg" 2>/dev/null; then
+            warn "Instalacja '$pkg' nieudana (błąd zależności lub architektury)"
             PACKAGES_UNAVAILABLE+=("$pkg")
         fi
     done
 }
 
-update_yum_packages() {
+update_apt_packages() {
     echo ""
-    echo "=== Aktualizacja pakietów yum ==="
+    echo "=== Aktualizacja pakietów apt ==="
 
-    if [ "${#YUM_INSTALLED[@]}" -gt 0 ]; then
+    if [ "${#APT_INSTALLED[@]}" -gt 0 ]; then
         info "Aktualizacja zainstalowanych..."
-        $SUDO yum update -y "${YUM_INSTALLED[@]}" 2>/dev/null || true
+        $SUDO apt-get install -qqy --only-upgrade "${APT_INSTALLED[@]}" 2>/dev/null || true
         ok "Zainstalowane zaktualizowane"
     fi
 
-    if [ "${#YUM_MISSING[@]}" -gt 0 ]; then
-        info "Instalacja brakujących: ${YUM_MISSING[*]}"
-        safe_yum_install "${YUM_MISSING[@]}"
+    if [ "${#APT_MISSING[@]}" -gt 0 ]; then
+        info "Instalacja brakujących: ${APT_MISSING[*]}"
+        safe_apt_install "${APT_MISSING[@]}"
     fi
 }
 
@@ -184,13 +207,21 @@ update_gh() {
     echo "=== GitHub CLI ==="
     if command -v gh &>/dev/null; then
         info "Aktualizacja gh..."
-        $SUDO yum update -y gh 2>/dev/null || true
+        $SUDO apt-get install -qqy --only-upgrade gh 2>/dev/null || true
         ok "gh zaktualizowany: $(gh --version | head -1)"
     else
         info "Instalacja gh..."
-        $SUDO yum install -y yum-utils
-        $SUDO yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-        safe_yum_install gh
+        $SUDO mkdir -p -m 755 /etc/apt/keyrings
+        local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+        local tmpkey
+        tmpkey="$(mktemp)"
+        wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
+        rm -f "$tmpkey"
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
+            | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        $SUDO apt-get -qq update
+        safe_apt_install gh
         ok "gh zainstalowany: $(gh --version | head -1)"
     fi
 }
@@ -200,11 +231,11 @@ update_docker() {
     echo "=== Docker ==="
     if command -v docker &>/dev/null; then
         info "Aktualizacja Docker Engine..."
-        $SUDO yum update -y \
+        $SUDO apt-get install -qqy --only-upgrade \
             docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null || true
         ok "Docker zaktualizowany: $(docker --version)"
     else
-        warn "Docker nie zainstalowany — uruchom initial_packages_redhat.sh aby zainstalować"
+        warn "Docker nie zainstalowany — uruchom initial_packages_ubuntu.sh aby zainstalować"
     fi
 
     info "Aktualizacja ctop..."
@@ -267,7 +298,7 @@ update_asdf() {
     echo "=== asdf ==="
     local asdf_bin="$HOME/.local/bin/asdf"
     if [ ! -x "$asdf_bin" ]; then
-        warn "asdf nie zainstalowany — uruchom initial_packages_redhat.sh aby zainstalować"
+        warn "asdf nie zainstalowany — uruchom initial_packages_ubuntu.sh aby zainstalować"
         return 0
     fi
 
@@ -310,7 +341,8 @@ update_difft() {
     fi
     info "Aktualizacja difftastic..."
     # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
-    # zależności semver, a te wymuszają nowszego rustc niż daje asdf.
+    # zależności semver, a te (np. tree-sitter-language) wymuszają nowszego rustc
+    # niż daje asdf → "rustc X is not supported by the following packages".
     "$asdf_bin" exec cargo install --locked difftastic
     ok "difftastic zaktualizowany: $(difft --version)"
 }
@@ -319,10 +351,11 @@ update_sdkman() {
     echo ""
     echo "=== SDKMAN ==="
     if [ ! -d "$HOME/.sdkman" ]; then
-        warn "SDKMAN nie zainstalowany — uruchom initial_packages_redhat.sh aby zainstalować"
+        warn "SDKMAN nie zainstalowany — uruchom initial_packages_ubuntu.sh aby zainstalować"
         return 0
     fi
     info "Aktualizacja SDKMAN..."
+    # Run in subshell — sdk selfupdate may call exit internally
     (
         set +eu
         # shellcheck source=/dev/null
@@ -347,23 +380,27 @@ update_sdkman() {
 # ---------------------------------------------------------------------------
 
 echo "======================================="
-echo "  update_packages_redhat — raport stanu"
+echo "  update_packages — raport stanu"
 echo "======================================="
 
-check_yum_packages
+check_apt_packages
 check_gh
 check_docker
 check_kubectl
 check_asdf
 check_difft
 check_sdkman
+check_apps
 
 echo ""
 echo "======================================="
 echo "  Aktualizacja"
 echo "======================================="
 
-update_yum_packages
+echo ""
+echo "=== Klucze GPG ==="
+refresh_apt_gpg_keys
+update_apt_packages
 update_gh
 update_docker
 update_kubectl
@@ -378,6 +415,13 @@ if [ "${#PACKAGES_UNAVAILABLE[@]}" -gt 0 ]; then
     warn "Pakiety niedostępne w repozytoriach (wymagają ręcznej interwencji):"
     for pkg in "${PACKAGES_UNAVAILABLE[@]}"; do
         warn "  - $pkg"
+    done
+fi
+if [ "${#REPOS_DEAD[@]}" -gt 0 ]; then
+    echo ""
+    warn "Martwe repozytoria (404 / brak Release) — usuń ręcznie z /etc/apt/sources.list.d/:"
+    for repo in "${REPOS_DEAD[@]}"; do
+        warn "  - $repo"
     done
 fi
 echo ""

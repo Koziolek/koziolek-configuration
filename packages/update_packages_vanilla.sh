@@ -6,7 +6,7 @@
 #     vso shell            # albo:  apx enter
 #     bash update_packages_vanilla.sh
 #
-# Różnice wobec update_packages.sh (Ubuntu):
+# Różnice wobec update_packages_ubuntu.sh (Ubuntu):
 #   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
 #   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
 #     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany;
@@ -39,7 +39,7 @@ minimal_tools=(
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=packages/apt_packages.sh
-source "$SCRIPT_DIR/packages/apt_packages.sh"
+source "$SCRIPT_DIR/apt_packages.sh"
 
 all_apt_packages=(
     "${minimal_tools[@]}"
@@ -71,9 +71,9 @@ apt_installed() {
 
 declare -a REPOS_DEAD=()
 
-# refresh_apt_gpg_keys — wspólna z update_packages.sh (packages/gpg_fix.sh).
+# refresh_apt_gpg_keys — wspólna z update_packages_ubuntu.sh (packages/gpg_fix.sh).
 # shellcheck source=packages/gpg_fix.sh
-source "$SCRIPT_DIR/packages/gpg_fix.sh"
+source "$SCRIPT_DIR/gpg_fix.sh"
 
 # Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
 # są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest

@@ -23,15 +23,15 @@ testDarwinPicksMacScript() {
 }
 
 testUbuntuPicksLinuxScript() {
-    assertEquals 'initial_packages.sh' "$(_dispatch ubuntu)"
+    assertEquals 'initial_packages_ubuntu.sh' "$(_dispatch ubuntu)"
 }
 
 testDebianPicksLinuxScript() {
-    assertEquals 'initial_packages.sh' "$(_dispatch debian)"
+    assertEquals 'initial_packages_ubuntu.sh' "$(_dispatch debian)"
 }
 
 testWslPicksLinuxScript() {
-    assertEquals 'initial_packages.sh' "$(_dispatch wsl)"
+    assertEquals 'initial_packages_ubuntu.sh' "$(_dispatch wsl)"
 }
 
 testRedhatPicksRedhatScript() {

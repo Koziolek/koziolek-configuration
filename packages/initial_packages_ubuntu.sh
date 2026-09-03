@@ -1,30 +1,18 @@
 #!/usr/bin/env bash
-#
-# Instalacja początkowa dla rodziny RedHat (RHEL, CentOS, Fedora, Rocky, Alma).
-# Mirror initial_packages.sh (Ubuntu/Debian) — menedżer pakietów: yum.
-#
-# Różnice względem initial_packages.sh:
-#   • yum zamiast apt-get; `epel-release` jako odpowiednik `add-apt-repository
-#     universe` (best-effort — na czystej Fedorze epel-release nie istnieje,
-#     safe_yum_install to pomija);
-#   • install_apps() pomija Spotify/1Password/Steam — dystrybuowane jako .deb /
-#     apt-repo, brak sensownego 1:1 na yum (zainstaluj ręcznie: flatpak / .rpm);
-#   • install_gh()/install_docker() używają oficjalnych repo yum zamiast apt;
-#   • install_asdf/install_rust_and_difft/install_sdkman/install_kubectl —
-#     bez zmian, OS-agnostyczne (curl + binarki/tarball).
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 PROJECT_NAME='koziolek-configuration'
+export DEBIAN_FRONTEND=noninteractive
 
 SUDO=''
-if (( EUID != 0 )); then
+if (( $EUID != 0 )); then
     SUDO='sudo'
 fi
 
 prerequisites=(
-    epel-release
+    software-properties-common
 )
 
 minimal_tools=(
@@ -32,28 +20,33 @@ minimal_tools=(
 )
 
 # Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
+# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
+# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
+$SUDO apt-get -qq update
 for _pkg in "${minimal_tools[@]}"; do
-    command -v "$_pkg" >/dev/null 2>&1 || $SUDO yum install -y "$_pkg"
+    command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
 done
 unset _pkg
 
 # Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
 # clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
-# leci przez `curl ... | bash` (BASH_SOURCE puste), pobieramy ten sam plik
-# z repo na GitHubie i source'ujemy z pliku tymczasowego (patrz initial_packages.sh).
+# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
+# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
+# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
+# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
 SCRIPT_DIR=""
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/yum_packages.sh" ]; then
-    # shellcheck source=packages/yum_packages.sh
-    source "$SCRIPT_DIR/packages/yum_packages.sh"
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/apt_packages.sh" ]; then
+    # shellcheck source=packages/apt_packages.sh
+    source "$SCRIPT_DIR/apt_packages.sh"
 else
-    echo "Brak lokalnej kopii packages/yum_packages.sh — pobieram z repo..."
+    echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
     _packages_tmp=$(mktemp)
     curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/yum_packages.sh" \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/apt_packages.sh" \
         -o "$_packages_tmp"
     # shellcheck disable=SC1090
     source "$_packages_tmp"
@@ -61,12 +54,11 @@ else
     unset _packages_tmp
 fi
 
-# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_mac.sh/
-# initial_packages_vanilla.sh (packages/verify_and_run_script.sh), ten sam wzorzec
-# lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+# verify_and_run_script — wspólna z initial_packages_mac.sh/initial_packages_vanilla.sh
+# (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/verify_and_run_script.sh" ]; then
     # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+    source "$SCRIPT_DIR/verify_and_run_script.sh"
 else
     _vars_tmp=$(mktemp)
     curl -fsSL \
@@ -89,10 +81,10 @@ all_packages=(
   "${boxes_vm[@]}"
 )
 
-safe_yum_install() {
+safe_apt_install() {
   local pkg ok_list=()
   for pkg in "$@"; do
-    if yum list "$pkg" >/dev/null 2>&1; then
+    if apt-cache show "$pkg" >/dev/null 2>&1; then
       ok_list+=("$pkg")
     else
       echo "⚠️ Package '$pkg' not found, skipping"
@@ -101,25 +93,26 @@ safe_yum_install() {
 
   if [ "${#ok_list[@]}" -gt 0 ]; then
     echo "Installing: ${ok_list[*]}"
-    $SUDO yum install -y "${ok_list[@]}"
+    $SUDO apt-get install -qqy "${ok_list[@]}"
   else
     echo "❌ No valid packages to install."
   fi
 }
 
 install_initial_packages() {
-    # epel-release: odpowiednik `add-apt-repository universe`. Best-effort —
-    # na czystej Fedorze pakiet nie istnieje (repo już ma to, co daje EPEL na RHEL).
-    $SUDO yum install -y epel-release 2>/dev/null || echo "ℹ️ epel-release niedostępny — pomijam (prawdopodobnie Fedora)"
-    safe_yum_install "${all_packages[@]}"
+    # we need some universe repos
+    $SUDO apt-get -qq update
+    safe_apt_install "${prerequisites[@]}"
+    $SUDO add-apt-repository -y universe
+    $SUDO apt-get -qq update
+    safe_apt_install "${all_packages[@]}"
 }
 
-# prepare_workspace — wspólna z install.sh/initial_packages.sh/initial_packages_mac.sh/
-# initial_packages_vanilla.sh (packages/prepare_workspace.sh), ten sam wzorzec
-# lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/prepare_workspace.sh" ]; then
+# prepare_workspace — wspólna z install.sh/initial_packages_mac.sh/initial_packages_vanilla.sh
+# (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/prepare_workspace.sh" ]; then
     # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/packages/prepare_workspace.sh"
+    source "$SCRIPT_DIR/prepare_workspace.sh"
 else
     _pw_tmp=$(mktemp)
     curl -fsSL \
@@ -222,15 +215,61 @@ install_sdkman() {
     sdk i java
     sdk i maven
     sdk i mvnd
+
 }
 
 install_apps() {
-    echo "⚠️ Spotify/1Password/Steam są dystrybuowane jako .deb / repo apt —"
-    echo "   brak sensownego instalatora yum, pomijam. Zainstaluj ręcznie:"
-    echo "   • Spotify:  flatpak install flathub com.spotify.Client"
-    echo "   • 1Password: https://1password.com/downloads/linux (oficjalne repo yum jest, ale różni się per dystrybucja)"
-    echo "   • Steam:    https://repo.steampowered.com (RPM Fusion / oficjalne .rpm Valve)"
+    local DOWNLOAD_DIR="$HOME/Pobrane"
+    mkdir -p "$DOWNLOAD_DIR"
+
+    echo "Instalacja aplikacji tylko przez .deb pakiety..."
+
+    # Spotify przez repozytorium. Klucz scoped przez signed-by= (nie trusted.gpg.d —
+    # to zaufałoby kluczowi dla WSZYSTKICH repo apt, nie tylko Spotify).
+    if ! command -v spotify >/dev/null 2>&1; then
+        echo "Instalacja Spotify..."
+        $SUDO mkdir -p /etc/apt/keyrings
+        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg \
+            | $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" \
+            | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
+        $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
+    fi
+
+    cd "$DOWNLOAD_DIR" || return 1
+
+    # Przygotuj listę aplikacji do pobrania
+    local -A apps=(
+        ["1password"]="https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb"
+        ["steam"]="https://cdn.akamai.steamstatic.com/client/installer/steam.deb"
+    )
+
+    # Pobierz i zainstaluj każdą aplikację
+    local app deb_file
+    for app in "${!apps[@]}"; do
+        deb_file="${app}.deb"
+
+        if [ ! -f "$deb_file" ] || [ $(($(date +%s) - $(stat -c %Y "$deb_file" 2>/dev/null || echo 0))) -gt 86400 ]; then
+            echo "Pobieranie $app..."
+            wget -O "$deb_file" "${apps[$app]}"
+        fi
+
+        echo "Instalacja $app..."
+        $SUDO apt-get install -qqy "./$deb_file"
+    done
+
+    # Specjalna konfiguracja dla Steam (architektura 32-bit)
+    if [ -f "steam.deb" ]; then
+        echo "Konfiguracja Steam (biblioteki 32-bit)..."
+        $SUDO dpkg --add-architecture i386
+        $SUDO apt-get update
+        $SUDO apt-get install -qqy lib32gcc-s1 libc6-i386
+        $SUDO apt-get install -fqqy  # napraw zależności
+    fi
+
+    echo "Wszystkie aplikacje zostały zainstalowane!"
 }
+
 
 install_gh() {
     if command -v gh &>/dev/null; then
@@ -239,9 +278,20 @@ install_gh() {
     fi
 
     echo "Instalacja GitHub CLI..."
-    $SUDO yum install -y yum-utils
-    $SUDO yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-    safe_yum_install gh
+    $SUDO mkdir -p -m 755 /etc/apt/keyrings
+
+    local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+    local tmpkey
+    tmpkey="$(mktemp)"
+    wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
+    rm -f "$tmpkey"
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
+        | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+    $SUDO apt-get -qq update
+    safe_apt_install gh
     echo "✓ gh zainstalowany: $(gh --version | head -1)"
 }
 
@@ -287,7 +337,8 @@ install_ctop() {
 
 # Pobiera kubectl z oficjalnego releasu Kubernetes (dl.k8s.io), weryfikuje sumę
 # sha256 opublikowaną obok binarki i dopiero wtedy instaluje do /usr/local/bin.
-# OS-agnostyczne — ta sama metoda co w initial_packages.sh.
+# Nie ma go w domyślnych repo apt (bez dodawania cudzego repozytorium) — stąd
+# ta sama metoda co ctop, zamiast apt.
 install_kubectl() {
     local kubectl_version
     kubectl_version=$(curl -Lfs https://dl.k8s.io/release/stable.txt)
@@ -325,36 +376,40 @@ install_kubectl() {
 
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
-
+    
     # Usuń stare wersje Docker jeśli istnieją
     echo "Usuwanie starych wersji Docker..."
-    $SUDO yum remove -y docker docker-client docker-client-latest docker-common \
-        docker-latest docker-latest-logrotate docker-logrotate docker-engine 2>/dev/null || true
+    $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
 
-    # Repo Dockera różni się per dystrybucja (fedora vs centos/rhel-kompatybilne).
-    local docker_repo_flavor="centos"
-    if [ -r /etc/os-release ] && grep -q '^ID=fedora' /etc/os-release; then
-        docker_repo_flavor="fedora"
-    fi
-
-    echo "Dodawanie repozytorium Docker ($docker_repo_flavor)..."
-    $SUDO yum install -y yum-utils
-    $SUDO yum-config-manager --add-repo "https://download.docker.com/linux/${docker_repo_flavor}/docker-ce.repo"
-
+    
+    # Dodaj klucz GPG Docker
+    echo "Dodawanie klucza GPG Docker..."
+    $SUDO mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    
+    # Dodaj repozytorium Docker
+    echo "Dodawanie repozytorium Docker..."
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Aktualizuj listę pakietów z nowym repozytorium
+    $SUDO apt-get -qq update
+    
     # Zainstaluj Docker Engine
     echo "Instalacja Docker Engine..."
-    safe_yum_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
+    safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
     # Uruchom i włącz Docker service
     echo "Uruchamianie Docker service..."
     $SUDO systemctl start docker
     $SUDO systemctl enable docker
-
+    
     # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
     echo "Dodawanie użytkownika $USER do grupy docker..."
     $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
-    $SUDO usermod -aG docker "$USER"
-
+    $SUDO usermod -aG docker $USER
+    
     # Zainstaluj docker-ctop
     echo "Instalacja docker-ctop..."
     install_ctop
@@ -362,9 +417,9 @@ install_docker() {
     # Sprawdź instalację
     echo "Sprawdzanie instalacji..."
     docker --version
-    docker compose version 2>/dev/null || echo "⚠️ docker compose niedostępny, pomijam sprawdzenie"
+    docker-compose --version
     command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
-
+    
     echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
     echo "Użytkownik $USER został dodany do grupy docker."
     echo ""
@@ -386,7 +441,7 @@ maybe_restart() {
 }
 
 prepare_bashrc() {
-    cd "$HOME/" || return
+    cd $HOME/ || return
     cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E testy dla initial_packages.sh.
+# E2E testy dla initial_packages_ubuntu.sh.
 # Uruchamiany przez test/run.sh --e2e z katalogu głównego projektu.
 # NIE używa shunit2 — orkiestruje Docker i analizuje log wyjściowy.
 
@@ -8,7 +8,7 @@ set -uo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESULTS_DIR="${RESULTS_DIR:-$PROJECT_ROOT/test/results}"
 E2E_IMAGE="${E2E_IMAGE:-koziolek-test-e2e}"
-LOG="$RESULTS_DIR/e2e-initial-packages.log"
+LOG="$RESULTS_DIR/e2e-initial-packages-ubuntu.log"
 
 mkdir -p "$RESULTS_DIR"
 : > "$LOG"
@@ -30,7 +30,7 @@ _assert_log_not_contains() {
 }
 
 echo "======================================="
-echo "  E2E: initial_packages.sh"
+echo "  E2E: initial_packages_ubuntu.sh"
 echo "======================================="
 
 # --- Budowanie obrazu ---
@@ -70,7 +70,7 @@ fi
 
 # testFunctionsLoaded
 _assert_log_contains \
-    "funkcje z initial_packages.sh zostały załadowane" \
+    "funkcje z initial_packages_ubuntu.sh zostały załadowane" \
     "FUNCTIONS_LOADED"
 
 # testInstallInitialPackagesRan
@@ -93,7 +93,7 @@ _assert_log_contains \
     ".bashrc zawiera referencję do koziolek-configuration" \
     "BASHRC_CONTAINS_CONFIG"
 
-# testNoErrorLines (trap ERR z initial_packages.sh drukuje ❌)
+# testNoErrorLines (trap ERR z initial_packages_ubuntu.sh drukuje ❌)
 _assert_log_not_contains \
     "brak linii błędu z trap ERR (❌)" \
     "❌"

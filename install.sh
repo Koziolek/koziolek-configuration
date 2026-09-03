@@ -8,7 +8,10 @@
 # Co robi:
 #   1. wykrywa system (współdzieli detect_context z bash/contexts/detect.sh),
 #   2. klonuje repo do ~/workspace/koziolek-configuration (+ symlink ~/.koziolek-configuration),
-#   3. uruchamia właściwy initial_packages*.sh, który instaluje pakiety i stawia ~/.bashrc.
+#   3. uruchamia właściwy packages/initial_packages_*.sh, który instaluje pakiety i stawia ~/.bashrc.
+#
+# Dla repo już sklonowanego — ten sam dispatch bez pobierania niczego z sieci:
+#   ./initial_packages.sh   /   ./update_packages.sh
 #
 # Leci przez potok (`... | bash`) — NIE może zależeć od ${BASH_SOURCE[0]} jako
 # ścieżki do pliku. Wszystkie zasoby ciągnie z RAW_BASE/REF.
@@ -73,6 +76,12 @@ detect_ctx() {
 # rozpoznajemy go po /run/host/etc/os-release (bind z hosta).
 # Zwraca kontekst na stdout. Kod 2 = jesteśmy na immutable hoście Vanilla
 # (instalacja tu niemożliwa) — wołający ma przerwać.
+#
+# Duplikat resolve_vanilla_subsystem()/context_package_suffix() z
+# bash/contexts/detect.sh — celowo NIE fetchowany stamtąd: install.sh z
+# CONFIG_CONTEXT_FORCE ustawionym (testy) musi działać w 100% offline, bez
+# żadnego zapytania sieciowego, a detect_ctx() poniżej fetchuje detect.sh
+# tylko gdy FORCE nie jest ustawiony.
 resolve_vanilla() {
     local ctx="$1"
 
@@ -102,7 +111,7 @@ select_script() {
     case "$1" in
         darwin)                 echo "initial_packages_mac.sh" ;;
         vanilla)                echo "initial_packages_vanilla.sh" ;;
-        ubuntu|debian|wsl)      echo "initial_packages.sh" ;;
+        ubuntu|debian|wsl)      echo "initial_packages_ubuntu.sh" ;;
         redhat)                 echo "initial_packages_redhat.sh" ;;
         *)                      return 1 ;;
     esac
@@ -146,7 +155,7 @@ main() {
     prepare_workspace
 
     # ── 6. Właściwy instalator pakietów (lokalny, z klona) ────────────────
-    local target="$HOME/.${PROJECT_NAME}/$script"
+    local target="$HOME/.${PROJECT_NAME}/packages/$script"
     if [ ! -f "$target" ]; then
         echo "❌ Brak $target po klonie repo." >&2
         exit 1

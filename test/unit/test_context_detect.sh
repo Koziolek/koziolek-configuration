@@ -161,5 +161,58 @@ testLoadContextsSourcesChainInOrder() {
     assertEquals 'linux;debian;vanilla;' "$out"
 }
 
+# --- context_package_suffix -------------------------------------------------
+
+testSuffixUbuntu() {
+    assertEquals 'ubuntu' "$(context_package_suffix ubuntu)"
+}
+
+testSuffixDebian() {
+    assertEquals 'ubuntu' "$(context_package_suffix debian)"
+}
+
+testSuffixWsl() {
+    assertEquals 'ubuntu' "$(context_package_suffix wsl)"
+}
+
+testSuffixDarwin() {
+    assertEquals 'mac' "$(context_package_suffix darwin)"
+}
+
+testSuffixVanilla() {
+    assertEquals 'vanilla' "$(context_package_suffix vanilla)"
+}
+
+testSuffixRedhat() {
+    assertEquals 'redhat' "$(context_package_suffix redhat)"
+}
+
+testSuffixUnsupportedReturnsError() {
+    context_package_suffix linux >/dev/null
+    assertNotEquals 'linux (fallback ogólny) musi być nieobsługiwany' 0 $?
+}
+
+# --- resolve_vanilla_subsystem ----------------------------------------------
+
+testResolveVanillaHostAborts() {
+    local rc=0
+    CONTAINERENV_FILE=/nonexistent resolve_vanilla_subsystem vanilla >/dev/null || rc=$?
+    assertEquals 2 "$rc"
+}
+
+testResolveVanillaSubsystemDetected() {
+    local host_os containerenv out
+    host_os="$_TMP/host-os-release-$RANDOM"
+    printf 'ID=debian\nID_LIKE=vanilla\n' > "$host_os"
+    containerenv="$_TMP/containerenv-$RANDOM"; : > "$containerenv"
+    out=$(CONTAINERENV_FILE="$containerenv" HOST_OS_RELEASE_FILE="$host_os" \
+        resolve_vanilla_subsystem debian)
+    assertEquals 'vanilla' "$out"
+}
+
+testResolveVanillaPassesThroughOtherContexts() {
+    assertEquals 'ubuntu' "$(CONTAINERENV_FILE=/nonexistent resolve_vanilla_subsystem ubuntu)"
+}
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

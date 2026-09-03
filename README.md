@@ -16,11 +16,14 @@ curl -fsSL https://raw.githubusercontent.com/Koziolek/koziolek-configuration/mas
 
 `install.sh` wykrywa system (`bash/contexts/detect.sh`), klonuje repo do
 `~/workspace/koziolek-configuration` (symlink `~/.koziolek-configuration`) i uruchamia właściwy
-`initial_packages*.sh` — ten instaluje pakiety i stawia `~/.bashrc` z szablonu.
+`packages/initial_packages*.sh` — ten instaluje pakiety i stawia `~/.bashrc` z szablonu.
 Gałąź do pobrania: zmienna `KOZIOLEK_REF` (domyślnie `master`).
 
 Na **Vanilla OS 2** uruchom ten sam one-liner **wewnątrz subsystemu** (`vso shell` / `apx enter`) —
 na immutable hoście `install.sh` przerwie z instrukcją.
+
+W repo już sklonowanym ten sam wybór właściwego skryptu (bez sieci, bez klonowania) robią
+`./initial_packages.sh` i `./update_packages.sh` w katalogu głównym.
 
 ### Ręcznie
 
@@ -47,15 +50,19 @@ uprawnieniami 400. Wzorzec zmiennych: `.senv.template`.
 
 ### Bootstrap pakietów (per system)
 
-Instalacja narzędzi i aktualizacje mają osobny skrypt na każdy system (`install.sh` sam wybiera właściwy).
-Wspólne listy pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla) i `packages/brew_packages.sh`
-(macOS). Klon repo + symlink: wspólny `packages/prepare_workspace.sh`.
+Instalacja narzędzi i aktualizacje mają osobny skrypt na każdy system (`install.sh` sam wybiera właściwy),
+wszystkie w `packages/`. Wspólne listy pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla),
+`packages/brew_packages.sh` (macOS) i `packages/yum_packages.sh` (RedHat/CentOS/Fedora). Klon repo +
+symlink: wspólny `packages/prepare_workspace.sh`.
+
+Ścieżki niżej są względem `packages/`.
 
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
-| Ubuntu / Debian | `initial_packages.sh` | `update_packages.sh` | apt + Docker |
+| Ubuntu / Debian | `initial_packages_ubuntu.sh` | `update_packages_ubuntu.sh` | apt + Docker |
 | macOS | `initial_packages_mac.sh` | `update_packages_mac.sh` | Homebrew |
 | **Vanilla OS 2** | **`initial_packages_vanilla.sh`** | **`update_packages_vanilla.sh`** | apt (w subsystemie `apx`) + podman |
+| RedHat / CentOS / Fedora | `initial_packages_redhat.sh` | `update_packages_redhat.sh` | yum + Docker |
 
 Wersja Vanilla musi lecieć **wewnątrz subsystemu** (`vso shell` / `apx enter`) — host jest immutable.
 Używa `podman` + `podman-compose` zamiast Dockera, pomija `add-apt-repository universe` (baza to Debian
@@ -323,7 +330,7 @@ Projekt zawiera skrypty diagnostyczne, raporty i narzędzia do analizy stanu sta
 ```bash
 ./test/run.sh              # testy unit + integration (Docker na Linux)
 ./test/run.sh --native     # bezpośrednio na hoście, bez Dockera (wymagane na macOS)
-./test/run.sh --e2e        # dodatkowo e2e: initial_packages.sh w Ubuntu 24.04
+./test/run.sh --e2e        # dodatkowo e2e: initial_packages_ubuntu.sh w Ubuntu 24.04
 ./test/run.sh --all        # wszystko
 ```
 

@@ -12,7 +12,7 @@
 #
 # W subsystemie `sudo` działa (rootless podman, użytkownik ma sudo w kontenerze).
 #
-# ── Czym różni się od initial_packages.sh (Ubuntu) ───────────────────────────
+# ── Czym różni się od initial_packages_ubuntu.sh ────────────────────────────
 #   • baza to Debian sid, NIE Ubuntu → brak `add-apt-repository universe`
 #     (wszystko jest w `main`);
 #   • silnik kontenerów: `podman` + `podman-compose` zamiast Dockera
@@ -70,9 +70,9 @@ if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/apt_packages.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/apt_packages.sh" ]; then
     # shellcheck source=packages/apt_packages.sh
-    source "$SCRIPT_DIR/packages/apt_packages.sh"
+    source "$SCRIPT_DIR/apt_packages.sh"
 else
     echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
     _packages_tmp=$(mktemp)
@@ -85,11 +85,11 @@ else
     unset _packages_tmp
 fi
 
-# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_mac.sh
+# verify_and_run_script — wspólna z initial_packages_ubuntu.sh/initial_packages_mac.sh
 # (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/verify_and_run_script.sh" ]; then
     # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+    source "$SCRIPT_DIR/verify_and_run_script.sh"
 else
     _vars_tmp=$(mktemp)
     curl -fsSL \
@@ -137,11 +137,11 @@ install_initial_packages() {
     safe_apt_install "${all_packages[@]}"
 }
 
-# prepare_workspace — wspólna z install.sh/initial_packages.sh/initial_packages_mac.sh
+# prepare_workspace — wspólna z install.sh/initial_packages_ubuntu.sh/initial_packages_mac.sh
 # (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/prepare_workspace.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/prepare_workspace.sh" ]; then
     # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/packages/prepare_workspace.sh"
+    source "$SCRIPT_DIR/prepare_workspace.sh"
 else
     _pw_tmp=$(mktemp)
     curl -fsSL \

@@ -6,7 +6,7 @@
 #
 # Opcje:
 #   --all               Uruchom wszystkie testy (unit + e2e + e2e-local + e2e-redhat)
-#   --e2e               Uruchom testy e2e (initial_packages.sh + GitHub clone, wolne)
+#   --e2e               Uruchom testy e2e (initial_packages_ubuntu.sh + GitHub clone, wolne)
 #   --e2e-local         Uruchom testy e2e z lokalnym projektem podpiętym jako volume
 #   --e2e-redhat        Uruchom testy e2e dla initial_packages_redhat.sh (rockylinux:9, wolne)
 #   --native            Uruchom testy bezpośrednio na hoście (bez Docker) — wymagane na macOS
@@ -213,7 +213,7 @@ if $RUN_E2E; then
     echo ""
     echo "▶ Uruchamianie testów e2e..."
     RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
-        bash "$TEST_DIR/e2e/test_initial_packages.sh"
+        bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh"
     E2E_EXIT=$?
 else
     E2E_EXIT=0

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspólna funkcja prepare_workspace dla install.sh, initial_packages.sh,
+# Wspólna funkcja prepare_workspace dla install.sh, initial_packages_ubuntu.sh,
 # initial_packages_mac.sh i initial_packages_vanilla.sh.
 # Sourcowane, nie wykonywane — tylko definicja funkcji.
 #

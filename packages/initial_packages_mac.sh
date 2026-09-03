@@ -14,11 +14,11 @@ if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-# verify_and_run_script — wspólna z initial_packages.sh/initial_packages_vanilla.sh
+# verify_and_run_script — wspólna z initial_packages_ubuntu.sh/initial_packages_vanilla.sh
 # (packages/verify_and_run_script.sh).
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/verify_and_run_script.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/verify_and_run_script.sh" ]; then
     # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/packages/verify_and_run_script.sh"
+    source "$SCRIPT_DIR/verify_and_run_script.sh"
 else
     _vars_tmp=$(mktemp)
     curl -fsSL \
@@ -50,16 +50,16 @@ minimal_tools=(
 install_homebrew || exit 1
 
 # macOS ma curl wbudowany, ale nie wget — dociągamy oba przez brew od razu,
-# analogicznie do apt w initial_packages.sh (Linux).
+# analogicznie do apt w initial_packages_ubuntu.sh (Linux).
 for _pkg in "${minimal_tools[@]}"; do
     command -v "$_pkg" >/dev/null 2>&1 || brew install "$_pkg"
 done
 unset _pkg
 
 # Wspólna lista pakietów: $SCRIPT_DIR już wyliczone na górze pliku (verify_and_run_script).
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/brew_packages.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/brew_packages.sh" ]; then
     # shellcheck source=packages/brew_packages.sh
-    source "$SCRIPT_DIR/packages/brew_packages.sh"
+    source "$SCRIPT_DIR/brew_packages.sh"
 else
     echo "Brak lokalnej kopii packages/brew_packages.sh — pobieram z repo..."
     _packages_tmp=$(mktemp)
@@ -84,11 +84,11 @@ install_brew_packages() {
     done
 }
 
-# prepare_workspace — wspólna z install.sh/initial_packages.sh/initial_packages_vanilla.sh
+# prepare_workspace — wspólna z install.sh/initial_packages_ubuntu.sh/initial_packages_vanilla.sh
 # (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/packages/prepare_workspace.sh" ]; then
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/prepare_workspace.sh" ]; then
     # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/packages/prepare_workspace.sh"
+    source "$SCRIPT_DIR/prepare_workspace.sh"
 else
     _pw_tmp=$(mktemp)
     curl -fsSL \

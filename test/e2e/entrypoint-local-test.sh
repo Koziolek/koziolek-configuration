@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-SCRIPT=/initial_packages.sh
+SCRIPT=/packages/initial_packages_ubuntu.sh
 
 CUTLINE=$(grep -n "^cd " "$SCRIPT" | head -1 | cut -d: -f1)
 if [[ -z "$CUTLINE" ]]; then
@@ -12,7 +12,7 @@ if [[ -z "$CUTLINE" ]]; then
     exit 1
 fi
 
-# Sourcowane przez plik, nie przez process substitution: initial_packages.sh
+# Sourcowane przez plik, nie przez process substitution: initial_packages_ubuntu.sh
 # lokalizuje packages/apt_packages.sh względem ${BASH_SOURCE[0]}, a process
 # substitution (/dev/fd/N) łamie to dirname'owanie.
 TMPSCRIPT="$(dirname "$SCRIPT")/.e2e-head-$$.sh"

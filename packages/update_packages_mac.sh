@@ -13,7 +13,7 @@ minimal_tools=(
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=packages/brew_packages.sh
-source "$SCRIPT_DIR/packages/brew_packages.sh"
+source "$SCRIPT_DIR/brew_packages.sh"
 
 all_brew_packages=(
     "${minimal_tools[@]}"

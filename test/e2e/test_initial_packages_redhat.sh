@@ -52,7 +52,7 @@ echo ""
 echo "▶ Uruchamianie kontenera (może potrwać kilka minut)..."
 docker run --rm \
     --network="${DOCKER_NETWORK:-koziolek-test-net}" \
-    -e INIT_SCRIPT=/initial_packages_redhat.sh \
+    -e INIT_SCRIPT=/packages/initial_packages_redhat.sh \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-test.sh:/entrypoint-test.sh:ro" \
     "$E2E_REDHAT_IMAGE" \
     bash /entrypoint-test.sh >> "$LOG" 2>&1
