@@ -65,6 +65,62 @@ _listening_socket_pairs() {
         }'
 }
 
+# hwinfo (functions.d/125_function_hwinfo.sh): wersja Linux liczy na dmidecode/lspci/proc —
+# na macOS zamiennik to system_profiler/sysctl/sw_vers, bez roota. Orkiestrator hwinfo()
+# zostaje wspólny.
+_hwinfo_check_deps() { return 0; }
+
+hwinfo_cpu() {
+    _hwinfo_header "🖥  PROCESOR"
+    echo "  Model : $(sysctl -n machdep.cpu.brand_string 2>/dev/null)"
+    local chip
+    chip=$(system_profiler SPHardwareDataType 2>/dev/null | awk -F': ' '/Chip:/ {print $2}')
+    [ -n "$chip" ] && echo "  Chip  : $chip"
+    echo "  Rdzenie fizyczne   : $(sysctl -n hw.physicalcpu 2>/dev/null)"
+    echo "  Rdzenie logiczne   : $(sysctl -n hw.logicalcpu 2>/dev/null)"
+    local hz
+    hz=$(sysctl -n hw.cpufrequency_max 2>/dev/null)
+    # Apple Silicon nie eksponuje hw.cpufrequency_max — pomijamy, jeśli puste/0.
+    if [ -n "$hz" ] && [ "$hz" != "0" ]; then
+        awk -v hz="$hz" 'BEGIN{printf "  Takt (max)         : %.0f MHz\n", hz/1000000}'
+    fi
+}
+
+hwinfo_motherboard() {
+    _hwinfo_header "🔧  MODEL MAC"
+    system_profiler SPHardwareDataType 2>/dev/null | awk '
+      /Model Name:|Model Identifier:|Chip:|Processor Name:|Serial Number|Hardware UUID:/ {
+        sub(/^[[:space:]]+/, ""); print "  " $0
+      }
+    '
+    echo
+    _hwinfo_header "   FIRMWARE / OS"
+    echo "  macOS : $(sw_vers -productName 2>/dev/null) $(sw_vers -productVersion 2>/dev/null) (build $(sw_vers -buildVersion 2>/dev/null))"
+}
+
+hwinfo_ram() {
+    _hwinfo_header "💾  PAMIĘĆ RAM"
+    local bytes total_gb
+    bytes=$(sysctl -n hw.memsize 2>/dev/null)
+    total_gb=$(awk -v b="$bytes" 'BEGIN{printf "%.1f GiB", b/1024/1024/1024}')
+    echo "  Łącznie zainstalowane: ${C_BOLD}${total_gb}${C_NC}"
+    echo
+    system_profiler SPMemoryDataType 2>/dev/null | awk '
+      /BANK|Size:|Type:|Speed:|Manufacturer:|Status:/ {
+        sub(/^[[:space:]]+/, ""); print "  " $0
+      }
+    '
+}
+
+hwinfo_gpu() {
+    _hwinfo_header "🎮  KARTA GRAFICZNA"
+    system_profiler SPDisplaysDataType 2>/dev/null | awk '
+      /Chipset Model:|VRAM|Vendor:|Metal/ {
+        sub(/^[[:space:]]+/, ""); print "  " $0
+      }
+    '
+}
+
 # detect_display_env: wersja z functions.d/ nie zna macOS (usunęliśmy guard uname).
 detect_display_env() { echo "darwin"; }
 
@@ -77,4 +133,5 @@ netconf_diag() { log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, 
 refresh_apt_gpg_keys() { log_warn "refresh_apt_gpg_keys: apt niedostępne na macOS"; return 1; }
 
 export -f _listening_socket_pairs detect_display_env reswap who_use_swap \
-    turn_async_profiler_on turn_async_profiler_off start_x netconf_diag refresh_apt_gpg_keys
+    turn_async_profiler_on turn_async_profiler_off start_x netconf_diag refresh_apt_gpg_keys \
+    _hwinfo_check_deps hwinfo_cpu hwinfo_motherboard hwinfo_ram hwinfo_gpu

@@ -71,6 +71,9 @@ Odpowiedzialność kluczowych plików funkcji:
 - `functions.d/040_*` — helpery Docker
 - `functions.d/100_get_and_build.sh` — funkcja `get_and_build` (patrz niżej)
 - `functions.d/110_git-context.sh` — funkcja `git_context`
+- `functions.d/125_function_hwinfo.sh` — `hwinfo()` (zrzut CPU/płyta główna+BIOS/RAM/GPU;
+  wersja Linux — dmidecode/lspci/proc; `darwin.sh` cieniuje `hwinfo_cpu`/`hwinfo_motherboard`/
+  `hwinfo_ram`/`hwinfo_gpu`/`_hwinfo_check_deps` wersją system_profiler/sysctl)
 - `functions.d/130_function_screen.sh` — `detect_display_env()` (gnome/sway/wlroots/x11/wayland; `darwin` z cienia)
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
