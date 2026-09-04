@@ -23,19 +23,25 @@ Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**,
 ./test/run.sh --e2e         # dodatkowo e2e: initial_packages_ubuntu.sh w Ubuntu 24.04 (wolne)
 ./test/run.sh --e2e-local   # e2e z lokalnym projektem podpiętym jako volume
 ./test/run.sh --e2e-redhat  # e2e: initial_packages_redhat.sh w rockylinux:9 (wolne)
+./test/run.sh --e2e-vanilla # e2e: initial_packages_vanilla.sh w debian:sid (wolne)
 ./test/run.sh --all         # unit + integration + wszystkie e2e
 ./test/run.sh --filter <wzorzec>  # tylko pliki testowe pasujące do wzorca
 ```
 
 Runner (`test/run.sh`) sprawdza/przygotowuje środowisko Docker (obrazy, sieć), buduje obrazy testowe z
-`test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`, i deleguje do
-`test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`, `test/integration/` (oraz warianty
-`linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e
-(`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/`initial_packages_redhat.sh` (`COPY`, nie curl
-z GitHuba) — testują bieżące, niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla obu (skrypt
-docelowy przez `INIT_SCRIPT`), zawężony do bezpiecznych funkcji (`install_initial_packages`,
-`prepare_workspace`, `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od
-`systemctl`/sieci). Uruchamiane też w CI: `.github/workflows/test.yml` (unit+integration na push/PR do
+`test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`/`test/Dockerfile-e2e-vanilla`, i
+deleguje do `test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`, `test/integration/` (oraz
+warianty `linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e
+(`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/`initial_packages_redhat.sh`/
+`initial_packages_vanilla.sh` (`COPY`, nie curl z GitHuba) — testują bieżące, niezacommitowane zmiany;
+`entrypoint-test.sh` jest wspólny dla wszystkich trzech (skrypt docelowy przez `INIT_SCRIPT`), zawężony do
+bezpiecznych funkcji (`install_initial_packages`, `prepare_workspace`, `prepare_bashrc` — bez
+`install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant vanilla używa obrazu
+bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
+`Dockerfile-e2e-vanilla` — symuluje marker, którego `initial_packages_vanilla.sh` wymaga jako dowodu, że nie
+leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Nie testuje to realnego
+Podmana/apx, tylko poprawność samego skryptu apt na debianowej bazie. Uruchamiane też w CI:
+`.github/workflows/test.yml` (unit+integration na push/PR do
 `master`; e2e pozostaje lokalne/manualne — wymaga Dockera i sieci).
 
 ## Architektura
