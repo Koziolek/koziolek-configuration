@@ -56,6 +56,7 @@ Available functions:
   [Narzędzia]
   weather                      – aktualna pogoda (wttr.in)
   start_x                      – uruchamia środowisko graficzne
+  fake_poweroff {off|on}       – wygasza ekran, auto-wybudzenie na ruch/klawisz (wymaga libinput-tools + grupy 'input')
   generate_month_dirs          – tworzy strukturę katalogów miesięcznych
   tmux_dump [PLIK]             – zrzuca stan bieżącej sesji tmux do pliku
   get_and_build                – git pull + wykryj system budowania + zbuduj (gab)

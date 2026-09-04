@@ -129,9 +129,10 @@ who_use_swap() { log_warn "who_use_swap: /proc niedostępny na macOS"; return 1;
 turn_async_profiler_on() { log_warn "turn_async_profiler_on: /proc/sys/kernel nie istnieje na macOS"; return 1; }
 turn_async_profiler_off() { log_warn "turn_async_profiler_off: /proc/sys/kernel nie istnieje na macOS"; return 1; }
 start_x() { log_warn "start_x: systemctl/lightdm niedostępne na macOS"; return 1; }
+fake_poweroff() { log_warn "fake_poweroff: gdbus/xset/wlopm niedostępne na macOS — użyj pmset/caffeinate"; return 1; }
 netconf_diag() { log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, journalctl) — niedostępnych na macOS"; return 1; }
 refresh_apt_gpg_keys() { log_warn "refresh_apt_gpg_keys: apt niedostępne na macOS"; return 1; }
 
 export -f _listening_socket_pairs detect_display_env reswap who_use_swap \
-    turn_async_profiler_on turn_async_profiler_off start_x netconf_diag refresh_apt_gpg_keys \
+    turn_async_profiler_on turn_async_profiler_off start_x fake_poweroff netconf_diag refresh_apt_gpg_keys \
     _hwinfo_check_deps hwinfo_cpu hwinfo_motherboard hwinfo_ram hwinfo_gpu
