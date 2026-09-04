@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Testy jednostkowe: bash/functions.d/125_function_hwinfo.sh
-# Mockuje dmidecode/lspci (fixture zbliżona do prawdziwego formatu) — łapie regresje
-# we wzorcach awk/sed (złe nazwy pól = cicho pusty output).
-# /proc/cpuinfo i /proc/meminfo NIE są mockowane — kontener testowy jest Linuksem,
-# realne /proc jest dostępne i wystarczające do testu ścieżki parsowania.
+# Testy jednostkowe: bash/functions.d/140_function_diagnostic.sh (hwinfo + run_diagnostic).
+# hwinfo: mockuje dmidecode/lspci (fixture zbliżona do prawdziwego formatu) — łapie regresje
+# we wzorcach awk/sed (złe nazwy pól = cicho pusty output). /proc/cpuinfo i /proc/meminfo
+# NIE są mockowane — kontener testowy jest Linuksem, realne /proc wystarcza do testu
+# ścieżki parsowania.
+# run_diagnostic: mockuje $WORKSPACE_TOOLS/fix-comp/pre-analyze.sh (fix-comp to osobne,
+# prywatne repo — tu tylko sprawdzamy, że run_diagnostic poprawnie je lokalizuje/woła).
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -90,7 +92,7 @@ _run() {
         export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
         export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
         . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
-        . '$PROJECT_ROOT/bash/functions.d/125_function_hwinfo.sh'
+        . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
         $*
     "
 }
@@ -103,7 +105,7 @@ testCheckDepsFailsWhenDmidecodeMissing() {
     local out rc=0
     out=$(bash --norc --noprofile -c "
             . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
-            . '$PROJECT_ROOT/bash/functions.d/125_function_hwinfo.sh'
+            . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
             _hwinfo_check_deps
         " 2>&1) || rc=$?
     assertNotEquals 'brak dmidecode w PATH musi dać błąd' 0 "$rc"
@@ -159,6 +161,57 @@ testGpuFallsBackToLspciAndDmidecode() {
     out=$(_run 'hwinfo_gpu')
     assertContains 'lspci musi wypisać kartę' "$out" 'NVIDIA Corporation Device 2684'
     assertNotContains 'lspci nie może wypisać niepasujących urządzeń' "$out" 'Intel Corporation'
+}
+
+# --- run_diagnostic -----------------------------------------------------------
+
+testRunDiagnosticFailsWhenFixCompMissing() {
+    local fake_tools out rc=0
+    fake_tools="$(mktemp -d)"
+    out=$(WORKSPACE_TOOLS="$fake_tools" bash --norc --noprofile -c "
+        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
+        . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
+        run_diagnostic
+    " 2>&1) || rc=$?
+    assertNotEquals 'brak fix-comp musi dać błąd, nie wywalić shella' 0 "$rc"
+    assertContains "$out" 'run_diagnostic'
+    assertContains "$out" 'brak'
+    rm -rf "$fake_tools"
+}
+
+testRunDiagnosticInvokesScriptWithArgs() {
+    local fake_tools out
+    fake_tools="$(mktemp -d)"
+    mkdir -p "$fake_tools/fix-comp"
+    cat > "$fake_tools/fix-comp/pre-analyze.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "CALLED_WITH:$*"
+EOF
+    chmod +x "$fake_tools/fix-comp/pre-analyze.sh"
+
+    out=$(WORKSPACE_TOOLS="$fake_tools" bash --norc --noprofile -c "
+        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
+        . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
+        run_diagnostic --list-profiles -m
+    ")
+    assertContains 'run_diagnostic musi przekazać argumenty dalej' "$out" 'CALLED_WITH:--list-profiles -m'
+    rm -rf "$fake_tools"
+}
+
+testRunDiagnosticPropagatesExitCode() {
+    local fake_tools rc=0
+    fake_tools="$(mktemp -d)"
+    mkdir -p "$fake_tools/fix-comp"
+    printf '#!/usr/bin/env bash\nexit 3\n' > "$fake_tools/fix-comp/pre-analyze.sh"
+    chmod +x "$fake_tools/fix-comp/pre-analyze.sh"
+
+    WORKSPACE_TOOLS="$fake_tools" bash --norc --noprofile -c "
+        . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
+        . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
+        run_diagnostic
+    " >/dev/null 2>&1 || rc=$?
+    assertEquals 'kod wyjścia pre-analyze.sh musi się propagować' 3 "$rc"
+    rm -rf "$fake_tools"
 }
 
 # shellcheck source=/dev/null

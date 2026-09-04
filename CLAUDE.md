@@ -71,10 +71,14 @@ Odpowiedzialność kluczowych plików funkcji:
 - `functions.d/040_*` — helpery Docker
 - `functions.d/100_get_and_build.sh` — funkcja `get_and_build` (patrz niżej)
 - `functions.d/110_git-context.sh` — funkcja `git_context`
-- `functions.d/125_function_hwinfo.sh` — `hwinfo()` (zrzut CPU/płyta główna+BIOS/RAM/GPU;
-  wersja Linux — dmidecode/lspci/proc; `darwin.sh` cieniuje `hwinfo_cpu`/`hwinfo_motherboard`/
-  `hwinfo_ram`/`hwinfo_gpu`/`_hwinfo_check_deps` wersją system_profiler/sysctl)
 - `functions.d/130_function_screen.sh` — `detect_display_env()` (gnome/sway/wlroots/x11/wayland; `darwin` z cienia)
+- `functions.d/140_function_diagnostic.sh` — `hwinfo()` (zrzut CPU/płyta główna+BIOS/RAM/GPU;
+  wersja Linux — dmidecode/lspci/proc; `darwin.sh` cieniuje `hwinfo_cpu`/`hwinfo_motherboard`/
+  `hwinfo_ram`/`hwinfo_gpu`/`_hwinfo_check_deps` wersją system_profiler/sysctl) oraz
+  `run_diagnostic()` — uruchamia `pre-analyze.sh` z prywatnego repo `fix-comp`
+  (`$WORKSPACE_TOOLS/fix-comp`, klonowane przez `install_lib -p` w `bash_customs.sh`)
+  z dowolnego katalogu roboczego; logi lądują w `fix-comp/logs` jak przy bezpośrednim
+  uruchomieniu (skrypt liczy swoją lokalizację przez `${BASH_SOURCE[0]}`, nie `$PWD`)
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:

@@ -65,7 +65,7 @@ _listening_socket_pairs() {
         }'
 }
 
-# hwinfo (functions.d/125_function_hwinfo.sh): wersja Linux liczy na dmidecode/lspci/proc —
+# hwinfo (functions.d/140_function_diagnostic.sh): wersja Linux liczy na dmidecode/lspci/proc —
 # na macOS zamiennik to system_profiler/sysctl/sw_vers, bez roota. Orkiestrator hwinfo()
 # zostaje wspólny.
 _hwinfo_check_deps() { return 0; }
