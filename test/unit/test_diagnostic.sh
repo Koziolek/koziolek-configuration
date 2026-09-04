@@ -100,10 +100,14 @@ _run() {
 # --- _hwinfo_check_deps ------------------------------------------------------
 
 testCheckDepsFailsWhenDmidecodeMissing() {
-    # kontener testowy nie ma dmidecode/lspci zainstalowanych — bez $_BIN w PATH
-    # to dokładnie ścieżka "brakujące zależności".
-    local out rc=0
-    out=$(bash --norc --noprofile -c "
+    # PATH pusty wymusza "brak" niezależnie od hosta — GH Actions runner ma
+    # dmidecode/lspci preinstalowane (w przeciwieństwie do kontenera testowego
+    # z Dockerfile-unit), więc poleganie na ambientnym PATH było niedeterministyczne.
+    # Pełna ścieżka do bash (nie goły "bash") — z PATH='' i CWD w repo, goły "bash"
+    # rozwiązałby się do katalogu bash/ w cwd ("bash: Jest katalogiem").
+    local out rc=0 bash_bin
+    bash_bin="$(command -v bash)"
+    out=$(PATH='' "$bash_bin" --norc --noprofile -c "
             . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh'
             . '$PROJECT_ROOT/bash/functions.d/140_function_diagnostic.sh'
             _hwinfo_check_deps
