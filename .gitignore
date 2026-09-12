@@ -18,3 +18,4 @@ code-review/
 output.log
 test/results/*.log
 test/results/*.txt
+.worktrees/

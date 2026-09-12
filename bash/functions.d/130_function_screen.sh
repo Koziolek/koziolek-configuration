@@ -67,7 +67,10 @@ export -f detect_display_env
 # `libinput debug-events`, wymaga pakietu libinput-tools ORAZ członkostwa w
 # grupie `input` (sudo usermod -aG input $USER + relogin — nie da się
 # zastosować w trakcie trwającej sesji, stąd tylko ostrzeżenie i fallback
-# bez auto-wybudzenia zamiast twardego błędu).
+# bez auto-wybudzenia zamiast twardego błędu). Watcher startuje z sekundą
+# zwłoki (issue #25) — bez niej łapał KEY_RELEASE tego samego klawisza,
+# który wywołał "off" (Enter w konsoli / fizyczny przycisk skrótu), i
+# natychmiast wybudzał ekran z powrotem.
 ##
 function fake_poweroff() {
     local action="${1:-off}"
@@ -136,6 +139,15 @@ function fake_poweroff() {
                 log_info "fake_poweroff: sudo usermod -aG input \$USER, potem wyloguj się i zaloguj ponownie"
             else
                 (
+                    # Margines przed startem nasłuchu: klawisz/skrót, który wywołał
+                    # to "off" (Enter w konsoli, albo fizyczny przycisk skrótu),
+                    # generuje własny KEY_RELEASE z opóźnieniem rzędu ~100-300ms
+                    # (source main.sh w ~/.local/bin/screensaver to samo w sobie
+                    # ~100ms). Bez tej zwłoki watcher startował na tyle szybko, że
+                    # łapał TO SAMO zwolnienie klawisza jako "aktywność
+                    # użytkownika" i natychmiast wołał _fp_on — ekran gasł i sam
+                    # się budził po ułamku sekundy (issue #25).
+                    sleep 1
                     stdbuf -oL libinput debug-events 2>/dev/null | while IFS= read -r line; do
                         case "$line" in
                         *POINTER_MOTION* | *POINTER_BUTTON* | *KEYBOARD_KEY*)

@@ -139,6 +139,21 @@ testInvalidActionShowsUsage() {
     assertContains "$out" 'Użycie: fake_poweroff'
 }
 
+testWatcherHasGracePeriodBeforeListening() {
+    # Regresja z issue #25: bez zwłoki watcher startował na tyle szybko po
+    # _fp_off, że łapał KEY_RELEASE tego samego klawisza, który wywołał
+    # "off" (Enter w konsoli / fizyczny przycisk skrótu) — ekran gasł i
+    # natychmiast sam się budził. `sleep` musi wystąpić PRZED
+    # `libinput debug-events` w ciele funkcji.
+    local body sleep_line libinput_line
+    body="$(bash --norc --noprofile -c ". '$_SCREEN' 2>/dev/null; declare -f fake_poweroff")"
+    sleep_line="$(grep -n 'sleep ' <<<"$body" | head -1 | cut -d: -f1)"
+    libinput_line="$(grep -n 'libinput debug-events' <<<"$body" | head -1 | cut -d: -f1)"
+    assertNotNull 'watcher musi mieć sleep przed startem nasłuchu' "$sleep_line"
+    [ -n "$sleep_line" ] && [ -n "$libinput_line" ] && \
+        assertTrue 'sleep musi być PRZED libinput debug-events, nie po' "[ '$sleep_line' -lt '$libinput_line' ]"
+}
+
 testFakePoweroffUsesDetectDisplayEnvNotOwnDetection() {
     # Regresja z issue #20: fake_poweroff ma korzystać z detect_display_env(),
     # nie duplikować własnej detekcji XDG_CURRENT_DESKTOP/XDG_SESSION_TYPE.
