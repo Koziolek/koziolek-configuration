@@ -17,7 +17,7 @@ system_tools=(
 )
 
 security_tools=(
-  gnupg2 ca-certificates
+  gnupg2 ca-certificates pam-u2f
 )
 
 graphics_libs=(

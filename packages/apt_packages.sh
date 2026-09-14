@@ -12,7 +12,7 @@ system_tools=(
 )
 
 security_tools=(
-  gnupg gnupg2 apt-transport-https ca-certificates
+  gnupg gnupg2 apt-transport-https ca-certificates libpam-u2f
 )
 
 graphics_libs=(

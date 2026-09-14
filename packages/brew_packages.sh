@@ -11,6 +11,7 @@ system_tools=(
   git vim unzip zip tree tmux htop neofetch hub
   libpq
   kubernetes-cli
+  pam-u2f
 )
 
 shell_tools=(
