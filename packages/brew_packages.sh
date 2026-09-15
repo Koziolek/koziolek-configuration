@@ -12,6 +12,7 @@ system_tools=(
   libpq
   kubernetes-cli
   pam-u2f
+  libfido2
 )
 
 shell_tools=(
