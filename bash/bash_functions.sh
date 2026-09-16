@@ -73,6 +73,19 @@ Available functions:
   turn_async_profiler_off      – cofa flagi async-profilera
   java_clear [KATALOG]         – mvn/gradle clean we wszystkich projektach pod KATALOG (domyślnie .)
 
+  [FIDO2/U2F]
+  fido2_list_devices           – pokaż podłączone klucze FIDO2/U2F (dowolna marka)
+  fido2_info [DEV]             – szczegóły klucza (fido2-token -I)
+  fido2_set_pin [DEV]          – ustaw PIN klucza
+  fido2_change_pin [DEV]       – zmień istniejący PIN
+  fido2_enroll [DEV]           – nowy enrollment biometryczny (odcisk palca)
+  fido2_enroll_list [DEV]      – lista zarejestrowanych odcisków
+  fido2_enroll_name ID NAZWA [DEV] – nazwij zarejestrowany odcisk
+  fido2_enroll_delete ID [DEV] – usuń zarejestrowany odcisk
+  fido2_register_sudo [DEV]    – zarejestruj klucz jako metodę logowania sudo
+  fido2_register_sudo_backup [DEV] – dopisz zapasowy klucz do sudo
+  fido2_sudo_keys_list         – pokaż zarejestrowane wpisy w u2f_keys
+
 EOF
 }
 
