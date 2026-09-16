@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Testy jednostkowe: git_vomit, git_bleeh (git/git_functions.sh)
+# Testy jednostkowe: git_vomit, git_bleeh, git_armageddon (git/git_functions.sh)
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -16,6 +16,20 @@ _MOCK_COMMIT_COUNT=0
 _MOCK_RESET_DONE=0
 _TESTDIR=''
 
+# --- mocki dodatkowe: git_armageddon ---------------------------------------
+_MOCK_INSIDE_REPO=1
+_MOCK_HAS_REMOTE=1
+_MOCK_ABBREV_BRANCH=''
+_MOCK_DIRTY=0
+_MOCK_DIRTY_STAGED=0
+_MOCK_BACKUP_EXISTS=0
+_MOCK_OLD_COMMITS=5
+_CAPTURED_PUSH_ARGS=''
+_PUSH_CALLS=0
+_CAPTURED_BACKUP_BRANCH_CREATED=''
+_CAPTURED_RENAME_ARGS=''
+_CAPTURED_CHECKOUT_ORPHAN=0
+
 log_info()  { :; }
 log_error() { :; }
 log_warn()  { :; }
@@ -26,7 +40,12 @@ git_commit_message_prefix() { echo "$_MOCK_PREFIX"; }
 
 git() {
     case "$1" in
-        add|push) : ;;
+        add) : ;;
+        push)
+            shift
+            _CAPTURED_PUSH_ARGS="$*"
+            _PUSH_CALLS=$((_PUSH_CALLS + 1))
+            ;;
         reset) _MOCK_RESET_DONE=1 ;;
         ci|commit)
             local i next
@@ -46,6 +65,37 @@ git() {
         symbolic-ref)
             [[ "$*" == *"refs/remotes/origin/HEAD"* ]] && echo "refs/remotes/origin/master"
             ;;
+        rev-parse)
+            case "$2" in
+                --is-inside-work-tree) [ "$_MOCK_INSIDE_REPO" = 1 ] && { echo true; return 0; } || return 1 ;;
+                --show-toplevel) echo "$_TESTDIR" ;;
+                --abbrev-ref) echo "$_MOCK_ABBREV_BRANCH" ;;
+            esac
+            ;;
+        remote)
+            [[ "$2" == "get-url" ]] || return 0
+            [ "$_MOCK_HAS_REMOTE" = 1 ] && { echo "git@example.com:x/y.git"; return 0; } || return 1
+            ;;
+        diff)
+            [[ "$*" == *"--cached"* ]] && return "$_MOCK_DIRTY_STAGED"
+            return "$_MOCK_DIRTY"
+            ;;
+        show-ref)
+            [ "$_MOCK_BACKUP_EXISTS" = 1 ] && return 0 || return 1
+            ;;
+        rev-list)
+            [[ "$*" == *"--count"* ]] && echo "$_MOCK_OLD_COMMITS"
+            ;;
+        checkout)
+            [[ "$2" == "--orphan" ]] && _CAPTURED_CHECKOUT_ORPHAN=1
+            ;;
+        branch)
+            if [[ "$2" == "-M" ]]; then
+                _CAPTURED_RENAME_ARGS="$3 $4"
+            else
+                _CAPTURED_BACKUP_BRANCH_CREATED="$2"
+            fi
+            ;;
         *) : ;;
     esac
 }
@@ -60,6 +110,19 @@ setUp() {
     unset GIT_ASSUME_YES
     _TESTDIR="$(mktemp -d)"
     cd "$_TESTDIR" || fail "cd do testdir"
+
+    _MOCK_INSIDE_REPO=1
+    _MOCK_HAS_REMOTE=1
+    _MOCK_ABBREV_BRANCH="feature/APB-1-opis"
+    _MOCK_DIRTY=0
+    _MOCK_DIRTY_STAGED=0
+    _MOCK_BACKUP_EXISTS=0
+    _MOCK_OLD_COMMITS=5
+    _CAPTURED_PUSH_ARGS=''
+    _PUSH_CALLS=0
+    _CAPTURED_BACKUP_BRANCH_CREATED=''
+    _CAPTURED_RENAME_ARGS=''
+    _CAPTURED_CHECKOUT_ORPHAN=0
 }
 
 tearDown() {
@@ -201,6 +264,84 @@ testBleehClearsFileAfterCommit() {
     _MOCK_COMMIT_COUNT=0
     git_bleeh "cokolwiek"
     assertEquals 'plik pusty' "" "$(cat commit-message.txt)"
+}
+
+# ---------------------------------------------------------------------------
+# git_armageddon
+# ---------------------------------------------------------------------------
+
+testArmageddonAbortsIfNotGitRepo() {
+    _MOCK_INSIDE_REPO=0
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsIfNoRemote() {
+    _MOCK_HAS_REMOTE=0
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsOnDetachedHead() {
+    _MOCK_ABBREV_BRANCH="HEAD"
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsOnDirtyWorktree() {
+    _MOCK_DIRTY=1
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsOnDirtyIndex() {
+    _MOCK_DIRTY_STAGED=1
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsIfBackupBranchExists() {
+    _MOCK_BACKUP_EXISTS=1
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+    assertEquals 'backup nie tworzony ponownie' '' "$_CAPTURED_BACKUP_BRANCH_CREATED"
+}
+
+testArmageddonNonTtyWithoutYesAborts() {
+    git_armageddon < /dev/null
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonHappyPathWithFlagYes() {
+    git_armageddon -y
+    assertEquals 'orphan checkout wykonany' 1 "$_CAPTURED_CHECKOUT_ORPHAN"
+    assertEquals 'commit z domyslnym komunikatem' 'Initial commit' "$_CAPTURED_COMMIT_MSG"
+    assertEquals 'backup utworzony' 'backup-old-history' "$_CAPTURED_BACKUP_BRANCH_CREATED"
+    assertEquals 'branch -M na docelowa galaz' "__armageddon__ feature/APB-1-opis" "$_CAPTURED_RENAME_ARGS"
+    assertEquals 'jeden push (bez tagow)' 1 "$_PUSH_CALLS"
+    assertEquals 'force push docelowej galezi' "--force origin feature/APB-1-opis" "$_CAPTURED_PUSH_ARGS"
+}
+
+testArmageddonHappyPathWithAssumeYesEnv() {
+    export GIT_ASSUME_YES=1
+    git_armageddon
+    assertEquals 1 "$_PUSH_CALLS"
+}
+
+testArmageddonCustomMessage() {
+    git_armageddon -y -m "swiezy start"
+    assertEquals "swiezy start" "$_CAPTURED_COMMIT_MSG"
+}
+
+testArmageddonPushTagsFlag() {
+    git_armageddon -y -t
+    assertEquals 'dwa pushe (branch + tagi)' 2 "$_PUSH_CALLS"
+    assertEquals 'ostatni push to tagi' "--force --tags origin" "$_CAPTURED_PUSH_ARGS"
+}
+
+testArmageddonNoPushTagsByDefault() {
+    git_armageddon -y
+    assertEquals 1 "$_PUSH_CALLS"
 }
 
 # ---------------------------------------------------------------------------

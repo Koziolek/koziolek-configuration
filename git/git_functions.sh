@@ -297,6 +297,101 @@ function git_bleeh() {
   __git_push_branch --force-with-lease
 }
 
+# Kasuje CAŁĄ historię gałęzi i zastępuje jednym commitem ze stanu working tree, force-push.
+# Odpowiednik cleanup.sh (repo ai/claude), ale z walidacjami i lokalnym backupem.
+# Argumenty: [-m "komunikat"] [-t] [-y]
+#   -m  komunikat pierwszego commita (domyślnie "Initial commit")
+#   -t  force-push także tagów
+#   -y  pomiń potwierdzenie (jak GIT_ASSUME_YES=1)
+function git_armageddon() {
+  local commit_msg="Initial commit"
+  local push_tags=0
+  local assume_yes=0
+  [ "${GIT_ASSUME_YES:-0}" = "1" ] && assume_yes=1
+  local backup_branch="backup-old-history"
+  local remote="origin"
+
+  local OPTIND opt
+  while getopts "m:ty" opt; do
+    case "$opt" in
+    m) commit_msg="$OPTARG" ;;
+    t) push_tags=1 ;;
+    y) assume_yes=1 ;;
+    *) log_error "Użycie: git_armageddon [-m msg] [-t] [-y]"; return 2 ;;
+    esac
+  done
+
+  git rev-parse --is-inside-work-tree &>/dev/null || { log_error "to nie jest repozytorium git"; return 1; }
+
+  local toplevel
+  toplevel=$(git rev-parse --show-toplevel)
+  cd "$toplevel" || return 1
+
+  git remote get-url "$remote" &>/dev/null || { log_error "brak zdalnego '$remote'"; return 1; }
+
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD)
+  [ "$branch" != "HEAD" ] || { log_error "detached HEAD — przełącz się na gałąź"; return 1; }
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    log_error "working tree nie jest czysty — zacommituj lub odłóż zmiany (git stash)"
+    return 1
+  fi
+
+  if git show-ref --verify --quiet "refs/heads/$backup_branch"; then
+    log_error "gałąź '$backup_branch' już istnieje — usuń ją (git branch -D $backup_branch) lub zmień nazwę"
+    return 1
+  fi
+
+  local old_commits remote_url
+  old_commits=$(git rev-list --count HEAD)
+  remote_url=$(git remote get-url "$remote")
+
+  log_warn "Gałąź:            $branch"
+  log_warn "Zdalne:           $remote ($remote_url)"
+  log_warn "Commity teraz:    $old_commits  -> po operacji: 1"
+  log_warn "Komunikat:        $commit_msg"
+  log_warn "Push tagów:       $([ "$push_tags" = 1 ] && echo tak || echo nie)"
+  log_warn "Backup lokalny:   $backup_branch (NIE wypychany do $remote)"
+  log_warn "Ta operacja jest NIEODWRACALNA po stronie $remote."
+
+  if [ "$assume_yes" -ne 1 ]; then
+    if [ ! -t 0 ]; then
+      log_error "Tryb nieinteraktywny bez -y ani GIT_ASSUME_YES=1 — przerwano"
+      return 1
+    fi
+    local answer
+    read -r -p "Wpisz \"tak\" aby kontynuować: " answer
+    [ "$answer" = "tak" ] || { log_warn "Przerwano."; return 1; }
+  fi
+
+  log_info "==> Backup starej historii: $backup_branch (lokalnie)"
+  git branch "$backup_branch" || return 1
+
+  log_info "==> Orphan branch z obecnym stanem working tree"
+  git checkout --orphan __armageddon__ || return 1
+  git add -A
+  git commit -m "$commit_msg" || return 1
+
+  log_info "==> Podmiana '$branch' na nową historię"
+  git branch -M __armageddon__ "$branch"
+
+  log_info "==> Force push: $remote/$branch"
+  git push --force "$remote" "$branch" || return 1
+
+  if [ "$push_tags" = 1 ]; then
+    log_info "==> Force push tagów"
+    git push --force --tags "$remote"
+  fi
+
+  log_info "Gotowe. $remote/$branch ma teraz 1 commit."
+  log_info "Stara historia: lokalna gałąź '$backup_branch' ($old_commits commitów)."
+  log_info "Wycofanie (dopóki backup istnieje):"
+  log_info "  git branch -M $backup_branch $branch"
+  log_info "  git push --force $remote $branch"
+  log_info "Gdy potwierdzisz, że wszystko OK: git branch -D $backup_branch"
+}
+
 . ${GIT_CONFIGURATION_DIR}/hub_functions.sh
 
 ## Dispatcher — tylko zadeklarowane funkcje z tego pliku (git_*) i hub_functions.sh (hub_*)
