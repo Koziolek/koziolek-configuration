@@ -3,7 +3,7 @@
 # Zarządzanie kluczami sprzętowymi FIDO2/U2F: wyszukiwanie, PIN, enrollment
 # biometrii, rejestracja do sudo (pam_u2f). Konfiguracja MASZYNY (pakiety,
 # wpis w /etc/pam.d/sudo) to nie tu — to
-# $WORKSPACE_TOOLS/fix-comp/scripts/bezpieczenstwo/01-yubikey-sudo-sufficient.sh
+# $WORKSPACE_TOOLS/fix-comp/scripts/bezpieczenstwo/01-fido2-sudo.sh
 # (jednorazowe, per maszyna). Funkcje tutaj działają per klucz/per sesja.
 #
 # Generyczne dla dowolnej marki FIDO2 (Yubico, Google Titan, Nitrokey, SoloKeys,
@@ -16,7 +16,7 @@ _fido2_check_deps() {
     command -v pamu2fcfg   &>/dev/null || missing+=("libpam-u2f/pamu2fcfg")
     if [ "${#missing[@]}" -gt 0 ]; then
         log_error "fido2: brakujące zależności: ${missing[*]}"
-        log_info "fido2: zainstaluj przez scripts/bezpieczenstwo/01-yubikey-sudo-sufficient.sh w fix-comp"
+        log_info "fido2: zainstaluj przez scripts/bezpieczenstwo/01-fido2-sudo.sh w fix-comp"
         return 1
     fi
     return 0
@@ -169,7 +169,7 @@ function fido2_enroll_delete() {
 ##
 # Rejestruje klucz jako metodę logowania sudo — dopisuje do ~/.config/Yubico/u2f_keys
 # (ścieżka zaszyta w pam_u2f, nie zależy od marki klucza). PAM musi już mieć linię
-# pam_u2f.so — o to dba scripts/bezpieczenstwo/01-yubikey-sudo-sufficient.sh w fix-comp.
+# pam_u2f.so — o to dba scripts/bezpieczenstwo/01-fido2-sudo.sh w fix-comp.
 # Nadpisuje istniejący plik — do dopisania KOLEJNEGO klucza użyj fido2_register_sudo_backup.
 ##
 function fido2_register_sudo() {
