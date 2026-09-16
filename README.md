@@ -152,6 +152,8 @@ Każdy plik `[0-9][0-9][0-9]_*.sh` jest ładowany automatycznie w kolejności al
 | `110_git-context.sh`       | `git_context` (patrz niżej)                     |
 | `120_net_diag.sh`          | `netconf_diag` — diagnostyka zrywania sieci     |
 | `130_function_screen.sh`   | `detect_display_env` (patrz `resize_to_full`)   |
+| `140_function_diagnostic.sh` | `hwinfo`, `run_diagnostic` (patrz „Diagnostyka systemu") |
+| `150_function_fido2.sh`    | klucze FIDO2/U2F: PIN, biometria, sudo (patrz niżej) |
 
 Funkcje w `functions.d/` są w wersji Linux; `bash/contexts/darwin.sh` redefiniuje te zależne
 od `/proc`, `ss`, `swapoff`, `systemd`, `ip`/`iw`, `apt` oraz `detect_display_env` (patrz „Konteksty").
@@ -222,6 +224,42 @@ email = jan@firma.pl
 name = Koziolek
 email = koziolek@example.com
 ```
+
+#### Klucze FIDO2/U2F (`150_function_fido2.sh`)
+
+Operacje na kluczu sprzętowym — per klucz / per sesja. Konfiguracja **maszyny** (pakiety
+`fido2-tools`/`libpam-u2f`, linia `pam_u2f.so` w `/etc/pam.d/sudo`) jest jednorazowa i mieszka
+w `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh` (patrz „Diagnostyka systemu").
+
+Wykrywanie klucza jest generyczne (udev `ID_FIDO_TOKEN`, nie vendor ID) — działa z dowolną marką
+(Yubico, Google Titan, Nitrokey, SoloKeys, Feitian, Thetis…). Każda funkcja przyjmuje opcjonalny
+`[DEV]` (`/dev/hidrawN`); bez niego bierze pierwszy wykryty klucz.
+
+| Funkcja | Działanie |
+|---|---|
+| `fido2_list_devices` | podłączone klucze z producentem/modelem z deskryptora USB |
+| `fido2_info [DEV]` | szczegóły klucza (`fido2-token -I`): capabilities, protokoły PIN, opcje CTAP2 |
+| `fido2_set_pin [DEV]` / `fido2_change_pin [DEV]` | ustaw / zmień PIN — interaktywnie, PIN nie trafia do argumentów ani historii |
+| `fido2_enroll [DEV]` | nowy enrollment biometryczny (odcisk); wymaga wcześniejszego PIN-u |
+| `fido2_enroll_list [DEV]` | zarejestrowane odciski (template ID + nazwa) |
+| `fido2_enroll_name ID NAZWA [DEV]` | nazwij odcisk |
+| `fido2_enroll_delete ID [DEV]` | usuń odcisk |
+| `fido2_register_sudo [DEV]` | zarejestruj klucz do sudo → `~/.config/Yubico/u2f_keys` (**nadpisuje** plik) |
+| `fido2_register_sudo_backup [DEV]` | dopisz kolejny/zapasowy klucz do istniejącego `u2f_keys` |
+| `fido2_sudo_keys_list` | ile kluczy zarejestrowano dla którego usera (bez ujawniania handle'y) |
+
+Typowa ścieżka dla nowego klucza biometrycznego:
+
+```bash
+fido2_list_devices
+fido2_set_pin
+fido2_enroll
+fido2_register_sudo            # pierwszy klucz
+fido2_register_sudo_backup     # drugi klucz (zapasowy), po jego podłączeniu
+fido2_sudo_keys_list
+```
+
+Ścieżka `~/.config/Yubico/u2f_keys` jest zaszyta w `pam_u2f` — nie zależy od marki klucza.
 
 ### Aliasy (`bash_aliases.sh` + `bash/contexts/`)
 

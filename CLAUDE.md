@@ -85,6 +85,18 @@ Odpowiedzialność kluczowych plików funkcji:
   (`$WORKSPACE_TOOLS/fix-comp`, klonowane przez `install_lib -p` w `bash_customs.sh`)
   z dowolnego katalogu roboczego; logi lądują w `fix-comp/logs` jak przy bezpośrednim
   uruchomieniu (skrypt liczy swoją lokalizację przez `${BASH_SOURCE[0]}`, nie `$PWD`)
+- `functions.d/150_function_fido2.sh` — zarządzanie kluczami sprzętowymi FIDO2/U2F, per klucz /
+  per sesja: `fido2_list_devices`, `fido2_info`, `fido2_set_pin`, `fido2_change_pin`,
+  `fido2_enroll` (+ `_list`/`_name`/`_delete` — biometria), `fido2_register_sudo`
+  (+ `_backup` — dopisanie kolejnego klucza bez nadpisania), `fido2_sudo_keys_list`.
+  Wykrywanie klucza generyczne przez udev `ID_FIDO_TOKEN` (nie vendor ID) — dowolna marka
+  (Yubico, Titan, Nitrokey, SoloKeys, Feitian, Thetis). Każda funkcja przyjmuje opcjonalny
+  `[DEV]` (`/dev/hidrawN`), domyślnie pierwszy wykryty klucz. PIN/enrollment interaktywnie
+  (`fido2-token` pyta w terminalu — PIN nie przechodzi przez argumenty ani historię powłoki).
+  Wpisy sudo lądują w `~/.config/Yubico/u2f_keys` (ścieżka zaszyta w `pam_u2f`, niezależna
+  od marki). Konfiguracja **maszyny** (pakiety `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so`
+  w `/etc/pam.d/sudo`) to nie tu — `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh`
+  (jednorazowo); `_fido2_check_deps` odsyła tam przy braku zależności.
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:
