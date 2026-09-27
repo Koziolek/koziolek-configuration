@@ -207,14 +207,20 @@ echo "  git-configuration test runner"
 echo "======================================="
 echo ""
 
+# Każdy etap poniżej przechwytuje kod wyjścia przez `cmd || X_EXIT=$?` (nie
+# `cmd; X_EXIT=$?`) - pod `set -e` niezerowy status prostego polecenia przerywa
+# CAŁY skrypt w miejscu jego wystąpienia, zanim linia z `X_EXIT=$?` w ogóle się
+# wykona, więc kolejne etapy (i finalne podsumowanie) nigdy by nie odpaliły
+# (patrz #28).
+
 # --- Testy jednostkowe i integracyjne ---
+UNIT_EXIT=0
 if $RUN_NATIVE; then
     _preflight_native
 
     echo "▶ Uruchamianie testów natywnie ($(uname -s))..."
     mkdir -p "$RESULTS_DIR"
-    RESULTS_DIR="$RESULTS_DIR" TEST_FILTER="$TEST_FILTER" bash "$TEST_DIR/run-inside.sh"
-    UNIT_EXIT=$?
+    RESULTS_DIR="$RESULTS_DIR" TEST_FILTER="$TEST_FILTER" bash "$TEST_DIR/run-inside.sh" || UNIT_EXIT=$?
 else
     _preflight_docker
 
@@ -224,69 +230,63 @@ else
         -v "$PROJECT_ROOT:/project:ro" \
         -v "$RESULTS_DIR:/results" \
         -e "TEST_FILTER=$TEST_FILTER" \
-        "$UNIT_IMAGE"
-    UNIT_EXIT=$?
+        "$UNIT_IMAGE" || UNIT_EXIT=$?
 fi
 
 # --- Testy e2e (GitHub clone) ---
+E2E_EXIT=0
 if $RUN_E2E; then
     echo ""
     echo "▶ Uruchamianie testów e2e..."
     RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
-        bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh"
-    E2E_EXIT=$?
+        bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh" || E2E_EXIT=$?
 else
-    E2E_EXIT=0
     echo "▶ Testy e2e pominięte (--e2e aby uruchomić)"
 fi
 
 # --- Testy e2e-local (lokalny projekt) ---
+E2E_LOCAL_EXIT=0
 if $RUN_E2E_LOCAL; then
     echo ""
     echo "▶ Uruchamianie testów e2e-local..."
     RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
-        bash "$TEST_DIR/e2e/test_local_config.sh"
-    E2E_LOCAL_EXIT=$?
+        bash "$TEST_DIR/e2e/test_local_config.sh" || E2E_LOCAL_EXIT=$?
 else
-    E2E_LOCAL_EXIT=0
     echo "▶ Testy e2e-local pominięte (--e2e-local aby uruchomić)"
 fi
 
 # --- Testy e2e-redhat (rockylinux:9) ---
+E2E_REDHAT_EXIT=0
 if $RUN_E2E_REDHAT; then
     echo ""
     echo "▶ Uruchamianie testów e2e-redhat..."
     RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
-        bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh"
-    E2E_REDHAT_EXIT=$?
+        bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh" || E2E_REDHAT_EXIT=$?
 else
-    E2E_REDHAT_EXIT=0
     echo "▶ Testy e2e-redhat pominięte (--e2e-redhat aby uruchomić)"
 fi
 
 # --- Testy e2e-vanilla (debian:sid) ---
+E2E_VANILLA_EXIT=0
 if $RUN_E2E_VANILLA; then
     echo ""
     echo "▶ Uruchamianie testów e2e-vanilla..."
     RESULTS_DIR="$RESULTS_DIR" E2E_VANILLA_IMAGE="$E2E_VANILLA_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
-        bash "$TEST_DIR/e2e/test_initial_packages_vanilla.sh"
-    E2E_VANILLA_EXIT=$?
+        bash "$TEST_DIR/e2e/test_initial_packages_vanilla.sh" || E2E_VANILLA_EXIT=$?
 else
-    E2E_VANILLA_EXIT=0
     echo "▶ Testy e2e-vanilla pominięte (--e2e-vanilla aby uruchomić)"
 fi
 
 # --- Testy e2e-certs (JDK + openssl, weryfikacja TLS/cacerts) ---
+E2E_CERTS_EXIT=0
 if $RUN_E2E_CERTS; then
     echo ""
     echo "▶ Uruchamianie testów e2e-certs..."
     docker run --rm \
         --network="$DOCKER_NETWORK" \
         -v "$PROJECT_ROOT:/project:ro" \
-        "$E2E_CERTS_IMAGE"
-    E2E_CERTS_EXIT=$?
+        "$E2E_CERTS_IMAGE" || E2E_CERTS_EXIT=$?
 else
-    E2E_CERTS_EXIT=0
     echo "▶ Testy e2e-certs pominięte (--e2e-certs aby uruchomić)"
 fi
 
