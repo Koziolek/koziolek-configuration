@@ -22,6 +22,11 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/test"
 RESULTS_DIR="$TEST_DIR/results"
 
+# Wspólny znacznik czasu dla wszystkich kontenerów uruchomionych w tym
+# wywołaniu run.sh — nazwy kontenerów: KOZIOLEK_CONFIGURATION_<rodzaj>_<TIMESTAMP>
+# (patrz #34), zamiast losowych nazw nadawanych przez Dockera.
+TIMESTAMP="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"
+
 UNIT_IMAGE="koziolek-test-unit"
 E2E_IMAGE="koziolek-test-e2e"
 E2E_REDHAT_IMAGE="koziolek-test-e2e-redhat"
@@ -226,6 +231,7 @@ else
 
     echo "▶ Uruchamianie testów unit/integration (Docker/Linux)..."
     docker run --rm \
+        --name "KOZIOLEK_CONFIGURATION_unit_${TIMESTAMP}" \
         --network="$DOCKER_NETWORK" \
         -v "$PROJECT_ROOT:/project:ro" \
         -v "$RESULTS_DIR:/results" \
@@ -238,7 +244,7 @@ E2E_EXIT=0
 if $RUN_E2E; then
     echo ""
     echo "▶ Uruchamianie testów e2e..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
+    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
         bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh" || E2E_EXIT=$?
 else
     echo "▶ Testy e2e pominięte (--e2e aby uruchomić)"
@@ -249,7 +255,7 @@ E2E_LOCAL_EXIT=0
 if $RUN_E2E_LOCAL; then
     echo ""
     echo "▶ Uruchamianie testów e2e-local..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
+    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
         bash "$TEST_DIR/e2e/test_local_config.sh" || E2E_LOCAL_EXIT=$?
 else
     echo "▶ Testy e2e-local pominięte (--e2e-local aby uruchomić)"
@@ -260,7 +266,7 @@ E2E_REDHAT_EXIT=0
 if $RUN_E2E_REDHAT; then
     echo ""
     echo "▶ Uruchamianie testów e2e-redhat..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
+    RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
         bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh" || E2E_REDHAT_EXIT=$?
 else
     echo "▶ Testy e2e-redhat pominięte (--e2e-redhat aby uruchomić)"
@@ -271,7 +277,7 @@ E2E_VANILLA_EXIT=0
 if $RUN_E2E_VANILLA; then
     echo ""
     echo "▶ Uruchamianie testów e2e-vanilla..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_VANILLA_IMAGE="$E2E_VANILLA_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" \
+    RESULTS_DIR="$RESULTS_DIR" E2E_VANILLA_IMAGE="$E2E_VANILLA_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
         bash "$TEST_DIR/e2e/test_initial_packages_vanilla.sh" || E2E_VANILLA_EXIT=$?
 else
     echo "▶ Testy e2e-vanilla pominięte (--e2e-vanilla aby uruchomić)"
@@ -283,6 +289,7 @@ if $RUN_E2E_CERTS; then
     echo ""
     echo "▶ Uruchamianie testów e2e-certs..."
     docker run --rm \
+        --name "KOZIOLEK_CONFIGURATION_e2e-certs_${TIMESTAMP}" \
         --network="$DOCKER_NETWORK" \
         -v "$PROJECT_ROOT:/project:ro" \
         "$E2E_CERTS_IMAGE" || E2E_CERTS_EXIT=$?

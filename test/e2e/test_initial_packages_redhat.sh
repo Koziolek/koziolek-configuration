@@ -8,6 +8,7 @@ set -uo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESULTS_DIR="${RESULTS_DIR:-$PROJECT_ROOT/test/results}"
 E2E_REDHAT_IMAGE="${E2E_REDHAT_IMAGE:-koziolek-test-e2e-redhat}"
+TIMESTAMP="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"
 LOG="$RESULTS_DIR/e2e-initial-packages-redhat.log"
 
 mkdir -p "$RESULTS_DIR"
@@ -51,6 +52,7 @@ echo "  Obraz zbudowany."
 echo ""
 echo "▶ Uruchamianie kontenera (może potrwać kilka minut)..."
 docker run --rm \
+    --name "KOZIOLEK_CONFIGURATION_e2e-redhat_${TIMESTAMP}" \
     --network="${DOCKER_NETWORK:-koziolek-test-net}" \
     -e INIT_SCRIPT=/packages/initial_packages_redhat.sh \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-test.sh:/entrypoint-test.sh:ro" \

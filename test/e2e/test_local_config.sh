@@ -7,6 +7,7 @@ set -uo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESULTS_DIR="${RESULTS_DIR:-$PROJECT_ROOT/test/results}"
 E2E_IMAGE="${E2E_IMAGE:-koziolek-test-e2e}"
+TIMESTAMP="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"
 LOG="$RESULTS_DIR/e2e-local.log"
 
 mkdir -p "$RESULTS_DIR"
@@ -50,6 +51,7 @@ echo "  Obraz zbudowany."
 echo ""
 echo "▶ Uruchamianie kontenera z lokalnym projektem (może potrwać kilka minut)..."
 docker run --rm \
+    --name "KOZIOLEK_CONFIGURATION_e2e-local_${TIMESTAMP}" \
     --network="${DOCKER_NETWORK:-koziolek-test-net}" \
     -v "$PROJECT_ROOT:/project:ro" \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-local-test.sh:/entrypoint-local-test.sh:ro" \
