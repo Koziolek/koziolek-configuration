@@ -24,25 +24,37 @@ Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**,
 ./test/run.sh --e2e-local   # e2e z lokalnym projektem podpiętym jako volume
 ./test/run.sh --e2e-redhat  # e2e: initial_packages_redhat.sh w rockylinux:9 (wolne)
 ./test/run.sh --e2e-vanilla # e2e: initial_packages_vanilla.sh w debian:sid (wolne)
+./test/run.sh --e2e-certs   # e2e: prawdziwy JDK+openssl - prepare_cert + update_sdkman_jdk_certs (wolne)
 ./test/run.sh --all         # unit + integration + wszystkie e2e
 ./test/run.sh --filter <wzorzec>  # tylko pliki testowe pasujące do wzorca
 ```
 
 Runner (`test/run.sh`) sprawdza/przygotowuje środowisko Docker (obrazy, sieć), buduje obrazy testowe z
-`test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`/`test/Dockerfile-e2e-vanilla`, i
-deleguje do `test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`, `test/integration/` (oraz
-warianty `linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w `test/results/`. Testy e2e
-(`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/`initial_packages_redhat.sh`/
-`initial_packages_vanilla.sh` (`COPY`, nie curl z GitHuba) — testują bieżące, niezacommitowane zmiany;
-`entrypoint-test.sh` jest wspólny dla wszystkich trzech (skrypt docelowy przez `INIT_SCRIPT`), zawężony do
-bezpiecznych funkcji (`install_initial_packages`, `prepare_workspace`, `prepare_bashrc` — bez
-`install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant vanilla używa obrazu
-bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
+`test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`/`test/Dockerfile-e2e-vanilla`/
+`test/Dockerfile-e2e-certs`, i deleguje do `test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`,
+`test/integration/` (oraz warianty `linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w
+`test/results/`. Testy e2e (`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/
+`initial_packages_redhat.sh`/`initial_packages_vanilla.sh` (`COPY`, nie curl z GitHuba) — testują bieżące,
+niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla wszystkich trzech (skrypt docelowy przez
+`INIT_SCRIPT`), zawężony do bezpiecznych funkcji (`install_initial_packages`, `prepare_workspace`,
+`prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant
+vanilla używa obrazu bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
 `Dockerfile-e2e-vanilla` — symuluje marker, którego `initial_packages_vanilla.sh` wymaga jako dowodu, że nie
 leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Nie testuje to realnego
 Podmana/apx, tylko poprawność samego skryptu apt na debianowej bazie. Uruchamiane też w CI:
 `.github/workflows/test.yml` (unit+integration na push/PR do
 `master`; e2e pozostaje lokalne/manualne — wymaga Dockera i sieci).
+
+Wariant `--e2e-certs` (`test/Dockerfile-e2e-certs`, obraz bazowy `eclipse-temurin:21-jdk` + `openssl`) stoi obok
+`test/unit/test_services_functions.sh` (tam `keytool` jest mockiem, testuje samą logikę iteracji/warunków) —
+tu nic nie jest mockowane: prawdziwy `openssl` generuje cert przez `prepare_cert`, prawdziwy `keytool` (przez
+`update_sdkman_jdk_certs`) importuje go do kopii rzeczywistego `cacerts` obrazu, prawdziwy `openssl s_server`
+serwuje TLS na tym certyfikacie, a klient JVM (`HttpsURLConnection`, skompilowany w locie z `TlsCheck.java`)
+łączy się z nim przez realny handshake — weryfikując faktyczne zaufanie JVM, a nie tylko obecność wpisu w
+keystore. Test (`test/integration/certs/test_sdkman_jdk_certs.sh`, `shunit2`) sprawdza: cert bez importu jest
+odrzucany (`PKIX`/`SSLHandshakeException`), po imporcie połączenie się udaje, `keytool -list` widzi alias
+`koziolek-nexus`, a powtórny import nie duplikuje aliasu. Bez zależności sieciowych w runtime kontenera (poza
+jednorazowym pobraniem obrazu bazowego) — serwer i klient łączą się po `127.0.0.1`.
 
 ## Architektura
 

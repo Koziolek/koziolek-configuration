@@ -115,4 +115,4 @@ testLogsErrorWhenImportFails() {
 }
 
 # shellcheck source=/dev/null
-. "$(command -v shunit2 || echo /usr/bin/shunit2)"
+. "${SHUNIT2:-/opt/shunit2/shunit2}"

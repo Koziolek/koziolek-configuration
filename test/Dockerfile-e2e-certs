@@ -1,0 +1,17 @@
+FROM eclipse-temurin:21-jdk
+
+# openssl - generowanie certu identycznie jak prepare_cert (services/nginx/ssl/ssl_setup.sh)
+# git - klon shunit2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssl \
+        bash \
+        git \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth=1 https://github.com/kward/shunit2.git /opt/shunit2
+ENV SHUNIT2=/opt/shunit2/shunit2
+
+WORKDIR /project
+
+CMD ["/project/test/integration/certs/test_sdkman_jdk_certs.sh"]
