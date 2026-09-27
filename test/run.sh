@@ -5,11 +5,12 @@
 #   ./test/run.sh [opcje]
 #
 # Opcje:
-#   --all               Uruchom wszystkie testy (unit + e2e + e2e-local + e2e-redhat)
+#   --all               Uruchom wszystkie testy (unit + e2e + e2e-local + e2e-redhat + e2e-vanilla + e2e-certs)
 #   --e2e               Uruchom testy e2e (initial_packages_ubuntu.sh + GitHub clone, wolne)
 #   --e2e-local         Uruchom testy e2e z lokalnym projektem podpiętym jako volume
 #   --e2e-redhat        Uruchom testy e2e dla initial_packages_redhat.sh (rockylinux:9, wolne)
 #   --e2e-vanilla       Uruchom testy e2e dla initial_packages_vanilla.sh (debian:sid, wolne)
+#   --e2e-certs         Uruchom testy TLS/cacerts (prawdziwy JDK+openssl, prepare_cert + update_sdkman_jdk_certs)
 #   --native            Uruchom testy bezpośrednio na hoście (bez Docker) — wymagane na macOS
 #   --filter <wzorzec>  Uruchom tylko pliki pasujące do wzorca (unit/integration)
 #   --rebuild           Wymuś przebudowanie obrazów Docker
@@ -25,11 +26,13 @@ UNIT_IMAGE="koziolek-test-unit"
 E2E_IMAGE="koziolek-test-e2e"
 E2E_REDHAT_IMAGE="koziolek-test-e2e-redhat"
 E2E_VANILLA_IMAGE="koziolek-test-e2e-vanilla"
+E2E_CERTS_IMAGE="koziolek-test-e2e-certs"
 
 RUN_E2E=false
 RUN_E2E_LOCAL=false
 RUN_E2E_REDHAT=false
 RUN_E2E_VANILLA=false
+RUN_E2E_CERTS=false
 RUN_NATIVE=false
 TEST_FILTER=""
 REBUILD=false
@@ -42,11 +45,12 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all)        RUN_E2E=true; RUN_E2E_LOCAL=true; RUN_E2E_REDHAT=true; RUN_E2E_VANILLA=true; shift ;;
+        --all)        RUN_E2E=true; RUN_E2E_LOCAL=true; RUN_E2E_REDHAT=true; RUN_E2E_VANILLA=true; RUN_E2E_CERTS=true; shift ;;
         --e2e)        RUN_E2E=true; shift ;;
         --e2e-local)  RUN_E2E_LOCAL=true; shift ;;
         --e2e-redhat) RUN_E2E_REDHAT=true; shift ;;
         --e2e-vanilla) RUN_E2E_VANILLA=true; shift ;;
+        --e2e-certs)  RUN_E2E_CERTS=true; shift ;;
         --native)     RUN_NATIVE=true; shift ;;
         --filter)     TEST_FILTER="$2"; shift 2 ;;
         --rebuild)    REBUILD=true; shift ;;
@@ -144,6 +148,9 @@ _preflight_docker() {
     if $RUN_E2E_VANILLA; then
         _check_base_image "debian:sid" || base_ok=false
     fi
+    if $RUN_E2E_CERTS; then
+        _check_base_image "eclipse-temurin:21-jdk" || base_ok=false
+    fi
     $base_ok || { echo ""; echo "  Brakujące obrazy bazowe — przerwanie."; exit 1; }
 
     _check_test_image "$UNIT_IMAGE" "$TEST_DIR/Dockerfile-unit"
@@ -155,6 +162,9 @@ _preflight_docker() {
     fi
     if $RUN_E2E_VANILLA; then
         _check_test_image "$E2E_VANILLA_IMAGE" "$TEST_DIR/Dockerfile-e2e-vanilla"
+    fi
+    if $RUN_E2E_CERTS; then
+        _check_test_image "$E2E_CERTS_IMAGE" "$TEST_DIR/Dockerfile-e2e-certs"
     fi
 
     echo "======================================="
@@ -266,7 +276,21 @@ else
     echo "▶ Testy e2e-vanilla pominięte (--e2e-vanilla aby uruchomić)"
 fi
 
+# --- Testy e2e-certs (JDK + openssl, weryfikacja TLS/cacerts) ---
+if $RUN_E2E_CERTS; then
+    echo ""
+    echo "▶ Uruchamianie testów e2e-certs..."
+    docker run --rm \
+        --network="$DOCKER_NETWORK" \
+        -v "$PROJECT_ROOT:/project:ro" \
+        "$E2E_CERTS_IMAGE"
+    E2E_CERTS_EXIT=$?
+else
+    E2E_CERTS_EXIT=0
+    echo "▶ Testy e2e-certs pominięte (--e2e-certs aby uruchomić)"
+fi
+
 echo ""
 echo "Wyniki: $RESULTS_DIR/"
 
-[[ $UNIT_EXIT -eq 0 && $E2E_EXIT -eq 0 && $E2E_LOCAL_EXIT -eq 0 && $E2E_REDHAT_EXIT -eq 0 && $E2E_VANILLA_EXIT -eq 0 ]]
+[[ $UNIT_EXIT -eq 0 && $E2E_EXIT -eq 0 && $E2E_LOCAL_EXIT -eq 0 && $E2E_REDHAT_EXIT -eq 0 && $E2E_VANILLA_EXIT -eq 0 && $E2E_CERTS_EXIT -eq 0 ]]
