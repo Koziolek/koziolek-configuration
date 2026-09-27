@@ -154,6 +154,8 @@ Każdy plik `[0-9][0-9][0-9]_*.sh` jest ładowany automatycznie w kolejności al
 | `130_function_screen.sh`   | `detect_display_env` (patrz `resize_to_full`)   |
 | `140_function_diagnostic.sh` | `hwinfo`, `run_diagnostic` (patrz „Diagnostyka systemu") |
 | `150_function_fido2.sh`    | klucze FIDO2/U2F: PIN, biometria, sudo (patrz niżej) |
+| `155_function_gpg_card.sh` | podpisywanie commitów kluczem GPG z karty OpenPGP (patrz niżej) |
+| `156_function_ssh_sk_signing.sh` | podpisywanie commitów kluczem SSH z klucza FIDO2 (np. Thetis BioFP+) (patrz niżej) |
 
 Funkcje w `functions.d/` są w wersji Linux; `bash/contexts/darwin.sh` redefiniuje te zależne
 od `/proc`, `ss`, `swapoff`, `systemd`, `ip`/`iw`, `apt` oraz `detect_display_env` (patrz „Konteksty").
@@ -260,6 +262,90 @@ fido2_sudo_keys_list
 ```
 
 Ścieżka `~/.config/Yubico/u2f_keys` jest zaszyta w `pam_u2f` — nie zależy od marki klucza.
+
+#### Podpisywanie commitów kluczem GPG z karty (`155_function_gpg_card.sh`)
+
+Klucz **prywatny** GPG żyje wyłącznie na kluczu sprzętowym (aplet OpenPGP card — YubiKey 5,
+Nitrokey 3/Pro, Token2, Thetis Pro…). Na maszynie jest tylko klucz publiczny i „stub”
+wskazujący na kartę, więc każda maszyna podpisuje **tym samym** kluczem — wystarczy wpiąć
+klucz i raz uruchomić `gpg_git_setup`.
+
+> Klucze czysto FIDO2/U2F (np. Thetis BioFP) **nie mają** apletu OpenPGP — `gpg --card-status`
+> ich nie zobaczy. Do sudo/logowania służy `150_function_fido2.sh`.
+
+| Funkcja | Działanie |
+|---|---|
+| `gpg_git_setup` | jednorazowo na maszynie: import klucza publicznego + stuby, ultimate trust, `user.signingkey`/`commit.gpgsign`/`tag.gpgSign` w `~/.gitconfig` |
+| `gpg_card_status` | status karty (`gpg --card-status`) |
+| `gpg_card_import_pubkey` | sam import klucza publicznego i stubów (bez zmian w git) |
+| `gpg_card_test` | próbny podpis — sprawdza kartę, PIN, pinentry i dotyk |
+| `gpg_git_disable` | wyłącza podpisywanie na tej maszynie |
+| `gpg_agent_restart` | restart `gpg-agent` + `scdaemon` (po przepięciu klucza) |
+| `gpg_card_use_pcscd` | `disable-ccid` + `pcsc-shared` w `~/.gnupg/scdaemon.conf` — gdy pcscd blokuje kartę |
+
+Fingerprint **nie jest** zaszyty w repo — `gpg_git_setup` czyta go z karty (slot podpisu).
+Klucz publiczny pobierany jest kolejno z: URL zapisanego na karcie → `$GPG_PUBKEY_URL`
+(domyślnie `https://github.com/Koziolek.gpg`) → keyserver `$GPG_KEYSERVER`
+(domyślnie `hkps://keys.openpgp.org`). Ustawienia git trafiają do stuba `~/.gitconfig`,
+nie do szablonu — maszyna bez karty nie próbuje podpisywać.
+
+```bash
+# nowa maszyna, klucz wpięty
+gpg_git_setup
+gpg_card_test
+git commit -m "..."        # podpis: PIN (raz na sesję agenta) + dotyk, jeśli karta go wymaga
+git log --show-signature -1
+```
+
+Jednorazowo (na dowolnej maszynie) warto zapisać URL klucza publicznego na karcie:
+`gpg --card-edit` → `admin` → `url` → `https://github.com/Koziolek.gpg`. Wtedy
+`gpg_git_setup` działa nawet bez `~/.senv`. Na macOS pinentry ustawiane jest na `pinentry-mac`
+(`bash/contexts/darwin.sh`); na Linuksie wystarcza `GPG_TTY` z `bash_exports.sh`.
+
+#### Podpisywanie commitów kluczem SSH z klucza FIDO2 (`156_function_ssh_sk_signing.sh`)
+
+Dla kluczy **bez** apletu OpenPGP (Thetis BioFP/BioFP+, Titan, Security Key NFC…). Klucz
+`ed25519-sk` jest tworzony jako **resident** (discoverable) z aplikacją `ssh:git-signing`, więc
+każda maszyna odtwarza z urządzenia ten sam klucz (`ssh-keygen -K`) — nic nie trzeba kopiować.
+Domyślnie z `verify-required`: podpis wymaga odcisku palca (starsze OpenSSH mogą pytać o PIN).
+
+| Funkcja | Działanie |
+|---|---|
+| `ssh_sk_key_create [EMAIL]` | **raz**: tworzy klucz na urządzeniu + stub `~/.ssh/id_ed25519_sk_git` |
+| `ssh_sk_git_setup [EMAIL]` | na każdej maszynie: odtwarza stub (jeśli brak), `allowed_signers`, `gpg.format=ssh` + `commit.gpgsign`/`tag.gpgSign` w `~/.gitconfig` |
+| `ssh_sk_key_load` | samo odtworzenie stuba z urządzenia (wybór po aplikacji, inne resident keys pomijane) |
+| `ssh_sk_test [EMAIL]` | próbny podpis + weryfikacja przez `allowed_signers` |
+| `ssh_sk_github_upload` | **raz**: klucz publiczny jako *signing key* na GitHubie (`gh`) → „Verified” |
+| `ssh_sk_git_disable` | wyłącza podpisywanie na tej maszynie (stub zostaje) |
+| `ssh_sk_use_existing PLIK [EMAIL]` | podpis **istniejącym** kluczem `-sk` (np. tym do logowania na GitHub); odmawia kluczy z dysku, wypisuje linię do `~/.senv` |
+
+```bash
+# pierwszy raz (dowolna maszyna)
+fido2_set_pin               # resident keys wymagają PIN-u na kluczu
+ssh_sk_key_create
+ssh_sk_git_setup
+ssh_sk_test
+ssh_sk_github_upload
+
+# każda kolejna maszyna
+ssh_sk_git_setup            # PIN przy odtwarzaniu stuba, potem już tylko odcisk przy podpisie
+```
+
+Istniejący klucz na urządzeniu (ten sam do logowania i podpisu — GitHub przyjmie go drugi raz
+jako *signing key*):
+
+```bash
+ssh_sk_use_existing ~/.ssh/id_ed25519_sk
+echo 'export SSH_SK_KEY_FILE=~/.ssh/id_ed25519_sk' >> ~/.senv
+ssh_sk_github_upload
+# jeśli klucz jest resident z domyślną aplikacją, na nowych maszynach dodaj też:
+# export SSH_SK_APPLICATION=ssh:
+```
+
+Zmienne: `SSH_SK_KEY_FILE`, `SSH_SK_APPLICATION`, `SSH_SK_VERIFY` (`0` = wystarczy dotyk),
+`SSH_KEYGEN`. Na macOS `ssh-keygen` Apple nie obsługuje kluczy `-sk` — `contexts/darwin.sh`
+ustawia `SSH_KEYGEN` na `openssh` z Homebrew. `ssh_sk_git_setup` i `gpg_git_setup` wzajemnie się
+nadpisują (`gpg.format`), więc na maszynie aktywna jest jedna metoda — ostatnio skonfigurowana.
 
 ### Aliasy (`bash_aliases.sh` + `bash/contexts/`)
 

@@ -13,6 +13,9 @@ system_tools=(
   kubernetes-cli
   pam-u2f
   libfido2
+  gnupg
+  pinentry-mac
+  openssh
 )
 
 shell_tools=(

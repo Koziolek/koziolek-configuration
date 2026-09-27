@@ -17,7 +17,7 @@ system_tools=(
 )
 
 security_tools=(
-  gnupg2 ca-certificates pam-u2f fido2-tools
+  gnupg2 ca-certificates pam-u2f fido2-tools pcsc-lite openssh-clients
 )
 
 graphics_libs=(
