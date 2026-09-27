@@ -156,6 +156,7 @@ Każdy plik `[0-9][0-9][0-9]_*.sh` jest ładowany automatycznie w kolejności al
 | `150_function_fido2.sh`    | klucze FIDO2/U2F: PIN, biometria, sudo (patrz niżej) |
 | `155_function_gpg_card.sh` | podpisywanie commitów kluczem GPG z karty OpenPGP (patrz niżej) |
 | `156_function_ssh_sk_signing.sh` | podpisywanie commitów kluczem SSH z klucza FIDO2 (np. Thetis BioFP+) (patrz niżej) |
+| `157_function_jar_signing.sh` | podpisywanie plików JAR kluczem sprzętowym (PKCS11, aplet PIV) — ręcznie i przez Maven (patrz niżej) |
 
 Funkcje w `functions.d/` są w wersji Linux; `bash/contexts/darwin.sh` redefiniuje te zależne
 od `/proc`, `ss`, `swapoff`, `systemd`, `ip`/`iw`, `apt` oraz `detect_display_env` (patrz „Konteksty").
@@ -346,6 +347,45 @@ Zmienne: `SSH_SK_KEY_FILE`, `SSH_SK_APPLICATION`, `SSH_SK_VERIFY` (`0` = wystarc
 `SSH_KEYGEN`. Na macOS `ssh-keygen` Apple nie obsługuje kluczy `-sk` — `contexts/darwin.sh`
 ustawia `SSH_KEYGEN` na `openssh` z Homebrew. `ssh_sk_git_setup` i `gpg_git_setup` wzajemnie się
 nadpisują (`gpg.format`), więc na maszynie aktywna jest jedna metoda — ostatnio skonfigurowana.
+
+#### Podpisywanie plików JAR kluczem sprzętowym (`157_function_jar_signing.sh`)
+
+Podpisuje JAR-y przez `jarsigner -storetype PKCS11` (moduł OpenSC), niezależnie od modułów
+podpisywania commitów wyżej. Klucz prywatny nigdy nie opuszcza karty.
+
+> **Wymaga apletu PIV** (X.509 cert + klucz RSA/EC wygenerowany NA karcie — YubiKey 5, Nitrokey 3).
+> Klucze czysto FIDO2 bez PIV (Thetis BioFP+, Titan — te same, których dotyczy sekcja SSH-sk
+> wyżej) **nie obsłużą** JAR signing — FIDO2 to challenge-response, nie generyczny RSA/EC sign
+> oracle przez PKCS11.
+
+| Funkcja | Działanie |
+|---|---|
+| `jar_pkcs11_setup` | jednorazowo na maszynie: znajdź moduł OpenSC, zweryfikuj cert na karcie, zapisz `pkcs11.cfg` |
+| `jar_pkcs11_status` | sloty + certy/klucze widoczne przez PKCS11 (`pkcs11-tool -L -O`) |
+| `jar_pkcs11_test` | próbny podpis + weryfikacja na tymczasowym jarze — sprawdza cały łańcuch |
+| `jar_sign PLIK.jar [alias]` | podpisz istniejący JAR ręcznie (poza Mavenem) |
+| `jar_verify PLIK.jar` | zweryfikuj podpis |
+| `jar_maven_setup` | wystaw `jarsigner.*` jako domyślnie aktywny profil Mavena w `~/.m2/settings.xml` |
+| `jar_maven_disable` | usuń ten profil (reszta `settings.xml`, np. mirrory Nexusa, zostaje nietknięta) |
+
+```bash
+# jednorazowo na maszynie z podpiętą kartą
+jar_pkcs11_setup
+jar_pkcs11_test
+
+# podpisywanie automatyczne przy buildzie Mavenem (dowolny projekt z
+# maven-jarsigner-plugin w pom.xml, bez zmian per-projekt)
+jar_maven_setup
+mvn package
+```
+
+`jar_maven_setup` **nie** parsuje/przepisuje całego `~/.m2/settings.xml` (może już mieć realną
+konfigurację — mirrory/servery Nexusa) — dopisuje tylko oznaczony blok (`<!-- jar-hw-signing-*
+-->`) do `<profiles>`/`<activeProfiles>` (kontenery dopisywane tylko jeśli ich jeszcze nie ma),
+reszta pliku zostaje nietknięta; powtórne wywołanie podmienia blok, nie duplikuje go.
+
+Zmienne: `JAR_PKCS11_MODULE` (override ścieżki do `opensc-pkcs11.so`), `JAR_PKCS11_ALIAS`
+(override auto-detekcji aliasu — wymagany, gdy na karcie jest więcej niż jeden certyfikat).
 
 ### Aliasy (`bash_aliases.sh` + `bash/contexts/`)
 

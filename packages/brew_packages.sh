@@ -16,6 +16,7 @@ system_tools=(
   gnupg
   pinentry-mac
   openssh
+  opensc
 )
 
 shell_tools=(
