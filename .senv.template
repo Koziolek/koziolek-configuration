@@ -6,3 +6,5 @@ export DB_PASSWORD=
 export DB_NAME=
 export PGADMIN_EMAIL=
 export PGADMIN_PASSWORD=
+export GPG_PUBKEY_URL=
+export SSH_SK_VERIFY=

@@ -13,6 +13,7 @@ system_tools=(
 
 security_tools=(
   gnupg gnupg2 apt-transport-https ca-certificates libpam-u2f fido2-tools
+  scdaemon pcscd openssh-client
 )
 
 graphics_libs=(

@@ -133,6 +133,28 @@ fake_poweroff() { log_warn "fake_poweroff: gdbus/xset/wlopm niedostępne na macO
 netconf_diag() { log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, journalctl) — niedostępnych na macOS"; return 1; }
 refresh_apt_gpg_keys() { log_warn "refresh_apt_gpg_keys: apt niedostępne na macOS"; return 1; }
 
+# ssh-keygen Apple (/usr/bin) jest zbudowany bez obsługi kluczy FIDO (-sk) —
+# 156_function_ssh_sk_signing.sh musi użyć openssh z Homebrew.
+if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -x "$HOMEBREW_PREFIX/bin/ssh-keygen" ]; then
+    export SSH_KEYGEN="$HOMEBREW_PREFIX/bin/ssh-keygen"
+fi
+
+# gpg-agent z Homebrew nie ma sensownego pinentry dla aplikacji GUI (IDE, git
+# z edytora) — ustawiamy pinentry-mac w gpg-agent.conf (idempotentnie).
+_gpg_pinentry_setup() {
+    local pinentry gnupg_home conf
+    pinentry=$(command -v pinentry-mac) || { log_warn "gpg: brak pinentry-mac (brew install pinentry-mac)"; return 1; }
+    gnupg_home="${GNUPGHOME:-$HOME/.gnupg}"
+    conf="$gnupg_home/gpg-agent.conf"
+    mkdir -p "$gnupg_home" && chmod 700 "$gnupg_home"
+    touch "$conf"
+    grep -qxF "pinentry-program $pinentry" "$conf" && return 0
+    # grep -v + mv zamiast `sed -i ''` — w PATH może być gnu-sed z brew (inna składnia -i)
+    { grep -v '^pinentry-program ' "$conf" || true; echo "pinentry-program $pinentry"; } > "$conf.tmp" \
+        && mv "$conf.tmp" "$conf"
+    gpgconf --kill gpg-agent
+}
+
 export -f _listening_socket_pairs detect_display_env reswap who_use_swap \
     turn_async_profiler_on turn_async_profiler_off start_x fake_poweroff netconf_diag refresh_apt_gpg_keys \
-    _hwinfo_check_deps hwinfo_cpu hwinfo_motherboard hwinfo_ram hwinfo_gpu
+    _hwinfo_check_deps hwinfo_cpu hwinfo_motherboard hwinfo_ram hwinfo_gpu _gpg_pinentry_setup

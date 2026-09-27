@@ -109,6 +109,25 @@ Odpowiedzialność kluczowych plików funkcji:
   od marki). Konfiguracja **maszyny** (pakiety `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so`
   w `/etc/pam.d/sudo`) to nie tu — `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh`
   (jednorazowo); `_fido2_check_deps` odsyła tam przy braku zależności.
+- `functions.d/155_function_gpg_card.sh` — podpisywanie commitów kluczem GPG z karty OpenPGP
+  (klucz prywatny tylko na karcie; niezależne od maszyny): `gpg_git_setup` (fingerprint slotu
+  podpisu czytany z `gpg --card-status --with-colons`, import klucza publicznego: URL z karty →
+  `$GPG_PUBKEY_URL` → keyserver, stuby + ultimate trust, `git config --global` do **stuba**
+  `~/.gitconfig` — nie do `git_config.template`), `gpg_git_disable`, `gpg_card_status`,
+  `gpg_card_import_pubkey`, `gpg_card_test`, `gpg_agent_restart`, `gpg_card_use_pcscd`.
+  Pinentry: hook `_gpg_pinentry_setup` (Linux no-op, `contexts/darwin.sh` → `pinentry-mac`);
+  `GPG_TTY` eksportowane w `bash_exports.sh`. Helpery zwracające dane przez stdout logują na
+  stderr (`log_*` piszą na stdout). Test: `test/unit/test_gpg_card.sh` (mock `gpg` w PATH).
+- `functions.d/156_function_ssh_sk_signing.sh` — podpisywanie commitów kluczem SSH `ed25519-sk`
+  z klucza FIDO2 bez apletu OpenPGP (Thetis BioFP+): klucz **resident** z aplikacją
+  `$SSH_SK_APPLICATION` (domyślnie `ssh:git-signing`) + `verify-required`, odtwarzany na każdej
+  maszynie przez `ssh-keygen -K` (plik `id_ed25519_sk_rk_<aplikacja bez ssh:>[_<user>]`).
+  `ssh_sk_key_create` (raz), `ssh_sk_git_setup` (per maszyna: stub, `allowed_signers` w
+  `~/.config/git/`, `gpg.format=ssh` w stubie `~/.gitconfig`), `ssh_sk_key_load`, `ssh_sk_test`,
+  `ssh_sk_github_upload`, `ssh_sk_git_disable`, `ssh_sk_use_existing` (istniejący klucz `-sk`,
+  odmawia kluczy z dysku; aplikacja `ssh:` → plik bez segmentu, tylko `id_ed25519_sk_rk`). Binarka przez `${SSH_KEYGEN:-ssh-keygen}` —
+  `contexts/darwin.sh` wskazuje `openssh` z brew (Apple ssh bez FIDO). Test:
+  `test/unit/test_ssh_sk_signing.sh` (mock `ssh-keygen`/`gh`).
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:
@@ -117,7 +136,8 @@ rozwiązuj tak, by **jak najwięcej zostało wspólne**:
   `DOCKER_CLI=podman` — funkcja się nie rozgałęzia i nie dubluje;
 - dopiero gdy się nie da (`/proc`, `swapoff`, `systemd`, `apt`) — `contexts/darwin.sh`
   **redefiniuje** całą funkcję (`reswap`, `who_use_swap`, `turn_async_profiler_*`, `start_x`,
-  `netconf_diag`, `refresh_apt_gpg_keys`, `_listening_socket_pairs`, `detect_display_env`);
+  `netconf_diag`, `refresh_apt_gpg_keys`, `_listening_socket_pairs`, `detect_display_env`,
+  `_gpg_pinentry_setup`);
 - co wspólne dla rodziny → wyżej w łańcuchu: instalacja `hub` przez apt jest w `contexts/debian.sh`
   (widzą ją `ubuntu` i `vanilla`), nie w liściach.
 
