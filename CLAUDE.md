@@ -128,6 +128,25 @@ Odpowiedzialność kluczowych plików funkcji:
   odmawia kluczy z dysku; aplikacja `ssh:` → plik bez segmentu, tylko `id_ed25519_sk_rk`). Binarka przez `${SSH_KEYGEN:-ssh-keygen}` —
   `contexts/darwin.sh` wskazuje `openssh` z brew (Apple ssh bez FIDO). Test:
   `test/unit/test_ssh_sk_signing.sh` (mock `ssh-keygen`/`gh`).
+- `functions.d/157_function_jar_signing.sh` — podpisywanie plików JAR kluczem sprzętowym przez
+  PKCS11 (`jarsigner -storetype PKCS11`, moduł OpenSC `opensc-pkcs11.so`, aplet **PIV** karty —
+  X.509 cert + klucz RSA/EC wygenerowany NA karcie; klucze czysto FIDO2 bez PIV, np. Thetis
+  BioFP+ z 156, **nie obsłużą** tego). `jar_pkcs11_setup` (znajdź moduł, zweryfikuj cert na
+  karcie, zapisz `~/.config/git-configuration-signing/pkcs11.cfg`), `jar_pkcs11_status`,
+  `jar_pkcs11_test` (sign+verify tymczasowego jara), `jar_sign`/`jar_verify` (ręcznie, bez
+  `-storepass` w argv). `jar_maven_setup`/`jar_maven_disable` — dowiązanie do **Mavena**:
+  wystawia `jarsigner.*` (property expressions czytane przez `maven-jarsigner-plugin`) jako
+  domyślnie aktywny profil `jar-hw-signing` w `~/.m2/settings.xml`, więc dowolny projekt z tym
+  pluginem w `pom.xml` podpisuje JAR-y automatycznie przy `mvn package`/`verify`, bez zmian
+  per-projekt. `~/.m2/settings.xml` może już mieć realną konfigurację (mirrory/servery Nexusa,
+  patrz `services/nexus/key_setup.sh`) — **nigdy nie parsujemy/przepisujemy całego pliku**
+  (np. `ElementTree` kasuje komentarze przy reserializacji); zamiast tego idempotentny insert
+  oznaczonego bloku (`<!-- jar-hw-signing-*:BEGIN/END -->`) do `<profiles>`/`<activeProfiles>`
+  (dopisywanych tylko jeśli ich jeszcze nie ma — `_jar_ensure_container`), resztę pliku zostawia
+  nietkniętą — ten sam styl co `gpg_card_use_pcscd` (idempotentny append do `scdaemon.conf`),
+  tylko na blok XML. Test: `test/unit/test_jar_signing.sh` (mock `pkcs11-tool`/`jarsigner`;
+  blok maven-settings testowany na realnych plikach — bez mocków, to czysta manipulacja
+  tekstem).
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:
