@@ -84,7 +84,15 @@ all_packages=(
 safe_apt_install() {
   local pkg ok_list=()
   for pkg in "$@"; do
-    if apt-cache show "$pkg" >/dev/null 2>&1; then
+    # `apt-cache show` sam w sobie NIE wystarcza: pakiety przejściowe/dummy
+    # (np. w trakcie transformacji nazwy w Debian sid) mają metadane/opis,
+    # więc `apt-cache show` przechodzi, ale nie mają realnego kandydata do
+    # instalacji na tej architekturze — dopiero `apt-get install` by to
+    # wykrył, wywalając na CAŁEJ liście pakietów naraz (patrz #124).
+    # `apt-cache policy` mówi wprost "Candidate: (none)" w takim przypadku.
+    if apt-cache policy "$pkg" 2>/dev/null | grep -q 'Candidate: (none)'; then
+      echo "⚠️ Package '$pkg' has no installation candidate, skipping"
+    elif apt-cache show "$pkg" >/dev/null 2>&1; then
       ok_list+=("$pkg")
     else
       echo "⚠️ Package '$pkg' not found, skipping"

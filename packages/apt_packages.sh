@@ -17,12 +17,18 @@ security_tools=(
 )
 
 graphics_libs=(
-  libatomic1 libgl1-mesa-dri libglx-mesa0 libegl1-mesa libgles2-mesa
+  libatomic1 libgl1-mesa-dri libglx-mesa0
   mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
 )
 
+# GConf (GNOME 2) zniknął z Debiana/Ubuntu lata temu — usunięty stąd
+# (był bezużyteczny, tylko "not found, skipping" w każdym logu). libgdk-pixbuf2.0-0
+# zostaje mimo że na Debian sid akurat nie ma kandydata (trwająca transformacja
+# nazwy pakietu) — na Ubuntu wciąż jest realny; safe_apt_install (patrz
+# initial_packages_ubuntu.sh/initial_packages_vanilla.sh) poprawnie go pomija
+# z ostrzeżeniem zamiast wywalać całą instalację, patrz #124.
 gui_libs=(
-  gconf2-common gconf-service libgconf-2-4 libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
+  libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
 )
 
 image_tools=(
