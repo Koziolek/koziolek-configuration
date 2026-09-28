@@ -250,6 +250,18 @@ install_rust_and_difft() {
 }
 
 install_sdkman() {
+    # Subsystem apx (kontener podman) potrafi mieć w środowisku http_proxy/
+    # https_proxy odziedziczone z hosta/podmana (poza kontrolą tego repo —
+    # ani main.sh, ani contexts/vanilla.sh ich nie ustawiają). SDKMAN i curl
+    # honorują te zmienne automatycznie; jeśli wskazują na proxy, którego
+    # subsystem faktycznie nie potrzebuje/nie ma, pobieranie Javy/Mavena/mvnd
+    # pada (patrz #125). Czyścimy je tylko na czas tego wywołania — bezpieczna,
+    # odwracalna migacja, nie zmienia nic poza samą instalacją SDKMAN-a.
+    if [ -n "${http_proxy:-}${https_proxy:-}${HTTP_PROXY:-}${HTTPS_PROXY:-}${all_proxy:-}${ALL_PROXY:-}" ]; then
+        echo "ℹ️  Wykryto zmienne proxy w środowisku — czyszczę na czas instalacji SDKMAN (patrz #125)"
+    fi
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
+
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
     set +u
     # shellcheck source=/dev/null
