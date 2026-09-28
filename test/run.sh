@@ -43,6 +43,9 @@ TEST_FILTER=""
 REBUILD=false
 DOCKER_NETWORK="koziolek-test-net"
 
+declare -A _E2E_JOB_PID=()
+declare -A _E2E_JOB_LOG=()
+
 usage() {
     grep '^#' "$0" | grep -v '#!/' | sed 's/^# \?//'
     exit 0
@@ -176,6 +179,35 @@ _preflight_docker() {
     echo ""
 }
 
+_e2e_start() {
+    # _e2e_start <klucz> <polecenie...> — odpala <polecenie> w tle (build+run+
+    # weryfikacja kontenera dla jednego wariantu e2e), przechwytując CAŁY jego
+    # output (stdout+stderr) do pliku tymczasowego, zamiast wypisywać na żywo —
+    # kilka równoległych `docker build`/`docker run` przeplatałoby output na
+    # terminalu w nieczytelny sposób. Wynik odtwarzany po kolei w _e2e_finish,
+    # dopiero gdy wszystkie zadania się zakończą (patrz #128).
+    local key="$1"; shift
+    local log="$RESULTS_DIR/.e2e-parallel-${key}.log"
+    : > "$log"
+    ( "$@" ) >"$log" 2>&1 &
+    _E2E_JOB_PID[$key]=$!
+    _E2E_JOB_LOG[$key]=$log
+}
+
+_e2e_finish() {
+    # _e2e_finish <klucz> — czeka na zadanie odpalone przez _e2e_start, wypisuje
+    # jego przechwycony output i zwraca jego kod wyjścia.
+    local key="$1" rc=0
+    wait "${_E2E_JOB_PID[$key]}" || rc=$?
+    echo ""
+    echo "───────────────────────────────────────"
+    echo "  Wynik: $key"
+    echo "───────────────────────────────────────"
+    cat "${_E2E_JOB_LOG[$key]}"
+    rm -f "${_E2E_JOB_LOG[$key]}"
+    return "$rc"
+}
+
 _preflight_native() {
     echo "======================================="
     echo "  Sprawdzanie środowiska (native: $(uname -s))"
@@ -239,63 +271,65 @@ else
         "$UNIT_IMAGE" || UNIT_EXIT=$?
 fi
 
-# --- Testy e2e (GitHub clone) ---
-E2E_EXIT=0
+# --- Testy e2e: odpalane RÓWNOLEGLE w tle (patrz #128) ---------------------
+# Każdy wariant (build+run+weryfikacja kontenera) to niezależny proces w innej
+# sieci/na innym obrazie — poprzednio leciały jeden po drugim (seria IF-ów),
+# mimo że nic ich nie synchronizuje. Teraz każdy odpalany jest w tle
+# (_e2e_start), a doczekanie się i wypisanie wyniku (_e2e_finish) następuje
+# dopiero po odpaleniu WSZYSTKICH żądanych wariantów — na kształt
+# testcontainers, bez dodatkowej zależności (docker compose rozważany jako
+# alternatywa, ale wymagałby przepisania asercji per-wariant na wspólny format
+# `docker compose logs`; zwykłe zadania w tle są prostsze i nie ruszają
+# istniejącej, przetestowanej logiki w test/e2e/*.sh).
+
 if $RUN_E2E; then
-    echo ""
-    echo "▶ Uruchamianie testów e2e..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
-        bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh" || E2E_EXIT=$?
-else
-    echo "▶ Testy e2e pominięte (--e2e aby uruchomić)"
+    echo "▶ [w tle] e2e (Ubuntu)..."
+    _e2e_start e2e env RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
+        bash "$TEST_DIR/e2e/test_initial_packages_ubuntu.sh"
 fi
-
-# --- Testy e2e-local (lokalny projekt) ---
-E2E_LOCAL_EXIT=0
 if $RUN_E2E_LOCAL; then
-    echo ""
-    echo "▶ Uruchamianie testów e2e-local..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
-        bash "$TEST_DIR/e2e/test_local_config.sh" || E2E_LOCAL_EXIT=$?
-else
-    echo "▶ Testy e2e-local pominięte (--e2e-local aby uruchomić)"
+    echo "▶ [w tle] e2e-local..."
+    _e2e_start e2e-local env RESULTS_DIR="$RESULTS_DIR" E2E_IMAGE="$E2E_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
+        bash "$TEST_DIR/e2e/test_local_config.sh"
 fi
-
-# --- Testy e2e-redhat (rockylinux:9) ---
-E2E_REDHAT_EXIT=0
 if $RUN_E2E_REDHAT; then
-    echo ""
-    echo "▶ Uruchamianie testów e2e-redhat..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
-        bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh" || E2E_REDHAT_EXIT=$?
-else
-    echo "▶ Testy e2e-redhat pominięte (--e2e-redhat aby uruchomić)"
+    echo "▶ [w tle] e2e-redhat..."
+    _e2e_start e2e-redhat env RESULTS_DIR="$RESULTS_DIR" E2E_REDHAT_IMAGE="$E2E_REDHAT_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
+        bash "$TEST_DIR/e2e/test_initial_packages_redhat.sh"
 fi
-
-# --- Testy e2e-vanilla (debian:sid) ---
-E2E_VANILLA_EXIT=0
 if $RUN_E2E_VANILLA; then
-    echo ""
-    echo "▶ Uruchamianie testów e2e-vanilla..."
-    RESULTS_DIR="$RESULTS_DIR" E2E_VANILLA_IMAGE="$E2E_VANILLA_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
-        bash "$TEST_DIR/e2e/test_initial_packages_vanilla.sh" || E2E_VANILLA_EXIT=$?
-else
-    echo "▶ Testy e2e-vanilla pominięte (--e2e-vanilla aby uruchomić)"
+    echo "▶ [w tle] e2e-vanilla..."
+    _e2e_start e2e-vanilla env RESULTS_DIR="$RESULTS_DIR" E2E_VANILLA_IMAGE="$E2E_VANILLA_IMAGE" DOCKER_NETWORK="$DOCKER_NETWORK" TIMESTAMP="$TIMESTAMP" \
+        bash "$TEST_DIR/e2e/test_initial_packages_vanilla.sh"
 fi
-
-# --- Testy e2e-certs (JDK + openssl, weryfikacja TLS/cacerts) ---
-E2E_CERTS_EXIT=0
 if $RUN_E2E_CERTS; then
-    echo ""
-    echo "▶ Uruchamianie testów e2e-certs..."
-    docker run --rm \
+    echo "▶ [w tle] e2e-certs..."
+    _e2e_start e2e-certs docker run --rm \
         --name "KOZIOLEK_CONFIGURATION_e2e-certs_${TIMESTAMP}" \
         --network="$DOCKER_NETWORK" \
         -v "$PROJECT_ROOT:/project:ro" \
-        "$E2E_CERTS_IMAGE" || E2E_CERTS_EXIT=$?
-else
-    echo "▶ Testy e2e-certs pominięte (--e2e-certs aby uruchomić)"
+        "$E2E_CERTS_IMAGE"
 fi
+
+if $RUN_E2E || $RUN_E2E_LOCAL || $RUN_E2E_REDHAT || $RUN_E2E_VANILLA || $RUN_E2E_CERTS; then
+    echo ""
+    echo "▶ Czekam na zakończenie testów e2e uruchomionych w tle..."
+fi
+
+E2E_EXIT=0
+$RUN_E2E && { _e2e_finish e2e || E2E_EXIT=$?; } || echo "▶ Testy e2e pominięte (--e2e aby uruchomić)"
+
+E2E_LOCAL_EXIT=0
+$RUN_E2E_LOCAL && { _e2e_finish e2e-local || E2E_LOCAL_EXIT=$?; } || echo "▶ Testy e2e-local pominięte (--e2e-local aby uruchomić)"
+
+E2E_REDHAT_EXIT=0
+$RUN_E2E_REDHAT && { _e2e_finish e2e-redhat || E2E_REDHAT_EXIT=$?; } || echo "▶ Testy e2e-redhat pominięte (--e2e-redhat aby uruchomić)"
+
+E2E_VANILLA_EXIT=0
+$RUN_E2E_VANILLA && { _e2e_finish e2e-vanilla || E2E_VANILLA_EXIT=$?; } || echo "▶ Testy e2e-vanilla pominięte (--e2e-vanilla aby uruchomić)"
+
+E2E_CERTS_EXIT=0
+$RUN_E2E_CERTS && { _e2e_finish e2e-certs || E2E_CERTS_EXIT=$?; } || echo "▶ Testy e2e-certs pominięte (--e2e-certs aby uruchomić)"
 
 echo ""
 echo "Wyniki: $RESULTS_DIR/"
