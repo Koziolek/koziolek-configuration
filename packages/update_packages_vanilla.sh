@@ -400,8 +400,14 @@ update_sdkman() {
         warn "SDKMAN nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
         return 0
     fi
+    # Patrz install_sdkman w initial_packages_vanilla.sh: subsystem apx potrafi
+    # mieć w środowisku http_proxy/https_proxy odziedziczone z hosta/podmana,
+    # przez które SDKMAN/curl próbują łączyć się przez proxy, którego subsystem
+    # faktycznie nie potrzebuje/nie ma — pobieranie pada (patrz #125). Czyścimy
+    # tylko wewnątrz tych subshelli, nie w reszcie skryptu.
     info "Aktualizacja SDKMAN..."
     (
+        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
         set +eu
         # shellcheck source=/dev/null
         source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -410,6 +416,7 @@ update_sdkman() {
 
     info "Aktualizacja SDK (java, maven, mvnd)..."
     (
+        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
         set +eu
         # shellcheck source=/dev/null
         source "$HOME/.sdkman/bin/sdkman-init.sh"
