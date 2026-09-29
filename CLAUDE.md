@@ -87,6 +87,10 @@ Odpowiedzialność kluczowych plików funkcji:
 - `functions.d/010_*` — logowanie (`log_info`, `log_error`, `log_warn`, `log_man`)
 - `functions.d/015_*` — prompt PS1
 - `functions.d/040_*` — helpery Docker
+- `functions.d/096_function_apt_trust.sh` — `refresh_apt_gpg_keys` (naprawa `NO_PUBKEY`/martwych
+  repo apt, kluczy przypina `signed-by=` do konkretnego repo, nigdy `trusted.gpg.d`). Domena
+  zupełnie inna niż klaster `15X` niżej (zaufanie kluczy repo apt, nie tożsamość/podpis) —
+  nazwa pliku celowo bez „gpg”, żeby nie sugerować przynależności do tamtej grupy.
 - `functions.d/100_get_and_build.sh` — funkcja `get_and_build` (patrz niżej)
 - `functions.d/110_git-context.sh` — funkcja `git_context`
 - `functions.d/130_function_screen.sh` — `detect_display_env()` (gnome/sway/wlroots/x11/wayland; `darwin` z cienia)
@@ -110,66 +114,72 @@ Odpowiedzialność kluczowych plików funkcji:
   od marki). Konfiguracja **maszyny** (pakiety `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so`
   w `/etc/pam.d/sudo`) to nie tu — `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh`
   (jednorazowo); `_fido2_check_deps` odsyła tam przy braku zależności.
-- `functions.d/155_function_gpg_card.sh` — podpisywanie commitów kluczem GPG z karty OpenPGP
-  (klucz prywatny tylko na karcie; niezależne od maszyny): `gpg_git_setup` (fingerprint slotu
-  podpisu czytany z `gpg --card-status --with-colons`, import klucza publicznego: URL z karty →
+- `functions.d/155_function_git_signing.sh` — podpisywanie **commitów git**, dwa alternatywne
+  backendy w jednym pliku (ten sam cel, inny sprzęt — wybór zależy od tego, czy klucz ma aplet
+  OpenPGP): sekcja GPG-karta i sekcja SSH-sk, `gpg_git_setup`/`ssh_sk_git_setup` wzajemnie się
+  nadpisują (`gpg.format` w `~/.gitconfig`), aktywna jedna metoda naraz.
+  **GPG-karta** (klucz prywatny tylko na karcie): `gpg_git_setup` (fingerprint slotu podpisu
+  czytany z `gpg --card-status --with-colons`, import klucza publicznego: URL z karty →
   `$GPG_PUBKEY_URL` → keyserver, stuby + ultimate trust, `git config --global` do **stuba**
   `~/.gitconfig` — nie do `git_config.template`), `gpg_git_disable`, `gpg_card_status`,
-  `gpg_card_import_pubkey`, `gpg_card_test`, `gpg_agent_restart`, `gpg_card_use_pcscd`.
-  Pinentry: hook `_gpg_pinentry_setup` (Linux no-op, `contexts/darwin.sh` → `pinentry-mac`);
-  `GPG_TTY` eksportowane w `bash_exports.sh`. Helpery zwracające dane przez stdout logują na
-  stderr (`log_*` piszą na stdout). Test: `test/unit/test_gpg_card.sh` (mock `gpg` w PATH).
-- `functions.d/156_function_ssh_sk_signing.sh` — podpisywanie commitów kluczem SSH `ed25519-sk`
-  z klucza FIDO2 bez apletu OpenPGP (Thetis BioFP+): klucz **resident** z aplikacją
-  `$SSH_SK_APPLICATION` (domyślnie `ssh:git-signing`) + `verify-required`, odtwarzany na każdej
-  maszynie przez `ssh-keygen -K` (plik `id_ed25519_sk_rk_<aplikacja bez ssh:>[_<user>]`).
-  `ssh_sk_key_create` (raz), `ssh_sk_git_setup` (per maszyna: stub, `allowed_signers` w
-  `~/.config/git/`, `gpg.format=ssh` w stubie `~/.gitconfig`), `ssh_sk_key_load`, `ssh_sk_test`,
-  `ssh_sk_github_upload`, `ssh_sk_git_disable`, `ssh_sk_use_existing` (istniejący klucz `-sk`,
-  odmawia kluczy z dysku; aplikacja `ssh:` → plik bez segmentu, tylko `id_ed25519_sk_rk`). Binarka przez `${SSH_KEYGEN:-ssh-keygen}` —
-  `contexts/darwin.sh` wskazuje `openssh` z brew (Apple ssh bez FIDO). Test:
-  `test/unit/test_ssh_sk_signing.sh` (mock `ssh-keygen`/`gh`).
-- `functions.d/157_function_jar_signing.sh` — podpisywanie plików JAR kluczem sprzętowym przez
-  PKCS11 (`jarsigner -storetype PKCS11`, moduł OpenSC `opensc-pkcs11.so`, aplet **PIV** karty —
-  X.509 cert + klucz RSA/EC wygenerowany NA karcie; klucze czysto FIDO2 bez PIV, np. Thetis
-  BioFP+ z 156, **nie obsłużą** tego). `jar_pkcs11_setup` (znajdź moduł, zweryfikuj cert na
-  karcie, zapisz `~/.config/git-configuration-signing/pkcs11.cfg`), `jar_pkcs11_status`,
-  `jar_pkcs11_test` (sign+verify tymczasowego jara), `jar_sign`/`jar_verify` (ręcznie, bez
-  `-storepass` w argv). `jar_maven_setup`/`jar_maven_disable` — dowiązanie do **Mavena**:
-  wystawia `jarsigner.*` (property expressions czytane przez `maven-jarsigner-plugin`) jako
-  domyślnie aktywny profil `jar-hw-signing` w `~/.m2/settings.xml`, więc dowolny projekt z tym
-  pluginem w `pom.xml` podpisuje JAR-y automatycznie przy `mvn package`/`verify`, bez zmian
-  per-projekt. `~/.m2/settings.xml` może już mieć realną konfigurację (mirrory/servery Nexusa,
-  patrz `services/nexus/key_setup.sh`) — **nigdy nie parsujemy/przepisujemy całego pliku**
-  (np. `ElementTree` kasuje komentarze przy reserializacji); zamiast tego idempotentny insert
-  oznaczonego bloku (`<!-- jar-hw-signing-*:BEGIN/END -->`) do `<profiles>`/`<activeProfiles>`
-  (dopisywanych tylko jeśli ich jeszcze nie ma — `_jar_ensure_container`), resztę pliku zostawia
-  nietkniętą — ten sam styl co `gpg_card_use_pcscd` (idempotentny append do `scdaemon.conf`),
-  tylko na blok XML. `jar_sign`/`jar_verify` mają `-l`/`--list` (wylistuj aliasy certów na
-  karcie, `_jar_pkcs11_list_aliases`); `jar_sign` dodatkowo `-k`/`--key <alias>` (stary drugi
-  argument pozycyjny nadal działa dla kompatybilności wstecznej). Test:
-  `test/unit/test_jar_signing.sh` (mock `pkcs11-tool`/`jarsigner`; blok maven-settings testowany
-  na realnych plikach — bez mocków, to czysta manipulacja tekstem).
-- `functions.d/158_function_gpg_sw_signing.sh` — podpisywanie artefaktów Mavena kluczem PGP
+  `gpg_card_import_pubkey`, `gpg_card_test`, `gpg_agent_restart`, `gpg_card_use_pcscd`. Pinentry:
+  hook `_gpg_pinentry_setup` (Linux no-op, `contexts/darwin.sh` → `pinentry-mac`); `GPG_TTY`
+  eksportowane w `bash_exports.sh`. Helpery zwracające dane przez stdout logują na stderr
+  (`log_*` piszą na stdout).
+  **SSH-sk** (klucz prywatny tylko w urządzeniu FIDO2 bez apletu OpenPGP, np. Thetis BioFP+):
+  klucz **resident** z aplikacją `$SSH_SK_APPLICATION` (domyślnie `ssh:git-signing`) +
+  `verify-required`, odtwarzany na każdej maszynie przez `ssh-keygen -K` (plik
+  `id_ed25519_sk_rk_<aplikacja bez ssh:>[_<user>]`). `ssh_sk_key_create` (raz), `ssh_sk_git_setup`
+  (per maszyna: stub, `allowed_signers` w `~/.config/git/`, `gpg.format=ssh` w stubie
+  `~/.gitconfig`), `ssh_sk_key_load`, `ssh_sk_test`, `ssh_sk_github_upload`, `ssh_sk_git_disable`,
+  `ssh_sk_use_existing` (istniejący klucz `-sk`, odmawia kluczy z dysku; aplikacja `ssh:` → plik
+  bez segmentu, tylko `id_ed25519_sk_rk`). Binarka przez `${SSH_KEYGEN:-ssh-keygen}` —
+  `contexts/darwin.sh` wskazuje `openssh` z brew (Apple ssh bez FIDO).
+  Test: `test/unit/test_git_signing.sh` (mock `gpg`/`gpgconf`/`ssh-keygen`/`gh`; dwa harnessy
+  uruchamiania, `_run_gpg`/`_run_ssh`, sourcujące ten sam plik).
+- `functions.d/157_function_maven_signing.sh` — podpisywanie **artefaktów Mavena**, dwa
+  alternatywne backendy w jednym pliku (dzielą helpery manipulacji `~/.m2/settings.xml`, więc
+  merge usuwa ukrytą zależność międzyplikową, którą wymuszała kolejność ładowania):
+  **JAR/PKCS11** i **GPG software**.
+  **JAR/PKCS11** (`jar_*`): podpisywanie plików JAR kluczem sprzętowym przez PKCS11
+  (`jarsigner -storetype PKCS11`, moduł OpenSC `opensc-pkcs11.so`, aplet **PIV** karty — X.509
+  cert + klucz RSA/EC wygenerowany NA karcie; klucze czysto FIDO2 bez PIV, np. Thetis BioFP+,
+  **nie obsłużą** tego). `jar_pkcs11_setup` (znajdź moduł, zweryfikuj cert na karcie, zapisz
+  `~/.config/git-configuration-signing/pkcs11.cfg`), `jar_pkcs11_status`, `jar_pkcs11_test`
+  (sign+verify tymczasowego jara), `jar_sign`/`jar_verify` (ręcznie, bez `-storepass` w argv;
+  `-l`/`--list` wylistuj aliasy certów na karcie — `_jar_pkcs11_list_aliases`; `jar_sign`
+  dodatkowo `-k`/`--key <alias>`, stary drugi argument pozycyjny nadal działa). `jar_maven_setup`/
+  `jar_maven_disable` — profil `jar-hw-signing` w `~/.m2/settings.xml` (`jarsigner.*` property
+  expressions czytane przez `maven-jarsigner-plugin`).
+  **GPG software** (`gpg_sw_*`/`gpg_maven_*`): podpisywanie artefaktów Mavena kluczem PGP
   **softwarowym** (`maven-gpg-plugin`, publikacja na Maven Central przez Sonatype Central —
   patrz `devtools-maven-extension/pom.xml`, profil `deployment`), dla maszyn/kluczy bez apletu
-  OpenPGP/PIV na karcie (czysty FIDO2, np. Thetis BioFP+ z 156, **nie obsłuży** tego — analogicznie
-  do 157; jeśli karta MA aplet OpenPGP, użyj zamiast tego `gpg_git_setup` z 155, klucz wtedy nigdy
-  nie opuszcza karty). Klucz prywatny leży w zwykłym keyringu `~/.gnupg`, chroniony tylko
-  passphrase (przez zwykły pinentry gpg-agent — ten sam hook co 155's `_gpg_pinentry_setup`).
-  Jedno polecenie na cały proces: `gpg_sw_setup` — generuje klucz (`gpg_sw_generate`, ed25519/
-  sign-only/2y domyślnie, `gpg --quick-generate-key`), zapisuje fingerprint w
-  `~/.config/git-configuration-signing/gpg-sw.cfg`, eksportuje na keyserver (`gpg_sw_export`
-  `<keyid> ubuntu|openpgp|both` — `openpgp` przez VKS API `keys.openpgp.org/vks/v1/upload`, UID-y
-  zostają niezweryfikowane dopóki nie potwierdzisz linku z maila), pyta czy dopiąć do Mavena.
-  `gpg_maven_setup`/`gpg_maven_disable` — profil `gpg-sw-signing` w `~/.m2/settings.xml`
-  (`<gpg.keyname>`), **reużywa** helperów `_jar_ensure_*`/`_jar_upsert_marked_block`/
-  `_jar_remove_marked_block` z 157 (ten sam oznaczony blok XML, inny marker/profil — może
-  współistnieć z `jar-hw-signing`); działa dzięki kolejności ładowania `source_directory()`
-  (157 < 158 alfabetycznie). `gpg_sw_list_keys` — lista kluczy w keyringu. Kroki `gpg_sw_setup`
-  pomijalne nieinteraktywnie przez `GPG_SW_NAME`/`GPG_SW_EMAIL`/`GPG_SW_EXPORT_TARGET`/
-  `GPG_SW_MAVEN_CONFIRM` (ten sam wzorzec co `GIT_ASSUME_YES` w `git/git_functions.sh`). Test:
-  `test/unit/test_gpg_sw_signing.sh` (mock `gpg`/`curl`).
+  OpenPGP/PIV na karcie (jeśli karta MA aplet OpenPGP, użyj zamiast tego `gpg_git_setup` z 155 —
+  klucz wtedy nigdy nie opuszcza karty). Klucz prywatny leży w zwykłym keyringu `~/.gnupg`,
+  chroniony tylko passphrase (przez zwykły pinentry gpg-agent — ten sam hook co 155's
+  `_gpg_pinentry_setup`). Jedno polecenie na cały proces: `gpg_sw_setup` — generuje klucz
+  (`gpg_sw_generate`, ed25519/sign-only/2y domyślnie, `gpg --quick-generate-key`), zapisuje
+  fingerprint w `~/.config/git-configuration-signing/gpg-sw.cfg`, eksportuje na keyserver
+  (`gpg_sw_export <keyid> ubuntu|openpgp|both` — `openpgp` przez VKS API
+  `keys.openpgp.org/vks/v1/upload`, UID-y zostają niezweryfikowane dopóki nie potwierdzisz linku
+  z maila), pyta czy dopiąć do Mavena. `gpg_maven_setup`/`gpg_maven_disable` — profil
+  `gpg-sw-signing` w `~/.m2/settings.xml` (`<gpg.keyname>`). `gpg_sw_list_keys` — lista kluczy w
+  keyringu. Kroki `gpg_sw_setup` pomijalne nieinteraktywnie przez `GPG_SW_NAME`/`GPG_SW_EMAIL`/
+  `GPG_SW_EXPORT_TARGET`/`GPG_SW_MAVEN_CONFIRM` (ten sam wzorzec co `GIT_ASSUME_YES` w
+  `git/git_functions.sh`).
+  **Wspólne** — `~/.m2/settings.xml`: `~/.m2/settings.xml` może już mieć realną konfigurację
+  (mirrory/servery Nexusa, patrz `services/nexus/key_setup.sh`) — **nigdy nie
+  parsujemy/przepisujemy całego pliku** (np. `ElementTree` kasuje komentarze przy reserializacji);
+  zamiast tego idempotentny insert oznaczonego bloku (`<!-- <marker>:BEGIN/END -->`) do
+  `<profiles>`/`<activeProfiles>` (dopisywanych tylko jeśli ich jeszcze nie ma —
+  `_maven_settings_ensure_container`), resztę pliku zostawia nietkniętą — ten sam styl co
+  `gpg_card_use_pcscd` (idempotentny append do `scdaemon.conf`), tylko na blok XML. Nazwane
+  `_maven_settings_*` (nie `_jar_*`) właśnie dlatego, że obsługują oba profile —
+  `jar-hw-signing` i `gpg-sw-signing` — które mogą współistnieć w jednym pliku, każdy w swoim
+  oznaczonym bloku.
+  Test: `test/unit/test_maven_signing.sh` (mock `pkcs11-tool`/`jarsigner`/`keytool`/`jar`/`gpg`/
+  `curl`; blok maven-settings testowany na realnych plikach — bez mocków, to czysta manipulacja
+  tekstem).
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:

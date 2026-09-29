@@ -38,7 +38,7 @@ export PATH="${ASDF_DATA_DIR:-$HOME/.asdf}/shims:$PATH"
 export PATH=$HOME/.local/bin:$PATH
 
 # pinentry (PIN karty OpenPGP przy podpisie commita) musi wiedzieć, na którym
-# terminalu pytać — patrz bash/functions.d/155_function_gpg_card.sh.
+# terminalu pytać — patrz bash/functions.d/155_function_git_signing.sh.
 if [ -t 0 ]; then
     GPG_TTY="$(tty)"
     export GPG_TTY

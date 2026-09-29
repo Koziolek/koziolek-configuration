@@ -147,16 +147,15 @@ Każdy plik `[0-9][0-9][0-9]_*.sh` jest ładowany automatycznie w kolejności al
 | `085_function_text.sh`     | manipulacja tekstem                             |
 | `090_function_image.sh`    | operacje na obrazach                            |
 | `095_function_misc.sh`     | `install_lib`, `weather`, `generate_month_dirs`, `start_x` |
-| `096_apt_gpg.sh`           | odświeżanie kluczy GPG repozytoriów apt         |
+| `096_function_apt_trust.sh` | odświeżanie kluczy GPG repozytoriów apt (zaufanie apt, nie tożsamość/podpis) |
 | `100_get_and_build.sh`     | system `get_and_build` (patrz niżej)            |
 | `110_git-context.sh`       | `git_context` (patrz niżej)                     |
 | `120_net_diag.sh`          | `netconf_diag` — diagnostyka zrywania sieci     |
 | `130_function_screen.sh`   | `detect_display_env` (patrz `resize_to_full`)   |
 | `140_function_diagnostic.sh` | `hwinfo`, `run_diagnostic` (patrz „Diagnostyka systemu") |
 | `150_function_fido2.sh`    | klucze FIDO2/U2F: PIN, biometria, sudo (patrz niżej) |
-| `155_function_gpg_card.sh` | podpisywanie commitów kluczem GPG z karty OpenPGP (patrz niżej) |
-| `156_function_ssh_sk_signing.sh` | podpisywanie commitów kluczem SSH z klucza FIDO2 (np. Thetis BioFP+) (patrz niżej) |
-| `157_function_jar_signing.sh` | podpisywanie plików JAR kluczem sprzętowym (PKCS11, aplet PIV) — ręcznie i przez Maven (patrz niżej) |
+| `155_function_git_signing.sh` | podpisywanie commitów: GPG-karta + SSH-sk, dwa backendy (patrz niżej) |
+| `157_function_maven_signing.sh` | podpisywanie artefaktów Mavena: JAR/PKCS11 + GPG software, dwa backendy (patrz niżej) |
 
 Funkcje w `functions.d/` są w wersji Linux; `bash/contexts/darwin.sh` redefiniuje te zależne
 od `/proc`, `ss`, `swapoff`, `systemd`, `ip`/`iw`, `apt` oraz `detect_display_env` (patrz „Konteksty").
@@ -265,7 +264,7 @@ fido2_sudo_keys_list
 
 Ścieżka `~/.config/Yubico/u2f_keys` jest zaszyta w `pam_u2f` — nie zależy od marki klucza.
 
-#### Podpisywanie commitów kluczem GPG z karty (`155_function_gpg_card.sh`)
+#### Podpisywanie commitów kluczem GPG z karty (`155_function_git_signing.sh`)
 
 Klucz **prywatny** GPG żyje wyłącznie na kluczu sprzętowym (aplet OpenPGP card — YubiKey 5,
 Nitrokey 3/Pro, Token2, Thetis Pro…). Na maszynie jest tylko klucz publiczny i „stub”
@@ -304,7 +303,7 @@ Jednorazowo (na dowolnej maszynie) warto zapisać URL klucza publicznego na karc
 `gpg_git_setup` działa nawet bez `~/.senv`. Na macOS pinentry ustawiane jest na `pinentry-mac`
 (`bash/contexts/darwin.sh`); na Linuksie wystarcza `GPG_TTY` z `bash_exports.sh`.
 
-#### Podpisywanie commitów kluczem SSH z klucza FIDO2 (`156_function_ssh_sk_signing.sh`)
+#### Podpisywanie commitów kluczem SSH z klucza FIDO2 (`155_function_git_signing.sh`, sekcja SSH-sk)
 
 Dla kluczy **bez** apletu OpenPGP (Thetis BioFP/BioFP+, Titan, Security Key NFC…). Klucz
 `ed25519-sk` jest tworzony jako **resident** (discoverable) z aplikacją `ssh:git-signing`, więc
@@ -349,7 +348,7 @@ Zmienne: `SSH_SK_KEY_FILE`, `SSH_SK_APPLICATION`, `SSH_SK_VERIFY` (`0` = wystarc
 ustawia `SSH_KEYGEN` na `openssh` z Homebrew. `ssh_sk_git_setup` i `gpg_git_setup` wzajemnie się
 nadpisują (`gpg.format`), więc na maszynie aktywna jest jedna metoda — ostatnio skonfigurowana.
 
-#### Podpisywanie plików JAR kluczem sprzętowym (`157_function_jar_signing.sh`)
+#### Podpisywanie plików JAR kluczem sprzętowym (`157_function_maven_signing.sh`, sekcja JAR/PKCS11)
 
 Podpisuje JAR-y przez `jarsigner -storetype PKCS11` (moduł OpenSC), niezależnie od modułów
 podpisywania commitów wyżej. Klucz prywatny nigdy nie opuszcza karty.
@@ -387,6 +386,42 @@ reszta pliku zostaje nietknięta; powtórne wywołanie podmienia blok, nie dupli
 
 Zmienne: `JAR_PKCS11_MODULE` (override ścieżki do `opensc-pkcs11.so`), `JAR_PKCS11_ALIAS`
 (override auto-detekcji aliasu — wymagany, gdy na karcie jest więcej niż jeden certyfikat).
+
+#### Podpisywanie artefaktów Mavena softwarowym kluczem PGP (`157_function_maven_signing.sh`, sekcja GPG software)
+
+Dla maszyn/kluczy **bez** apletu PIV/OpenPGP na karcie (czysty FIDO2, np. Thetis BioFP+) — do
+`maven-gpg-plugin` (publikacja na Maven Central przez Sonatype Central). Klucz prywatny leży w
+zwykłym keyringu `~/.gnupg`, chroniony tylko passphrase — jeśli karta MA aplet OpenPGP, lepszy
+jest `gpg_git_setup` wyżej (klucz nigdy nie opuszcza karty).
+
+| Funkcja | Działanie |
+|---|---|
+| `gpg_sw_setup` | jedno polecenie na cały proces: generuj klucz → eksportuj na keyserver → (opcjonalnie) dopnij do Mavena |
+| `gpg_sw_generate [imię i nazwisko] [email]` | generuje klucz (domyślnie `ed25519`/`sign`-only/`2y`), wypisuje fingerprint |
+| `gpg_sw_list_keys` | lista kluczy prywatnych w keyringu |
+| `gpg_sw_export <keyid> [ubuntu\|openpgp\|both]` | eksport klucza publicznego na keyserver |
+| `gpg_maven_setup [keyid]` | profil `gpg-sw-signing` w `~/.m2/settings.xml` (`gpg.keyname`) |
+| `gpg_maven_disable` | usuń ten profil (reszta `settings.xml` zostaje) |
+
+```bash
+gpg_sw_setup
+# pyta: imię i nazwisko, email, cel eksportu (ubuntu/openpgp/both/none), czy dopiąć do Mavena
+
+cd moj-projekt-maven
+mvn -P deployment deploy   # maven-gpg-plugin podpisuje artefakty, passphrase interaktywnie
+```
+
+`keys.openpgp.org` (VKS API, nie klasyczne `--send-keys`) publikuje klucz od razu, ale UID
+(adres email) zostaje **niezweryfikowany i niewidoczny w wyszukiwaniu**, dopóki nie potwierdzisz
+linku z maila, który stamtąd przyjdzie.
+
+Zmienne: `GPG_SW_NAME`/`GPG_SW_EMAIL`/`GPG_SW_EXPORT_TARGET`/`GPG_SW_MAVEN_CONFIRM` (pomijają
+interaktywne pytania `gpg_sw_setup`), `GPG_SW_KEY_ALGO`/`GPG_SW_KEY_USAGE`/`GPG_SW_KEY_EXPIRE`
+(parametry `gpg_sw_generate`).
+
+Profil `gpg-sw-signing` współistnieje z `jar-hw-signing` w tym samym `~/.m2/settings.xml` — oba
+backendy dzielą te same helpery manipulacji plikiem (`_maven_settings_*`), każdy pisze do swojego
+oznaczonego bloku.
 
 ### Aliasy (`bash_aliases.sh` + `bash/contexts/`)
 

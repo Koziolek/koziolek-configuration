@@ -18,7 +18,7 @@ _run_with_darwin_uname() {
         . '$PROJECT_ROOT/bash/functions.d/010_function_log.sh' 2>/dev/null
         . '$PROJECT_ROOT/bash/functions.d/020_function_process.sh' 2>/dev/null
         . '$PROJECT_ROOT/bash/functions.d/030_function_java.sh' 2>/dev/null
-        . '$PROJECT_ROOT/bash/functions.d/096_apt_gpg.sh' 2>/dev/null
+        . '$PROJECT_ROOT/bash/functions.d/096_function_apt_trust.sh' 2>/dev/null
         . '$PROJECT_ROOT/bash/contexts/darwin.sh' 2>/dev/null
         $1
         exit \$?

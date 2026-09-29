@@ -134,7 +134,7 @@ netconf_diag() { log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, 
 refresh_apt_gpg_keys() { log_warn "refresh_apt_gpg_keys: apt niedostępne na macOS"; return 1; }
 
 # ssh-keygen Apple (/usr/bin) jest zbudowany bez obsługi kluczy FIDO (-sk) —
-# 156_function_ssh_sk_signing.sh musi użyć openssh z Homebrew.
+# 155_function_git_signing.sh (sekcja SSH-sk) musi użyć openssh z Homebrew.
 if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -x "$HOMEBREW_PREFIX/bin/ssh-keygen" ]; then
     export SSH_KEYGEN="$HOMEBREW_PREFIX/bin/ssh-keygen"
 fi
