@@ -7,7 +7,9 @@
 # (jednorazowe, per maszyna). Funkcje tutaj działają per klucz/per sesja.
 #
 # Generyczne dla dowolnej marki FIDO2 (Yubico, Google Titan, Nitrokey, SoloKeys,
-# Feitian, Thetis, ...) — wykrywanie przez udev ID_FIDO_TOKEN, nie vendor ID.
+# Feitian, Thetis, ...) — wykrywanie przez `fido2-token -L` (libfido2), nie po
+# twardo zakodowanej liście vendor ID. Przenośne Linux/macOS — bez zależności od
+# udev/hidraw, więc działa też pod `contexts/darwin.sh` bez osobnego cienia.
 # Wymaga: fido2-tools (fido2-token), pam_u2f/pamu2fcfg — instaluje je skrypt wyżej.
 
 _fido2_check_deps() {
@@ -22,22 +24,25 @@ _fido2_check_deps() {
     return 0
 }
 
-# Zwraca ścieżkę pierwszego wykrytego klucza FIDO2/U2F (dowolna marka) na stdout,
-# albo nic + kod 1 gdy brak. Wykrywanie po udev ID_FIDO_TOKEN, nie po vendor ID —
-# ten sam mechanizm co check_46_fido_u2f w fix-comp/lib/checks-common.sh.
-_fido2_default_device() {
-    local h
-    for h in /dev/hidraw*; do
-        [ -e "$h" ] || continue
-        if udevadm info --query=property --name="$h" 2>/dev/null | grep -q '^ID_FIDO_TOKEN=1'; then
-            echo "$h"
-            return 0
-        fi
-    done
-    return 1
+# Zwraca ścieżki wszystkich wykrytych kluczy FIDO2/U2F (dowolna marka), jedna na
+# linię, na stdout. Wykrywanie przez `fido2-token -L` (libfido2) — przenośne
+# Linux/macOS, ten sam mechanizm co check_42_fido_u2f w fix-comp/lib/checks-common.sh.
+_fido2_all_devices() {
+    command -v fido2-token &>/dev/null || return 1
+    fido2-token -L 2>/dev/null | sed -E 's/^([^:]+):.*/\1/'
 }
 
-# Rozwiązuje urządzenie do użycia: argument jeśli podany, inaczej pierwszy wykryty.
+# Opis (vendor/product) dla danej ścieżki klucza, prosto z `fido2-token -L`.
+_fido2_device_desc() {
+    local h="$1"
+    fido2-token -L 2>/dev/null | grep -F "$h:" | sed -E 's/^[^:]+: *//'
+}
+
+# Rozwiązuje urządzenie do użycia: argument jeśli podany; jeden wykryty klucz —
+# użyj go wprost; kilka — interaktywna lista z wyborem po numerze. Wywoływana
+# jako `dev=$(_fido2_resolve_device ...)` — WSZYSTKO poza samą wybraną ścieżką
+# (menu, prompt, błąd) musi iść na stderr, inaczej ginie w przechwyconym $dev
+# i funkcja woląjąca pada po cichu (log_error z log_message pisze na stdout).
 # Loguje błąd i zwraca 1 gdy nic nie znaleziono.
 _fido2_resolve_device() {
     local dev="${1:-}"
@@ -45,31 +50,56 @@ _fido2_resolve_device() {
         echo "$dev"
         return 0
     fi
-    if dev=$(_fido2_default_device); then
-        echo "$dev"
+
+    local devices=()
+    while IFS= read -r dev; do
+        devices+=("$dev")
+    done < <(_fido2_all_devices)
+
+    if [ "${#devices[@]}" -eq 0 ]; then
+        log_error "fido2: brak podłączonego klucza FIDO2/U2F (i nie podano urządzenia jawnie)" >&2
+        return 1
+    fi
+
+    if [ "${#devices[@]}" -eq 1 ]; then
+        echo "${devices[0]}"
         return 0
     fi
-    log_error "fido2: brak podłączonego klucza FIDO2/U2F (i nie podano urządzenia jawnie)"
-    return 1
+
+    local i desc choice
+    {
+        echo "fido2: wykryto kilka kluczy — wybierz numer:"
+        for i in "${!devices[@]}"; do
+            desc=$(_fido2_device_desc "${devices[$i]}")
+            printf '  %d) %s — %s\n' "$((i + 1))" "${devices[$i]}" "$desc"
+        done
+    } >&2
+
+    while true; do
+        read -r -p "Numer urządzenia [1-${#devices[@]}]: " choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#devices[@]}" ]; then
+            echo "${devices[$((choice - 1))]}"
+            return 0
+        fi
+        echo "fido2: nieprawidłowy wybór" >&2
+    done
 }
 
 ##
 # Listuje podłączone klucze FIDO2/U2F (dowolna marka) z nazwą producenta/modelu
-# wprost z deskryptora USB (sysfs), nie z twardo zakodowanej listy.
+# wprost z `fido2-token -L`, nie z twardo zakodowanej listy.
 ##
 function fido2_list_devices() {
-    local found=0 h p walk manu prod
-    for h in /dev/hidraw*; do
-        [ -e "$h" ] || continue
-        p=$(udevadm info --query=property --name="$h" 2>/dev/null)
-        if grep -q '^ID_FIDO_TOKEN=1' <<<"$p"; then
-            found=$((found + 1))
-            walk=$(udevadm info -a -n "$h" 2>/dev/null)
-            manu=$(grep -m1 'ATTRS{manufacturer}' <<<"$walk" | grep -o '"[^"]*"' | tr -d '"')
-            prod=$(grep -m1 'ATTRS{product}' <<<"$walk" | grep -o '"[^"]*"' | tr -d '"')
-            echo "${C_GREEN}$h${C_NC}: ${manu:-nieznany producent} ${prod:-}"
-        fi
-    done
+    if ! command -v fido2-token &>/dev/null; then
+        log_error "fido2: brakuje fido2-tools (fido2-token) — zainstaluj przez scripts/bezpieczenstwo/01-fido2-diagnostic.sh w fix-comp"
+        return 1
+    fi
+    local found=0 h desc
+    while IFS= read -r h; do
+        found=$((found + 1))
+        desc=$(_fido2_device_desc "$h")
+        echo "${C_GREEN}$h${C_NC}: $desc"
+    done < <(_fido2_all_devices)
     if [ "$found" -eq 0 ]; then
         log_warn "fido2: brak podłączonych kluczy FIDO2/U2F"
         return 1
@@ -188,13 +218,22 @@ function fido2_register_sudo() {
     log_info "fido2: rejestracja $dev do sudo — potwierdź na kluczu (dotyk/odcisk) gdy poprosi"
     mkdir -p "$u2f_dir"
     chmod 700 "$u2f_dir"
-    if pamu2fcfg > "$u2f_keys"; then
-        chmod 600 "$u2f_keys"
+
+    # Pisz do pliku tymczasowego — błąd pamu2fcfg (timeout, zły PIN, odłączony
+    # klucz) nie może skasować już zarejestrowanych kluczy w u2f_keys.
+    local tmp_keys
+    tmp_keys=$(mktemp "${u2f_keys}.XXXXXX") || {
+        log_error "fido2: nie udało się utworzyć pliku tymczasowego"
+        return 1
+    }
+    if pamu2fcfg > "$tmp_keys"; then
+        chmod 600 "$tmp_keys"
+        mv "$tmp_keys" "$u2f_keys"
         log_info "fido2: zarejestrowano → $u2f_keys"
         return 0
     else
-        log_error "fido2: rejestracja nie powiodła się"
-        rm -f "$u2f_keys"
+        log_error "fido2: rejestracja nie powiodła się — $u2f_keys pozostawiono bez zmian"
+        rm -f "$tmp_keys"
         return 1
     fi
 }

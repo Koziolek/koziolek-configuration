@@ -94,6 +94,21 @@ _jar_pkcs11_detect_alias() {
     printf '%s\n' "$aliases"
 }
 
+# Wszystkie aliasy (label) certów na karcie — do jar_sign -l / jar_verify -l.
+# W przeciwieństwie do _jar_pkcs11_detect_alias nie błądzi przy >1 certów,
+# tylko wylistowuje wszystkie.
+_jar_pkcs11_list_aliases() {
+    local module out aliases
+    module=$(_jar_pkcs11_module_path) || return 1
+    out=$(pkcs11-tool --module "$module" -O --type cert 2>/dev/null) || return 1
+    aliases=$(awk -F': *' '/^[[:space:]]*label:/ { print $2 }' <<<"$out")
+    if [ -z "$aliases" ]; then
+        log_warn "jar: na karcie nie ma certyfikatu do podpisu"
+        return 1
+    fi
+    printf '%s\n' "$aliases"
+}
+
 ##
 # Status karty PKCS11: sloty + obiekty (certy/klucze) — czytelny widok tego,
 # co `jarsigner`/OpenSC faktycznie widzą.
@@ -170,15 +185,44 @@ function jar_pkcs11_test() {
 ##
 # Podpisuje wskazany plik JAR (ręcznie, poza Mavenem). Bez -storepass w argv —
 # PIN wpisywany interaktywnie przez prompt providera (jak PIN FIDO2 — nie w
-# historii powłoki). Alias: argument → JAR_PKCS11_ALIAS → auto-detekcja
-# (tylko gdy na karcie jest dokładnie jeden cert).
-# Usage: jar_sign <plik.jar> [alias]
+# historii powłoki). Alias: -k/--key → drugi argument pozycyjny (kompatybilność
+# wsteczna) → JAR_PKCS11_ALIAS → auto-detekcja (tylko gdy na karcie jest
+# dokładnie jeden cert).
+# Usage: jar_sign [-l|--list] [-k|--key <alias>] <plik.jar> [alias]
+#   -l, --list          wylistuj aliasy certów dostępnych na karcie i zakończ
+#   -k, --key <alias>   alias certu do użycia
 ##
 function jar_sign() {
     _jar_pkcs11_check_deps || return 1
-    local jar="${1:-}" alias="${2:-${JAR_PKCS11_ALIAS:-}}" cfg
+    local list=0 alias="" jar="" cfg
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -l|--list) list=1; shift ;;
+            -k|--key)
+                [ -n "${2:-}" ] || { log_error "jar_sign: $1 wymaga argumentu"; return 1; }
+                alias="$2"; shift 2 ;;
+            -h|--help)
+                log_info "Usage: jar_sign [-l|--list] [-k|--key <alias>] <plik.jar> [alias]"
+                return 0 ;;
+            --) shift; break ;;
+            -*)
+                log_error "jar_sign: nieznana opcja $1"
+                return 1 ;;
+            *)
+                if [ -z "$jar" ]; then jar="$1"; else [ -z "$alias" ] && alias="$1"; fi
+                shift ;;
+        esac
+    done
+
+    if [ "$list" -eq 1 ]; then
+        _jar_pkcs11_list_aliases
+        return $?
+    fi
+
+    [ -z "$alias" ] && alias="${JAR_PKCS11_ALIAS:-}"
+
     if [ -z "$jar" ]; then
-        log_error "Usage: jar_sign <plik.jar> [alias]"
+        log_error "Usage: jar_sign [-l|--list] [-k|--key <alias>] <plik.jar> [alias]"
         return 1
     fi
     [ -f "$jar" ] || { log_error "jar: brak pliku $jar"; return 1; }
@@ -195,12 +239,33 @@ function jar_sign() {
 
 ##
 # Weryfikuje podpis pliku JAR.
-# Usage: jar_verify <plik.jar>
+# Usage: jar_verify [-l|--list] <plik.jar>
+#   -l, --list  wylistuj aliasy certów dostępnych na karcie i zakończ
 ##
 function jar_verify() {
-    local jar="${1:-}"
+    local list=0 jar=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -l|--list) list=1; shift ;;
+            -h|--help)
+                log_info "Usage: jar_verify [-l|--list] <plik.jar>"
+                return 0 ;;
+            --) shift; break ;;
+            -*)
+                log_error "jar_verify: nieznana opcja $1"
+                return 1 ;;
+            *) jar="$1"; shift ;;
+        esac
+    done
+
+    if [ "$list" -eq 1 ]; then
+        _jar_pkcs11_check_deps || return 1
+        _jar_pkcs11_list_aliases
+        return $?
+    fi
+
     if [ -z "$jar" ]; then
-        log_error "Usage: jar_verify <plik.jar>"
+        log_error "Usage: jar_verify [-l|--list] <plik.jar>"
         return 1
     fi
     [ -f "$jar" ] || { log_error "jar: brak pliku $jar"; return 1; }

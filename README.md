@@ -234,13 +234,14 @@ Operacje na kluczu sprzętowym — per klucz / per sesja. Konfiguracja **maszyny
 `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so` w `/etc/pam.d/sudo`) jest jednorazowa i mieszka
 w `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh` (patrz „Diagnostyka systemu").
 
-Wykrywanie klucza jest generyczne (udev `ID_FIDO_TOKEN`, nie vendor ID) — działa z dowolną marką
-(Yubico, Google Titan, Nitrokey, SoloKeys, Feitian, Thetis…). Każda funkcja przyjmuje opcjonalny
-`[DEV]` (`/dev/hidrawN`); bez niego bierze pierwszy wykryty klucz.
+Wykrywanie klucza przez `fido2-token -L` (libfido2) — przenośne Linux/macOS, działa z dowolną
+marką (Yubico, Google Titan, Nitrokey, SoloKeys, Feitian, Thetis…). Każda funkcja przyjmuje
+opcjonalny `[DEV]`; bez niego — jeden wykryty klucz użyty wprost, kilka podłączonych naraz —
+interaktywne menu z wyborem po numerze.
 
 | Funkcja | Działanie |
 |---|---|
-| `fido2_list_devices` | podłączone klucze z producentem/modelem z deskryptora USB |
+| `fido2_list_devices` | podłączone klucze z producentem/modelem (`fido2-token -L`) |
 | `fido2_info [DEV]` | szczegóły klucza (`fido2-token -I`): capabilities, protokoły PIN, opcje CTAP2 |
 | `fido2_set_pin [DEV]` / `fido2_change_pin [DEV]` | ustaw / zmień PIN — interaktywnie, PIN nie trafia do argumentów ani historii |
 | `fido2_enroll [DEV]` | nowy enrollment biometryczny (odcisk); wymaga wcześniejszego PIN-u |

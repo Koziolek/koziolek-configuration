@@ -156,6 +156,51 @@ testJarSignAutoDetectsAliasWhenOmitted() {
     assertContains "$(cat "$_STATE/calls")" "ONLY"
 }
 
+testJarSignListPrintsAllAliases() {
+    export MOCK_CERTS="SIGN OTHER"
+    jar_pkcs11_setup >/dev/null 2>&1
+    local out
+    out=$(jar_sign --list 2>&1)
+    assertContains "$out" "SIGN"
+    assertContains "$out" "OTHER"
+}
+
+testJarSignListFailsWithoutCert() {
+    export MOCK_CERTS=""
+    jar_sign -l >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testJarSignKeyFlagSelectsAlias() {
+    export MOCK_CERTS="SIGN"
+    jar_pkcs11_setup >/dev/null 2>&1
+    touch "$_WORK/x.jar"
+    jar_sign -k OTHER "$_WORK/x.jar" >/dev/null 2>&1
+    assertContains "$(cat "$_STATE/calls")" "OTHER"
+}
+
+testJarSignKeyFlagOverridesPositionalAlias() {
+    export MOCK_CERTS="SIGN"
+    jar_pkcs11_setup >/dev/null 2>&1
+    touch "$_WORK/x.jar"
+    jar_sign --key OTHER "$_WORK/x.jar" SIGN >/dev/null 2>&1
+    assertContains "$(cat "$_STATE/calls")" "OTHER"
+}
+
+testJarSignRejectsUnknownOption() {
+    jar_sign --bogus "$_WORK/x.jar" >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testJarVerifyListPrintsAllAliases() {
+    export MOCK_CERTS="SIGN OTHER"
+    jar_pkcs11_setup >/dev/null 2>&1
+    local out
+    out=$(jar_verify --list 2>&1)
+    assertContains "$out" "SIGN"
+    assertContains "$out" "OTHER"
+}
+
 testJarVerifyReportsUnsigned() {
     touch "$_WORK/x.jar"
     local out

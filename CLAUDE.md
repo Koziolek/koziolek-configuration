@@ -101,9 +101,10 @@ Odpowiedzialność kluczowych plików funkcji:
   per sesja: `fido2_list_devices`, `fido2_info`, `fido2_set_pin`, `fido2_change_pin`,
   `fido2_enroll` (+ `_list`/`_name`/`_delete` — biometria), `fido2_register_sudo`
   (+ `_backup` — dopisanie kolejnego klucza bez nadpisania), `fido2_sudo_keys_list`.
-  Wykrywanie klucza generyczne przez udev `ID_FIDO_TOKEN` (nie vendor ID) — dowolna marka
-  (Yubico, Titan, Nitrokey, SoloKeys, Feitian, Thetis). Każda funkcja przyjmuje opcjonalny
-  `[DEV]` (`/dev/hidrawN`), domyślnie pierwszy wykryty klucz. PIN/enrollment interaktywnie
+  Wykrywanie klucza przez `fido2-token -L` (libfido2) — przenośne Linux/macOS, bez zależności
+  od udev/hidraw, dowolna marka (Yubico, Titan, Nitrokey, SoloKeys, Feitian, Thetis). Każda
+  funkcja przyjmuje opcjonalny `[DEV]`; bez niego — jeden wykryty klucz użyty wprost, kilka —
+  interaktywne menu z wyborem po numerze (`_fido2_resolve_device`). PIN/enrollment interaktywnie
   (`fido2-token` pyta w terminalu — PIN nie przechodzi przez argumenty ani historię powłoki).
   Wpisy sudo lądują w `~/.config/Yubico/u2f_keys` (ścieżka zaszyta w `pam_u2f`, niezależna
   od marki). Konfiguracja **maszyny** (pakiety `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so`
@@ -144,9 +145,31 @@ Odpowiedzialność kluczowych plików funkcji:
   oznaczonego bloku (`<!-- jar-hw-signing-*:BEGIN/END -->`) do `<profiles>`/`<activeProfiles>`
   (dopisywanych tylko jeśli ich jeszcze nie ma — `_jar_ensure_container`), resztę pliku zostawia
   nietkniętą — ten sam styl co `gpg_card_use_pcscd` (idempotentny append do `scdaemon.conf`),
-  tylko na blok XML. Test: `test/unit/test_jar_signing.sh` (mock `pkcs11-tool`/`jarsigner`;
-  blok maven-settings testowany na realnych plikach — bez mocków, to czysta manipulacja
-  tekstem).
+  tylko na blok XML. `jar_sign`/`jar_verify` mają `-l`/`--list` (wylistuj aliasy certów na
+  karcie, `_jar_pkcs11_list_aliases`); `jar_sign` dodatkowo `-k`/`--key <alias>` (stary drugi
+  argument pozycyjny nadal działa dla kompatybilności wstecznej). Test:
+  `test/unit/test_jar_signing.sh` (mock `pkcs11-tool`/`jarsigner`; blok maven-settings testowany
+  na realnych plikach — bez mocków, to czysta manipulacja tekstem).
+- `functions.d/158_function_gpg_sw_signing.sh` — podpisywanie artefaktów Mavena kluczem PGP
+  **softwarowym** (`maven-gpg-plugin`, publikacja na Maven Central przez Sonatype Central —
+  patrz `devtools-maven-extension/pom.xml`, profil `deployment`), dla maszyn/kluczy bez apletu
+  OpenPGP/PIV na karcie (czysty FIDO2, np. Thetis BioFP+ z 156, **nie obsłuży** tego — analogicznie
+  do 157; jeśli karta MA aplet OpenPGP, użyj zamiast tego `gpg_git_setup` z 155, klucz wtedy nigdy
+  nie opuszcza karty). Klucz prywatny leży w zwykłym keyringu `~/.gnupg`, chroniony tylko
+  passphrase (przez zwykły pinentry gpg-agent — ten sam hook co 155's `_gpg_pinentry_setup`).
+  Jedno polecenie na cały proces: `gpg_sw_setup` — generuje klucz (`gpg_sw_generate`, ed25519/
+  sign-only/2y domyślnie, `gpg --quick-generate-key`), zapisuje fingerprint w
+  `~/.config/git-configuration-signing/gpg-sw.cfg`, eksportuje na keyserver (`gpg_sw_export`
+  `<keyid> ubuntu|openpgp|both` — `openpgp` przez VKS API `keys.openpgp.org/vks/v1/upload`, UID-y
+  zostają niezweryfikowane dopóki nie potwierdzisz linku z maila), pyta czy dopiąć do Mavena.
+  `gpg_maven_setup`/`gpg_maven_disable` — profil `gpg-sw-signing` w `~/.m2/settings.xml`
+  (`<gpg.keyname>`), **reużywa** helperów `_jar_ensure_*`/`_jar_upsert_marked_block`/
+  `_jar_remove_marked_block` z 157 (ten sam oznaczony blok XML, inny marker/profil — może
+  współistnieć z `jar-hw-signing`); działa dzięki kolejności ładowania `source_directory()`
+  (157 < 158 alfabetycznie). `gpg_sw_list_keys` — lista kluczy w keyringu. Kroki `gpg_sw_setup`
+  pomijalne nieinteraktywnie przez `GPG_SW_NAME`/`GPG_SW_EMAIL`/`GPG_SW_EXPORT_TARGET`/
+  `GPG_SW_MAVEN_CONFIRM` (ten sam wzorzec co `GIT_ASSUME_YES` w `git/git_functions.sh`). Test:
+  `test/unit/test_gpg_sw_signing.sh` (mock `gpg`/`curl`).
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:

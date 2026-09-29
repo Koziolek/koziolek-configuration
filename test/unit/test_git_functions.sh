@@ -29,6 +29,9 @@ _PUSH_CALLS=0
 _CAPTURED_BACKUP_BRANCH_CREATED=''
 _CAPTURED_RENAME_ARGS=''
 _CAPTURED_CHECKOUT_ORPHAN=0
+_MOCK_UNTRACKED=''
+_MOCK_TAGS=''
+_MOCK_RENAME_FAIL=0
 
 log_info()  { :; }
 log_error() { :; }
@@ -86,12 +89,21 @@ git() {
         rev-list)
             [[ "$*" == *"--count"* ]] && echo "$_MOCK_OLD_COMMITS"
             ;;
+        status)
+            [ -n "$_MOCK_UNTRACKED" ] && printf '%s\n' "$_MOCK_UNTRACKED"
+            ;;
+        tag)
+            [ -n "$_MOCK_TAGS" ] && printf '%s\n' "$_MOCK_TAGS"
+            ;;
         checkout)
             [[ "$2" == "--orphan" ]] && _CAPTURED_CHECKOUT_ORPHAN=1
             ;;
         branch)
             if [[ "$2" == "-M" ]]; then
                 _CAPTURED_RENAME_ARGS="$3 $4"
+                if [ "$_MOCK_RENAME_FAIL" = 1 ]; then
+                    return 1
+                fi
             else
                 _CAPTURED_BACKUP_BRANCH_CREATED="$2"
             fi
@@ -123,6 +135,9 @@ setUp() {
     _CAPTURED_BACKUP_BRANCH_CREATED=''
     _CAPTURED_RENAME_ARGS=''
     _CAPTURED_CHECKOUT_ORPHAN=0
+    _MOCK_UNTRACKED=''
+    _MOCK_TAGS=''
+    _MOCK_RENAME_FAIL=0
 }
 
 tearDown() {
@@ -340,6 +355,37 @@ testArmageddonPushTagsFlag() {
 }
 
 testArmageddonNoPushTagsByDefault() {
+    git_armageddon -y
+    assertEquals 1 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsOnUntrackedFiles() {
+    # git diff nie widzi untracked — bez osobnej kontroli 'git add -A' zamiotłby
+    # je do nowej historii; funkcja musi odmówić zanim cokolwiek ruszy.
+    _MOCK_UNTRACKED="?? sekret.env"
+    git_armageddon -y
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+    assertEquals 'backup nie tworzony' '' "$_CAPTURED_BACKUP_BRANCH_CREATED"
+    assertEquals 'orphan checkout nie wykonany' 0 "$_CAPTURED_CHECKOUT_ORPHAN"
+}
+
+testArmageddonProceedsWithoutUntrackedFiles() {
+    _MOCK_UNTRACKED=''
+    git_armageddon -y
+    assertEquals 1 "$_PUSH_CALLS"
+}
+
+testArmageddonAbortsIfRenameFails() {
+    # branch -M może zawieść (stale lock itp.) — bez guardu funkcja jechała dalej
+    # i force-pushowała STARĄ historię, logując fałszywy sukces.
+    _MOCK_RENAME_FAIL=1
+    git_armageddon -y
+    assertEquals 'push NIE wykonany po nieudanym rename' 0 "$_PUSH_CALLS"
+}
+
+testArmageddonExistingTagsDoNotBlockOperation() {
+    # tagi to tylko ostrzeżenie (informacyjne), nie blokada operacji
+    _MOCK_TAGS="v1.0"
     git_armageddon -y
     assertEquals 1 "$_PUSH_CALLS"
 }

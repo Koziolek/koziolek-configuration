@@ -338,6 +338,18 @@ function git_armageddon() {
     return 1
   fi
 
+  # git diff powyżej NIE widzi plików untracked — bez tej kontroli `git add -A`
+  # zamiótłby je do nowej historii jako "czysty start" (np. przypadkowy sekret
+  # leżący obok, nigdy niezacommitowany).
+  local untracked
+  untracked=$(git status --porcelain --untracked-files=normal | grep -c '^??' || true)
+  if [ "${untracked:-0}" -gt 0 ]; then
+    log_error "working tree ma pliki untracked — 'git add -A' zamiótłby je do nowej historii:"
+    git status --porcelain --untracked-files=normal | grep '^??' | sed 's/^/  /' >&2
+    log_error "Dodaj je świadomie (git add), wyczyść (git clean -i) albo zignoruj (.gitignore), potem spróbuj ponownie."
+    return 1
+  fi
+
   if git show-ref --verify --quiet "refs/heads/$backup_branch"; then
     log_error "gałąź '$backup_branch' już istnieje — usuń ją (git branch -D $backup_branch) lub zmień nazwę"
     return 1
@@ -347,12 +359,24 @@ function git_armageddon() {
   old_commits=$(git rev-list --count HEAD)
   remote_url=$(git remote get-url "$remote")
 
+  local existing_tags
+  existing_tags=$(git tag -l)
+
   log_warn "Gałąź:            $branch"
   log_warn "Zdalne:           $remote ($remote_url)"
   log_warn "Commity teraz:    $old_commits  -> po operacji: 1"
   log_warn "Komunikat:        $commit_msg"
   log_warn "Push tagów:       $([ "$push_tags" = 1 ] && echo tak || echo nie)"
   log_warn "Backup lokalny:   $backup_branch (NIE wypychany do $remote)"
+  if [ -n "$existing_tags" ]; then
+    log_warn "UWAGA: repo ma tagi ($(echo "$existing_tags" | tr '\n' ' ')) — commity pod nimi"
+    log_warn "NIE są wymazywane i zostają na $remote nawet po force-push gałęzi. Jeśli tagi"
+    log_warn "wskazują starą historię z sekretami — usuń je osobno (lokalnie i na $remote)."
+    if [ "$push_tags" = 1 ]; then
+      log_warn "Z flagą -t force-push WYŚLE te tagi ponownie — jeśli wskazują stare commity,"
+      log_warn "to PONOWNIE UPLOADUJE historię, którą ta operacja miała wymazać."
+    fi
+  fi
   log_warn "Ta operacja jest NIEODWRACALNA po stronie $remote."
 
   if [ "$assume_yes" -ne 1 ]; then
@@ -370,11 +394,16 @@ function git_armageddon() {
 
   log_info "==> Orphan branch z obecnym stanem working tree"
   git checkout --orphan __armageddon__ || return 1
-  git add -A
+  git add -A || { log_error "git add -A nie powiodło się — historia gałęzi '$branch' NIE zmieniona"; return 1; }
   git commit -m "$commit_msg" || return 1
 
   log_info "==> Podmiana '$branch' na nową historię"
-  git branch -M __armageddon__ "$branch"
+  if ! git branch -M __armageddon__ "$branch"; then
+    log_error "przeniesienie __armageddon__ -> $branch nie powiodło się — PRZERWANO przed pushem,"
+    log_error "historia na $remote NIE ruszona. HEAD jest teraz na gałęzi __armageddon__ (1 commit)."
+    log_error "Napraw ręcznie: git branch -M __armageddon__ $branch   (lub) git checkout $branch && git branch -D __armageddon__"
+    return 1
+  fi
 
   log_info "==> Force push: $remote/$branch"
   git push --force "$remote" "$branch" || return 1
