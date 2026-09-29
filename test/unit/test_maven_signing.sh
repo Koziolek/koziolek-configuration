@@ -66,7 +66,21 @@ esac
 MOCK
     chmod +x "$_BIN/jarsigner"
 
-    printf '#!/bin/sh\necho "keytool $*" >> "$MOCK_STATE/calls"\n' > "$_BIN/keytool"
+    # keytool: -genkeypair tworzy plik keystore (MOCK_FAIL=keygen -> błąd),
+    # tak żeby dalsze [ -f "$ks" ] w jar_sw_sign/jar_sw_maven_setup przeszło.
+    cat > "$_BIN/keytool" <<'MOCK'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_STATE/calls"
+args=("$@")
+case " $* " in
+  *" -genkeypair "*)
+    [ "${MOCK_FAIL:-}" = keygen ] && exit 1
+    for ((i=0; i<${#args[@]}; i++)); do [ "${args[i]}" = -keystore ] && ks="${args[i+1]}"; done
+    [ -n "$ks" ] && touch "$ks"
+    exit 0 ;;
+esac
+exit 0
+MOCK
     chmod +x "$_BIN/keytool"
 
     printf '#!/bin/sh\ntouch "$(pwd)/${2:-out.jar}"\n' > "$_BIN/jar"
@@ -119,7 +133,7 @@ setUp() {
     export MOCK_STATE="$_STATE"
     unset JAR_PKCS11_MODULE JAR_PKCS11_ALIAS MOCK_CERTS MOCK_FAIL MOCK_FPR \
         GPG_SW_NAME GPG_SW_EMAIL GPG_SW_KEY_ALGO GPG_SW_KEY_USAGE \
-        GPG_SW_KEY_EXPIRE GPG_SW_EXPORT_TARGET GPG_SW_MAVEN_CONFIRM
+        GPG_SW_KEY_EXPIRE GPG_SW_EXPORT_TARGET GPG_SW_MAVEN_CONFIRM JAR_SW_KEYSTORE
     export JAR_PKCS11_MODULE="$_BIN/opensc-pkcs11.so"
     touch "$JAR_PKCS11_MODULE"
     export XDG_CONFIG_HOME="$_WORK/config"
@@ -129,7 +143,7 @@ tearDown() {
     rm -rf "$_STATE" "$_WORK"
     unset JAR_PKCS11_MODULE JAR_PKCS11_ALIAS MOCK_CERTS MOCK_FAIL MOCK_FPR \
         GPG_SW_NAME GPG_SW_EMAIL GPG_SW_KEY_ALGO GPG_SW_KEY_USAGE \
-        GPG_SW_KEY_EXPIRE GPG_SW_EXPORT_TARGET GPG_SW_MAVEN_CONFIRM \
+        GPG_SW_KEY_EXPIRE GPG_SW_EXPORT_TARGET GPG_SW_MAVEN_CONFIRM JAR_SW_KEYSTORE \
         XDG_CONFIG_HOME MAVEN_SETTINGS MOCK_STATE
 }
 
@@ -283,6 +297,84 @@ testPkcs11TestFailsWhenSignFails() {
     jar_pkcs11_setup >/dev/null 2>&1
     ( cd "$_WORK" && MOCK_FAIL=sign jar_pkcs11_test >/dev/null 2>&1 )
     assertEquals 1 $?
+}
+
+# ---------------------------------------------------------------------------
+# jar_sw_generate / jar_sw_sign / jar_sw_maven_setup / jar_sw_maven_disable
+# ---------------------------------------------------------------------------
+
+testSwGenerateFailsWithoutAliasOrCn() {
+    jar_sw_generate >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testSwGenerateFailsWhenKeygenFails() {
+    MOCK_FAIL=keygen jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testSwGenerateCreatesKeystoreAndCfg() {
+    jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    assertEquals 0 $?
+    assertTrue "keystore powinien istnieć" "[ -f '$(_jar_sw_keystore_path)' ]"
+    assertContains "$(cat "$(_jar_sw_cfg_path)")" "ALIAS=signkey"
+    assertContains "$(cat "$_STATE/calls")" "CN=Jan Kowalski"
+}
+
+testSwSignFailsWithoutKeystore() {
+    touch "$_WORK/x.jar"
+    jar_sw_sign "$_WORK/x.jar" >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testSwSignInvokesJarsignerWithoutStorepass() {
+    jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    touch "$_WORK/x.jar"
+    jar_sw_sign "$_WORK/x.jar" >/dev/null 2>&1
+    local calls
+    calls="$(cat "$_STATE/calls")"
+    assertContains "$calls" "$(_jar_sw_keystore_path)"
+    assertContains "$calls" "signkey"
+    assertNotContains "$calls" "-storepass"
+    assertNotContains "$calls" "-keypass"
+}
+
+testSwSignAutoDetectsAliasFromCfg() {
+    jar_sw_generate onlykey "Jan Kowalski" >/dev/null 2>&1
+    touch "$_WORK/x.jar"
+    jar_sw_sign "$_WORK/x.jar" >/dev/null 2>&1
+    assertContains "$(cat "$_STATE/calls")" "onlykey"
+}
+
+testSwMavenSetupWritesJksProfile() {
+    local f="$_WORK/settings.xml"
+    jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    MAVEN_SETTINGS="$f" jar_sw_maven_setup >/dev/null 2>&1
+    assertContains "$(cat "$f")" "jar-sw-signing"
+    assertContains "$(cat "$f")" "<jarsigner.storetype>JKS</jarsigner.storetype>"
+    assertContains "$(cat "$f")" "<jarsigner.alias>signkey</jarsigner.alias>"
+}
+
+testSwMavenSetupCoexistsWithJarHwSigningProfile() {
+    local f="$_WORK/settings.xml"
+    _realistic_settings "$f"
+    MAVEN_SETTINGS="$f" MOCK_CERTS="SIGN" jar_pkcs11_setup >/dev/null 2>&1
+    MAVEN_SETTINGS="$f" MOCK_CERTS="SIGN" jar_maven_setup >/dev/null 2>&1
+    jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    MAVEN_SETTINGS="$f" jar_sw_maven_setup >/dev/null 2>&1
+    assertContains "$(cat "$f")" "jar-hw-signing"
+    assertContains "$(cat "$f")" "jar-sw-signing"
+}
+
+testSwMavenDisableRemovesProfileKeepsRestOfFile() {
+    local f="$_WORK/settings.xml"
+    _realistic_settings "$f"
+    jar_sw_generate signkey "Jan Kowalski" >/dev/null 2>&1
+    MAVEN_SETTINGS="$f" jar_sw_maven_setup >/dev/null 2>&1
+    MAVEN_SETTINGS="$f" jar_sw_maven_disable >/dev/null 2>&1
+    assertNotContains "$(cat "$f")" "jar-sw-signing"
+    assertContains "$(cat "$f")" "nie ruszac"
+    assertContains "$(cat "$f")" "koziolek.home/nexus"
 }
 
 # ---------------------------------------------------------------------------

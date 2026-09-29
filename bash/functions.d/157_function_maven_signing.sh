@@ -340,6 +340,145 @@ export -f jar_verify
 export -f jar_maven_setup
 export -f jar_maven_disable
 
+# --- JAR software (bez karty/PKCS11) ----------------------------------------
+#
+# Podpisywanie JAR-ów kluczem w zwykłym keystore JKS — dla maszyn bez apletu
+# PIV. Klucz prywatny leży w pliku JKS na dysku, chroniony hasłem
+# keystore/klucza — nigdy w argv, jak przy PKCS11 wyżej: `keytool`/
+# `jarsigner` wywołane bez `-storepass`/`-keypass` pytają o hasło
+# interaktywnie. `jar_verify` (wyżej) weryfikuje podpis niezależnie od
+# backendu — `jarsigner -verify` nie musi wiedzieć, jak podpis powstał.
+#
+# Zmienne: JAR_SW_KEYSTORE (override ścieżki JKS)
+
+_jar_sw_config_dir()    { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing"; }
+_jar_sw_cfg_path()      { echo "$(_jar_sw_config_dir)/jar-sw.cfg"; }
+_jar_sw_keystore_path() { echo "${JAR_SW_KEYSTORE:-$(_jar_sw_config_dir)/jar-sw-keystore.jks}"; }
+
+##
+# Generuje self-signed parę kluczy RSA w lokalnym keystore JKS. Hasło
+# keystore/klucza pytane interaktywnie (bez -storepass/-keypass w argv).
+# Usage: jar_sw_generate <alias> <CN/imię i nazwisko> [dni_ważności]
+##
+function jar_sw_generate() {
+    command -v keytool &>/dev/null || { log_error "jar_sw: brak keytool (JDK)"; return 1; }
+    local alias="${1:-}" cn="${2:-}" days="${3:-1095}" ks
+
+    if [ -z "$alias" ] || [ -z "$cn" ]; then
+        log_error "Usage: jar_sw_generate <alias> <CN/imię i nazwisko> [dni_ważności]"
+        return 1
+    fi
+
+    ks=$(_jar_sw_keystore_path)
+    mkdir -p "$(dirname "$ks")"
+    chmod 700 "$(dirname "$ks")"
+
+    log_info "jar_sw: generuję klucz (alias $alias, RSA 3072, $days dni) w $ks — podaj hasło keystore/klucza gdy poprosi"
+    keytool -genkeypair -alias "$alias" -keyalg RSA -keysize 3072 \
+        -dname "CN=${cn}" -validity "$days" -keystore "$ks" || {
+        log_error "jar_sw: generowanie klucza nie powiodło się"
+        return 1
+    }
+    chmod 600 "$ks"
+
+    printf 'ALIAS=%s\nKEYSTORE=%s\n' "$alias" "$ks" > "$(_jar_sw_cfg_path)"
+    chmod 600 "$(_jar_sw_cfg_path)"
+
+    log_info "jar_sw: klucz gotowy — alias $alias, keystore $ks"
+    log_info "jar_sw: sprawdź: jar_sw_sign <plik.jar>; do Mavena: jar_sw_maven_setup"
+}
+
+##
+# Podpisuje wskazany plik JAR kluczem z lokalnego keystore JKS. Bez
+# -storepass/-keypass w argv — jarsigner pyta o hasło interaktywnie.
+# Usage: jar_sw_sign <plik.jar> [alias]
+##
+function jar_sw_sign() {
+    command -v jarsigner &>/dev/null || { log_error "jar_sw: brak jarsigner (JDK)"; return 1; }
+    local jar="${1:-}" alias="${2:-}" ks cfg
+
+    if [ -z "$jar" ]; then
+        log_error "Usage: jar_sw_sign <plik.jar> [alias]"
+        return 1
+    fi
+    [ -f "$jar" ] || { log_error "jar_sw: brak pliku $jar"; return 1; }
+
+    cfg=$(_jar_sw_cfg_path)
+    ks=$(_jar_sw_keystore_path)
+    [ -f "$ks" ] || { log_error "jar_sw: brak $ks — uruchom najpierw jar_sw_generate"; return 1; }
+    if [ -z "$alias" ] && [ -f "$cfg" ]; then
+        alias=$(awk -F= '/^ALIAS=/ { print $2 }' "$cfg")
+    fi
+    if [ -z "$alias" ]; then
+        log_error "jar_sw: brak aliasu — podaj jawnie albo uruchom jar_sw_generate"
+        return 1
+    fi
+
+    log_info "jar_sw: podpisuję $jar aliasem $alias — podaj hasło keystore/klucza gdy poprosi"
+    jarsigner -keystore "$ks" "$jar" "$alias"
+}
+
+##
+# Wystawia jarsigner.* jako domyślnie aktywny profil Mavena "jar-sw-signing"
+# w ~/.m2/settings.xml — analogicznie do jar_maven_setup, ale storetype JKS
+# zamiast PKCS11. Współistnieje z jar-hw-signing/gpg-sw-signing (inny profil).
+# Usage: jar_sw_maven_setup [alias] [keystore]
+##
+function jar_sw_maven_setup() {
+    local alias="${1:-}" ks="${2:-}" cfg settings
+
+    cfg=$(_jar_sw_cfg_path)
+    if [ -z "$alias" ] && [ -f "$cfg" ]; then
+        alias=$(awk -F= '/^ALIAS=/ { print $2 }' "$cfg")
+    fi
+    [ -z "$ks" ] && ks=$(_jar_sw_keystore_path)
+    if [ -z "$alias" ] || [ ! -f "$ks" ]; then
+        log_error "Usage: jar_sw_maven_setup <alias> <keystore> (albo uruchom najpierw jar_sw_generate)"
+        return 1
+    fi
+
+    settings=$(_maven_settings_path)
+    _maven_settings_ensure_skeleton "$settings"
+    _maven_settings_ensure_container "$settings" profiles
+    _maven_settings_ensure_container "$settings" activeProfiles
+
+    local profile_block active_block
+    profile_block=$(cat <<XML
+  <profile>
+    <id>jar-sw-signing</id>
+    <properties>
+      <jarsigner.keystore>${ks}</jarsigner.keystore>
+      <jarsigner.storetype>JKS</jarsigner.storetype>
+      <jarsigner.alias>${alias}</jarsigner.alias>
+    </properties>
+  </profile>
+XML
+)
+    active_block="  <activeProfile>jar-sw-signing</activeProfile>"
+
+    _maven_settings_upsert_marked_block "$settings" jar-sw-signing-profile profiles "$profile_block"
+    _maven_settings_upsert_marked_block "$settings" jar-sw-signing-active activeProfiles "$active_block"
+
+    log_info "jar_sw: $settings skonfigurowany — profil jar-sw-signing (alias $alias) aktywny domyślnie"
+}
+
+##
+# Usuwa profil jar-sw-signing z ~/.m2/settings.xml.
+##
+function jar_sw_maven_disable() {
+    local settings
+    settings=$(_maven_settings_path)
+    [ -f "$settings" ] || { log_warn "jar_sw: $settings nie istnieje — nic do wyłączenia"; return 0; }
+    _maven_settings_remove_marked_block "$settings" jar-sw-signing-profile
+    _maven_settings_remove_marked_block "$settings" jar-sw-signing-active
+    log_info "jar_sw: profil jar-sw-signing usunięty z $settings"
+}
+
+export -f jar_sw_generate
+export -f jar_sw_sign
+export -f jar_sw_maven_setup
+export -f jar_sw_maven_disable
+
 # --- ~/.m2/settings.xml: idempotentny insert oznaczonego bloku -------------
 # Zasada: NIGDY nie parsujemy/przepisujemy całego pliku (ryzyko utraty
 # komentarzy/formatowania cudzej konfiguracji, np. Nexusa) — tylko dopisujemy

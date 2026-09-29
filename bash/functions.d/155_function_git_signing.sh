@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Podpisywanie commitów git — dwa alternatywne backendy w jednym pliku, bo
-# to ten sam cel (podpis commitów/tagów), tylko inny sprzęt:
+# Podpisywanie commitów git — trzy alternatywne backendy w jednym pliku, bo
+# to ten sam cel (podpis commitów/tagów), tylko inny sprzęt (albo brak
+# sprzętu):
 #
 #   1. GPG-karta (gpg_card_*/gpg_git_*) — klucz na aplecie OpenPGP karty
 #      (YubiKey 5, Nitrokey 3/Pro, Token2, Thetis Pro, ...). Klucz prywatny
@@ -9,15 +10,23 @@
 #   2. SSH-sk (ssh_sk_*) — klucz `ed25519-sk` resident na kluczu FIDO2 BEZ
 #      apletu OpenPGP (Thetis BioFP/BioFP+, Titan, Security Key NFC, ...).
 #      Klucz prywatny istnieje tylko w urządzeniu.
+#   3. GPG software (gpg_sw_git_*) — klucz PGP w zwykłym keyringu ~/.gnupg
+#      (z gpg_sw_generate, 157_function_maven_signing.sh), gdy sprzęt nie
+#      obsługuje żadnej z metod 1/2. Klucz prywatny leży na dysku, chroniony
+#      tylko passphrase.
 #
-# Wybór backendu zależy wyłącznie od sprzętu: ma aplet OpenPGP → sekcja 1,
-# nie ma → sekcja 2. `gpg_git_setup` i `ssh_sk_git_setup` wzajemnie się
-# nadpisują (oba ustawiają `gpg.format` w ~/.gitconfig) — aktywna jest jedna
-# metoda naraz, ostatnio skonfigurowana.
+# Wybór backendu zależy od sprzętu: ma aplet OpenPGP → sekcja 1, ma FIDO2
+# bez OpenPGP → sekcja 2, nie ma nic z tego → sekcja 3. `gpg_git_setup`,
+# `ssh_sk_git_setup` i `gpg_sw_git_setup` wzajemnie się nadpisują (wszystkie
+# ustawiają `gpg.format`/`user.signingkey` w ~/.gitconfig) — aktywna jest
+# jedna metoda naraz, ostatnio skonfigurowana.
 #
-# Podpisywanie ARTEFAKTÓW MAVENA (JAR/PKCS11, GPG software dla Maven Central)
-# to inny cel — patrz 157_function_maven_signing.sh. Zarządzanie samym
-# kluczem FIDO2 (PIN, enrollment biometrii, sudo) — 150_function_fido2.sh.
+# Podpisywanie ARTEFAKTÓW MAVENA (JAR/PKCS11, JAR software, GPG software dla
+# Maven Central) to inny cel — patrz 157_function_maven_signing.sh (tam też
+# żyje cykl życia klucza gpg_sw_generate/gpg_sw_export, bo był pierwotnie
+# pomyślany pod Maven Central; tutaj tylko reużywamy gotowy klucz do
+# konfiguracji gita). Zarządzanie samym kluczem FIDO2 (PIN, enrollment
+# biometrii, sudo) — 150_function_fido2.sh.
 #
 # --- GPG-karta ---------------------------------------------------------------
 #
@@ -541,3 +550,90 @@ export -f ssh_sk_git_disable
 export -f ssh_sk_use_existing
 export -f ssh_sk_test
 export -f ssh_sk_github_upload
+
+# --- GPG software (commit signing) ------------------------------------------
+#
+# Podpisywanie commitów softwarowym kluczem PGP — dla sprzętu bez apletu
+# OpenPGP i bez FIDO2 (albo gdy po prostu nie chcesz sprzętowego klucza).
+# Klucz sam w sobie generuje gpg_sw_generate (157_function_maven_signing.sh
+# — tam żyje cały cykl życia klucza: generowanie, eksport na keyserver, bo
+# pierwotnie pomyślany pod podpisywanie artefaktów Maven Central). Tutaj
+# tylko konfiguracja gita, bez wymogu karty — klucz leży w zwykłym keyringu
+# ~/.gnupg, chroniony tylko passphrase.
+#
+# Softwarowy klucz (w przeciwieństwie do karty/FIDO2) nie "przenosi się"
+# sam między maszynami — na każdej maszynie musi być w lokalnym ~/.gnupg
+# (eksport/import ręcznie, albo osobny klucz per maszyna).
+#
+# Ścieżka configu z gpg_sw_generate ($XDG_CONFIG_HOME/git-configuration-
+# signing/gpg-sw.cfg) zaszyta tu jako stała — celowo NIE wołamy prywatnych
+# helperów z 157 (157 ładuje się PO 155 alfabetycznie, więc jego funkcje
+# nie są jeszcze zdefiniowane, gdy 155 się ładuje; odwrotna kolejność niż
+# przy 157/_maven_settings_*, gdzie taka zależność jest bezpieczna).
+
+_gpg_sw_default_keyid() {
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing/gpg-sw.cfg"
+    [ -f "$cfg" ] || return 1
+    awk -F= '/^KEYID=/ { print $2 }' "$cfg"
+}
+
+##
+# Konfiguruje git na TEJ maszynie do podpisywania commitów i tagów
+# softwarowym kluczem PGP (z gpg_sw_generate). Bez wymogu karty.
+# Usage: gpg_sw_git_setup [keyid]   (bez argumentu: keyid z gpg_sw_generate)
+##
+function gpg_sw_git_setup() {
+    command -v gpg &>/dev/null || { log_error "gpg_sw: brak gpg"; return 1; }
+    command -v git &>/dev/null || { log_error "gpg_sw: brak git"; return 1; }
+
+    local keyid="${1:-}"
+    [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
+    if [ -z "$keyid" ]; then
+        log_error "Usage: gpg_sw_git_setup <keyid> (albo uruchom najpierw gpg_sw_generate)"
+        return 1
+    fi
+
+    git config --global user.signingkey "$keyid"
+    git config --global gpg.format openpgp
+    git config --global gpg.program "$(command -v gpg)"
+    git config --global commit.gpgsign true
+    git config --global tag.gpgSign true
+
+    log_info "gpg_sw: git podpisuje commity i tagi kluczem $keyid (~/.gitconfig, softwarowy)"
+    log_info "gpg_sw: sprawdź podpis: gpg_sw_test (poprosi o passphrase)"
+}
+
+##
+# Wyłącza podpisywanie softwarowym kluczem na tej maszynie.
+##
+function gpg_sw_git_disable() {
+    local k
+    for k in commit.gpgsign tag.gpgSign user.signingkey gpg.program gpg.format; do
+        git config --global --unset "$k" 2>/dev/null || true
+    done
+    log_info "gpg_sw: podpisywanie commitów softwarowym kluczem wyłączone na tej maszynie"
+}
+
+##
+# Próbny podpis softwarowym kluczem — sprawdza że klucz jest w keyringu i
+# passphrase działa. Nic nie zapisuje.
+# Usage: gpg_sw_test [keyid]
+##
+function gpg_sw_test() {
+    command -v gpg &>/dev/null || { log_error "gpg_sw: brak gpg"; return 1; }
+    local keyid="${1:-}"
+    [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
+    [ -n "$keyid" ] || { log_error "gpg_sw: brak keyid (podaj albo uruchom gpg_sw_generate)"; return 1; }
+
+    log_info "gpg_sw: próbny podpis kluczem $keyid — podaj passphrase gdy poprosi"
+    if echo "gpg_sw_test $(date +%s)" | gpg --local-user "$keyid" --clearsign >/dev/null; then
+        log_info "gpg_sw: podpis działa"
+    else
+        log_error "gpg_sw: podpis nie powiódł się"
+        return 1
+    fi
+}
+
+export -f gpg_sw_git_setup
+export -f gpg_sw_git_disable
+export -f gpg_sw_test

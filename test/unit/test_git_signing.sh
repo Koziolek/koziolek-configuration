@@ -126,6 +126,7 @@ _run_gpg() {
     local card="$1"; shift
     [ "$card" = none ] || card="$_FIX/$card"
     HOME="$_HOME" MOCK_STATE="$_STATE" MOCK_CARD="$card" PATH="$_BIN:$PATH" \
+        XDG_CONFIG_HOME="$_HOME/.config" \
         bash --norc --noprofile -c "
             cd '$_HOME' || exit 1
             export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
@@ -465,6 +466,55 @@ testGithubUploadAddsSigningKey() {
     _run_ssh ssh_sk_github_upload >/dev/null 2>&1
     assertEquals 0 $?
     assertTrue "grep -qF 'gh ssh-key add $(_KEY).pub --type signing' '$_STATE/calls'"
+}
+
+# =============================================================================
+# GPG software (commit signing)
+# =============================================================================
+
+testSwGitSetupFailsWithoutKeyidOrCfg() {
+    local out rc=0
+    out=$(_run_gpg none gpg_sw_git_setup 2>&1) || rc=$?
+    assertNotEquals 0 "$rc"
+    assertNull "$(_gitcfg commit.gpgsign)"
+}
+
+testSwGitSetupConfiguresGitSigning() {
+    _run_gpg none gpg_sw_git_setup DEADBEEF >/dev/null 2>&1
+    assertEquals 0 $?
+    assertEquals 'DEADBEEF' "$(_gitcfg user.signingkey)"
+    assertEquals 'true' "$(_gitcfg commit.gpgsign)"
+    assertEquals 'true' "$(_gitcfg tag.gpgSign)"
+    assertEquals 'openpgp' "$(_gitcfg gpg.format)"
+    assertEquals "$_BIN/gpg" "$(_gitcfg gpg.program)"
+}
+
+testSwGitSetupUsesDefaultFromCfg() {
+    mkdir -p "$_HOME/.config/git-configuration-signing"
+    printf 'KEYID=CAFEBABE\n' > "$_HOME/.config/git-configuration-signing/gpg-sw.cfg"
+    _run_gpg none gpg_sw_git_setup >/dev/null 2>&1
+    assertEquals 0 $?
+    assertEquals 'CAFEBABE' "$(_gitcfg user.signingkey)"
+}
+
+testSwGitDisableRemovesConfig() {
+    _run_gpg none gpg_sw_git_setup DEADBEEF >/dev/null 2>&1
+    _run_gpg none gpg_sw_git_disable >/dev/null 2>&1
+    assertNull "$(_gitcfg commit.gpgsign)"
+    assertNull "$(_gitcfg tag.gpgSign)"
+    assertNull "$(_gitcfg user.signingkey)"
+}
+
+testSwTestFailsWithoutKeyid() {
+    local rc=0
+    _run_gpg none gpg_sw_test >/dev/null 2>&1 || rc=$?
+    assertNotEquals 0 "$rc"
+}
+
+testSwTestSignsWithClearsign() {
+    _run_gpg none gpg_sw_test DEADBEEF >/dev/null 2>&1
+    assertEquals 0 $?
+    assertTrue "grep -qF -- '--local-user DEADBEEF --clearsign' '$_STATE/calls'"
 }
 
 # shellcheck source=/dev/null

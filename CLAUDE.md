@@ -114,10 +114,10 @@ Odpowiedzialność kluczowych plików funkcji:
   od marki). Konfiguracja **maszyny** (pakiety `fido2-tools`/`libpam-u2f`, linia `pam_u2f.so`
   w `/etc/pam.d/sudo`) to nie tu — `fix-comp/scripts/bezpieczenstwo/01-fido2-diagnostic.sh`
   (jednorazowo); `_fido2_check_deps` odsyła tam przy braku zależności.
-- `functions.d/155_function_git_signing.sh` — podpisywanie **commitów git**, dwa alternatywne
-  backendy w jednym pliku (ten sam cel, inny sprzęt — wybór zależy od tego, czy klucz ma aplet
-  OpenPGP): sekcja GPG-karta i sekcja SSH-sk, `gpg_git_setup`/`ssh_sk_git_setup` wzajemnie się
-  nadpisują (`gpg.format` w `~/.gitconfig`), aktywna jedna metoda naraz.
+- `functions.d/155_function_git_signing.sh` — podpisywanie **commitów git**, trzy alternatywne
+  backendy w jednym pliku (ten sam cel, inny sprzęt albo brak sprzętu): sekcja GPG-karta, sekcja
+  SSH-sk, sekcja GPG software. `gpg_git_setup`/`ssh_sk_git_setup`/`gpg_sw_git_setup` wzajemnie się
+  nadpisują (`gpg.format`/`user.signingkey` w `~/.gitconfig`), aktywna jedna metoda naraz.
   **GPG-karta** (klucz prywatny tylko na karcie): `gpg_git_setup` (fingerprint slotu podpisu
   czytany z `gpg --card-status --with-colons`, import klucza publicznego: URL z karty →
   `$GPG_PUBKEY_URL` → keyserver, stuby + ultimate trust, `git config --global` do **stuba**
@@ -135,12 +135,21 @@ Odpowiedzialność kluczowych plików funkcji:
   `ssh_sk_use_existing` (istniejący klucz `-sk`, odmawia kluczy z dysku; aplikacja `ssh:` → plik
   bez segmentu, tylko `id_ed25519_sk_rk`). Binarka przez `${SSH_KEYGEN:-ssh-keygen}` —
   `contexts/darwin.sh` wskazuje `openssh` z brew (Apple ssh bez FIDO).
+  **GPG software** (`gpg_sw_git_*`, klucz prywatny na dysku w `~/.gnupg`, chroniony tylko
+  passphrase — dla sprzętu bez apletu OpenPGP i bez FIDO2): `gpg_sw_git_setup [keyid]` (bez
+  argumentu czyta `KEYID` z `~/.config/git-configuration-signing/gpg-sw.cfg`, czyli klucz
+  ostatnio wygenerowany przez `gpg_sw_generate` w 157 — sama konfiguracja `user.signingkey`/
+  `gpg.format`/`commit.gpgsign` w `~/.gitconfig`, bez wymogu karty), `gpg_sw_git_disable`,
+  `gpg_sw_test` (próbny `--clearsign`). Klucz **nie** przenosi się sam między maszynami (w
+  przeciwieństwie do karty/FIDO2) — trzeba go wyeksportować/zaimportować ręcznie albo wygenerować
+  osobno na każdej. Ścieżka configu zaszyta jako stała w 155 (nie wołamy prywatnych helperów z
+  157 — 157 ładuje się PO 155 alfabetycznie, więc jego funkcje nie są jeszcze zdefiniowane).
   Test: `test/unit/test_git_signing.sh` (mock `gpg`/`gpgconf`/`ssh-keygen`/`gh`; dwa harnessy
   uruchamiania, `_run_gpg`/`_run_ssh`, sourcujące ten sam plik).
-- `functions.d/157_function_maven_signing.sh` — podpisywanie **artefaktów Mavena**, dwa
+- `functions.d/157_function_maven_signing.sh` — podpisywanie **artefaktów Mavena**, trzy
   alternatywne backendy w jednym pliku (dzielą helpery manipulacji `~/.m2/settings.xml`, więc
   merge usuwa ukrytą zależność międzyplikową, którą wymuszała kolejność ładowania):
-  **JAR/PKCS11** i **GPG software**.
+  **JAR/PKCS11**, **JAR software** i **GPG software**.
   **JAR/PKCS11** (`jar_*`): podpisywanie plików JAR kluczem sprzętowym przez PKCS11
   (`jarsigner -storetype PKCS11`, moduł OpenSC `opensc-pkcs11.so`, aplet **PIV** karty — X.509
   cert + klucz RSA/EC wygenerowany NA karcie; klucze czysto FIDO2 bez PIV, np. Thetis BioFP+,
@@ -151,6 +160,14 @@ Odpowiedzialność kluczowych plików funkcji:
   dodatkowo `-k`/`--key <alias>`, stary drugi argument pozycyjny nadal działa). `jar_maven_setup`/
   `jar_maven_disable` — profil `jar-hw-signing` w `~/.m2/settings.xml` (`jarsigner.*` property
   expressions czytane przez `maven-jarsigner-plugin`).
+  **JAR software** (`jar_sw_*`, keystore JKS na dysku zamiast karty — dla maszyn bez apletu PIV;
+  weryfikacja **niezależna od backendu**, `jar_verify` wyżej działa dla obu): `jar_sw_generate
+  <alias> <CN>` (`keytool -genkeypair`, RSA 3072, self-signed, bez `-storepass`/`-keypass` w argv —
+  interaktywny prompt jak w PKCS11; zapisuje `~/.config/git-configuration-signing/jar-sw.cfg` +
+  keystore w `jar-sw-keystore.jks`, override `$JAR_SW_KEYSTORE`), `jar_sw_sign <plik.jar>
+  [alias]` (auto-detekcja aliasu z configu, gdy pominięty), `jar_sw_maven_setup`/
+  `jar_sw_maven_disable` — profil `jar-sw-signing` (`jarsigner.storetype=JKS`), współistnieje z
+  `jar-hw-signing`/`gpg-sw-signing`.
   **GPG software** (`gpg_sw_*`/`gpg_maven_*`): podpisywanie artefaktów Mavena kluczem PGP
   **softwarowym** (`maven-gpg-plugin`, publikacja na Maven Central przez Sonatype Central —
   patrz `devtools-maven-extension/pom.xml`, profil `deployment`), dla maszyn/kluczy bez apletu
@@ -174,9 +191,9 @@ Odpowiedzialność kluczowych plików funkcji:
   `<profiles>`/`<activeProfiles>` (dopisywanych tylko jeśli ich jeszcze nie ma —
   `_maven_settings_ensure_container`), resztę pliku zostawia nietkniętą — ten sam styl co
   `gpg_card_use_pcscd` (idempotentny append do `scdaemon.conf`), tylko na blok XML. Nazwane
-  `_maven_settings_*` (nie `_jar_*`) właśnie dlatego, że obsługują oba profile —
-  `jar-hw-signing` i `gpg-sw-signing` — które mogą współistnieć w jednym pliku, każdy w swoim
-  oznaczonym bloku.
+  `_maven_settings_*` (nie `_jar_*`) właśnie dlatego, że obsługują wszystkie trzy profile —
+  `jar-hw-signing`, `jar-sw-signing`, `gpg-sw-signing` — które mogą współistnieć w jednym pliku,
+  każdy w swoim oznaczonym bloku.
   Test: `test/unit/test_maven_signing.sh` (mock `pkcs11-tool`/`jarsigner`/`keytool`/`jar`/`gpg`/
   `curl`; blok maven-settings testowany na realnych plikach — bez mocków, to czysta manipulacja
   tekstem).
