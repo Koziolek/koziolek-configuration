@@ -86,6 +86,33 @@ Available functions:
   fido2_register_sudo_backup [DEV] – dopisz zapasowy klucz do sudo
   fido2_sudo_keys_list         – pokaż zarejestrowane wpisy w u2f_keys
 
+  [GPG-karta — podpisywanie commitów kluczem z karty OpenPGP]
+  gpg_card_status               – status karty OpenPGP (gpg --card-status)
+  gpg_card_import_pubkey        – dociąga klucz publiczny pasujący do karty, tworzy stuby
+  gpg_git_setup                 – konfiguruje git na tej maszynie do podpisywania kluczem z karty
+  gpg_git_disable               – wyłącza podpisywanie na tej maszynie
+  gpg_card_test                 – próbny podpis kluczem z karty (weryfikuje całą ścieżkę)
+  gpg_agent_restart             – restart gpg-agent i scdaemon (po przepięciu klucza)
+  gpg_card_use_pcscd            – przełącza scdaemon na współdzielenie czytnika przez pcscd
+
+  [SSH-SK — podpisywanie commitów kluczem SSH ed25519-sk z FIDO2]
+  ssh_sk_key_create [email]     – tworzy NOWY klucz podpisujący na urządzeniu FIDO2 (raz)
+  ssh_sk_key_load               – odtwarza lokalny stub klucza z urządzenia (nowa maszyna)
+  ssh_sk_git_setup [email]      – konfiguruje git na tej maszynie do podpisywania kluczem SSH
+  ssh_sk_use_existing PLIK [email] – podpisuje istniejącym kluczem -sk zamiast osobnego git-signing
+  ssh_sk_git_disable            – wyłącza podpisywanie kluczem SSH na tej maszynie
+  ssh_sk_test [email]           – próbny podpis i weryfikacja (cała ścieżka: urządzenie, stub, allowed_signers)
+  ssh_sk_github_upload          – wysyła klucz publiczny na GitHuba jako signing key
+
+  [JAR/PKCS11 — podpisywanie plików JAR kluczem sprzętowym (aplet PIV)]
+  jar_pkcs11_status              – status karty PKCS11 (sloty + certy/klucze)
+  jar_pkcs11_setup                – jednorazowo: znajdź moduł OpenSC, zweryfikuj cert, zapisz pkcs11.cfg
+  jar_pkcs11_test                 – próbny podpis + weryfikacja na tymczasowym pliku
+  jar_sign PLIK.jar [ALIAS]       – podpisuje wskazany plik JAR (ręcznie, poza Mavenem)
+  jar_verify PLIK.jar             – weryfikuje podpis pliku JAR
+  jar_maven_setup                 – wystawia profil jar-hw-signing jako domyślny w ~/.m2/settings.xml
+  jar_maven_disable               – usuwa profil jar-hw-signing z ~/.m2/settings.xml
+
 EOF
 }
 
