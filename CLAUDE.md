@@ -184,6 +184,21 @@ Odpowiedzialność kluczowych plików funkcji:
   keyringu. Kroki `gpg_sw_setup` pomijalne nieinteraktywnie przez `GPG_SW_NAME`/`GPG_SW_EMAIL`/
   `GPG_SW_EXPORT_TARGET`/`GPG_SW_MAVEN_CONFIRM` (ten sam wzorzec co `GIT_ASSUME_YES` w
   `git/git_functions.sh`).
+  Eksport na `keys.openpgp.org` to helper `_gpg_sw_export_openpgp`: `POST /vks/v1/upload` z JSON-em
+  `{"keytext": "<armored>"}` (surowy `PUT` binarium daje 404), potem `POST /vks/v1/request-verify`
+  (token z odpowiedzi + adres z UID-a) zleca mail weryfikacyjny; trzeci argument `gpg_sw_export`
+  (`noverify`) pomija ten krok. `keyid` walidowany jako hex (8-40 znaków, opcjonalnie `0x`).
+  `gpg_sw_generate` przekierowuje stdout `gpg --quick-generate-key` na stderr — inaczej blok `pub …`
+  trafia do `$(gpg_sw_generate)` i psuje fingerprint (a z nim eksport i `gpg.keyname` w Mavenie).
+  **Odwołanie/usuwanie:** keyserverów nie da się wyczyścić (SKS nie kasuje, openpgp pokazuje klucz
+  jako unieważniony), więc `gpg_sw_revoke <keyid> [ubuntu|openpgp|both|none]` generuje certyfikat
+  (`gpg --batch --command-fd 0 --gen-revoke`, powód `GPG_SW_REVOKE_REASON` 0-3, plik
+  `revoke-<fpr>.asc` 0600 w `~/.config/git-configuration-signing/`), importuje go i publikuje.
+  `gpg_sw_delete_all` — nieodwracalne usunięcie wszystkich kluczy z keyringu (`--delete-secret-and-
+  public-keys`), `gpg-sw.cfg` i profilu `gpg-sw-signing`; potwierdzenie wpisaniem `TAK`
+  (`GPG_SW_ASSUME_YES=1` pomija), przed usunięciem odwołuje klucze (`GPG_SW_REVOKE=1|0`, brak =
+  pytanie); klucz, którego odwołanie się nie powiodło, nie jest usuwany. Usuwa też stuby kart;
+  nie rusza SSH-sk ani JKS.
   **Wspólne** — `~/.m2/settings.xml`: `~/.m2/settings.xml` może już mieć realną konfigurację
   (mirrory/servery Nexusa, patrz `services/nexus/key_setup.sh`) — **nigdy nie
   parsujemy/przepisujemy całego pliku** (np. `ElementTree` kasuje komentarze przy reserializacji);

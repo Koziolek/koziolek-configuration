@@ -443,7 +443,9 @@ jest `gpg_git_setup` wyżej (klucz nigdy nie opuszcza karty).
 | `gpg_sw_setup` | jedno polecenie na cały proces: generuj klucz → eksportuj na keyserver → (opcjonalnie) dopnij do Mavena |
 | `gpg_sw_generate [imię i nazwisko] [email]` | generuje klucz (domyślnie `ed25519`/`sign`-only/`2y`), wypisuje fingerprint |
 | `gpg_sw_list_keys` | lista kluczy prywatnych w keyringu |
-| `gpg_sw_export <keyid> [ubuntu\|openpgp\|both]` | eksport klucza publicznego na keyserver |
+| `gpg_sw_export <keyid> [ubuntu\|openpgp\|both]` | eksport klucza publicznego na keyserver; `keyid` musi być hexem (8–40 znaków, opcjonalnie `0x`) |
+| `gpg_sw_revoke <keyid> [ubuntu\|openpgp\|both\|none]` | odwołuje klucz: certyfikat `revoke-<fpr>.asc` (0600), import lokalny, publikacja odwołania na keyserwerach (domyślnie `both`) |
+| `gpg_sw_delete_all` | **nieodwracalnie** usuwa wszystkie klucze (prywatne + publiczne) z keyringu, `gpg-sw.cfg` i profil `gpg-sw-signing`; przed usunięciem odwołuje klucze |
 | `gpg_maven_setup [keyid]` | profil `gpg-sw-signing` w `~/.m2/settings.xml` (`gpg.keyname`) |
 | `gpg_maven_disable` | usuń ten profil (reszta `settings.xml` zostaje) |
 
@@ -457,11 +459,41 @@ mvn -P deployment deploy   # maven-gpg-plugin podpisuje artefakty, passphrase in
 
 `keys.openpgp.org` (VKS API, nie klasyczne `--send-keys`) publikuje klucz od razu, ale UID
 (adres email) zostaje **niezweryfikowany i niewidoczny w wyszukiwaniu**, dopóki nie potwierdzisz
-linku z maila, który stamtąd przyjdzie.
+linku z maila, który stamtąd przyjdzie. Upload to `POST /vks/v1/upload` z JSON-em
+`{"keytext": "<armored>"}`, po nim `POST /vks/v1/request-verify` zleca wysłanie maila na adres
+z UID-a — nie trzeba robić tego ręcznie na stronie.
+
+**Odwołanie i usuwanie klucza.** Z keyserverów nie da się klucza wymazać: SKS
+(`keyserver.ubuntu.com`) w ogóle nie kasuje, a `keys.openpgp.org` po odwołaniu pokazuje go jako
+unieważniony (pełne usunięcie tylko ręcznie przez `/manage` z potwierdzeniem mailem). Dlatego
+właściwa droga to rewokacja — `gpg_sw_revoke` generuje certyfikat odwołania (passphrase w
+pinentry), importuje go lokalnie i publikuje odwołany klucz (bez `request-verify`). Certyfikat
+leży w `~/.config/git-configuration-signing/revoke-<fpr>.asc` — zachowaj go. `gpg_sw_delete_all`
+robi to dla wszystkich kluczy przed usunięciem z keyringu; gdy odwołanie któregoś się nie uda,
+tego klucza **nie** usuwa (inaczej straciłbyś możliwość odwołania go później). Uwaga: usuwa też
+stuby kluczy z karty (sam klucz na karcie zostaje; odtworzysz je `gpg_git_setup` /
+`gpg --card-status`). Nie rusza kluczy SSH-sk ani keystore'u JKS.
+
+```bash
+# odwołanie jednego klucza (powód: 1 = skompromitowany)
+GPG_SW_REVOKE_REASON=1 gpg_sw_revoke A6CF83230A54882AD8989F2ECAEDF29E0312A269
+gpg_sw_revoke A6CF83230A54882AD8989F2ECAEDF29E0312A269 none   # tylko lokalnie, bez publikacji
+
+# sprzątanie wszystkiego (pyta o odwołanie [T/n], potem wymaga wpisania TAK)
+gpg_sw_delete_all
+GPG_SW_REVOKE=1 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all         # nieinteraktywnie
+
+# naprawa po nieudanym eksporcie (zły gpg.keyname w ~/.m2/settings.xml)
+gpg_maven_setup A6CF83230A54882AD8989F2ECAEDF29E0312A269
+gpg_sw_export   A6CF83230A54882AD8989F2ECAEDF29E0312A269 both
+```
 
 Zmienne: `GPG_SW_NAME`/`GPG_SW_EMAIL`/`GPG_SW_EXPORT_TARGET`/`GPG_SW_MAVEN_CONFIRM` (pomijają
 interaktywne pytania `gpg_sw_setup`), `GPG_SW_KEY_ALGO`/`GPG_SW_KEY_USAGE`/`GPG_SW_KEY_EXPIRE`
-(parametry `gpg_sw_generate`).
+(parametry `gpg_sw_generate`), `GPG_SW_REVOKE_REASON` (powód odwołania: `0` brak — domyślnie, `1`
+skompromitowany, `2` zastąpiony, `3` nieużywany), `GPG_SW_REVOKE` (`1`/`0` — czy
+`gpg_sw_delete_all` ma odwoływać klucze; brak = pytanie), `GPG_SW_ASSUME_YES=1` (pomija
+potwierdzenie `TAK` w `gpg_sw_delete_all`).
 
 Profil `gpg-sw-signing` współistnieje z `jar-hw-signing` w tym samym `~/.m2/settings.xml` — oba
 backendy dzielą te same helpery manipulacji plikiem (`_maven_settings_*`), każdy pisze do swojego
