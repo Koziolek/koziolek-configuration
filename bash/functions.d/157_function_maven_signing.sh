@@ -608,7 +608,9 @@ function gpg_sw_generate() {
 
     local uid="$name <$email>"
     log_info "gpg_sw: generuję klucz ($algo/$usage, wygasa $expire) dla \"$uid\" — podaj passphrase gdy poprosi" >&2
-    gpg --quick-generate-key "$uid" "$algo" "$usage" "$expire" || {
+    # stdout gpg → stderr: gpg wypisuje na nim blok "pub ..." i zaśmiecił by
+    # fingerprint zwracany przez $(gpg_sw_generate)
+    gpg --quick-generate-key "$uid" "$algo" "$usage" "$expire" >&2 || {
         log_error "gpg_sw: generowanie klucza nie powiodło się" >&2
         return 1
     }
@@ -629,6 +631,49 @@ function gpg_sw_generate() {
 }
 
 ##
+# Upload na keys.openpgp.org przez VKS API: POST /vks/v1/upload z JSON-em
+# {"keytext": "<armored>"} (surowy PUT binarium → 404). Odpowiedź niesie
+# token; z nim POST /vks/v1/request-verify każe serwerowi wysłać mail
+# weryfikacyjny na adres z UID-a (bez tego UID-y są niewidoczne w wyszukiwaniu).
+##
+_gpg_sw_export_openpgp() {
+    local keyid="$1" noverify="${2:-}" base="https://keys.openpgp.org/vks/v1"
+    command -v curl &>/dev/null || { log_error "gpg_sw: curl wymagany do eksportu na keys.openpgp.org"; return 1; }
+    log_info "gpg_sw: eksport $keyid → keys.openpgp.org (VKS API)"
+
+    local json resp
+    json=$(gpg --export --armor "$keyid" | awk 'BEGIN { printf "{\"keytext\":\"" }
+        { gsub(/\\/, "\\\\"); gsub(/"/, "\\\""); printf "%s\\n", $0 }
+        END { printf "\"}" }')
+    resp=$(printf '%s' "$json" | curl -sS -X POST -H 'Content-Type: application/json' --data-binary @- "$base/upload") || {
+        log_error "gpg_sw: upload na keys.openpgp.org nie powiódł się"
+        return 1
+    }
+    case "$resp" in
+        *'"token"'*|*'"key_fpr"'*) : ;;
+        *) log_error "gpg_sw: keys.openpgp.org odrzucił klucz: $resp"; return 1 ;;
+    esac
+    log_info "gpg_sw: klucz wgrany na keys.openpgp.org"
+    [ "$noverify" = noverify ] && return 0
+
+    local token email
+    token=$(printf '%s' "$resp" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    email=$(gpg --list-keys --with-colons "$keyid" 2>/dev/null | awk -F: '/^uid:/ { print $10; exit }' | sed -n 's/.*<\([^>]*\)>.*/\1/p')
+    if [ -z "$token" ] || [ -z "$email" ]; then
+        log_warn "gpg_sw: brak tokenu/adresu — zweryfikuj UID ręcznie: https://keys.openpgp.org/upload"
+        return 0
+    fi
+
+    resp=$(curl -sS -X POST -H 'Content-Type: application/json' \
+        -d "{\"token\":\"$token\",\"addresses\":[\"$email\"]}" "$base/request-verify") || {
+        log_warn "gpg_sw: nie udało się zlecić maila weryfikacyjnego — zrób to na https://keys.openpgp.org/upload"
+        return 0
+    }
+    log_info "gpg_sw: mail weryfikacyjny zlecony dla $email — kliknij link, żeby UID był publiczny ($resp)"
+    return 0
+}
+
+##
 # Eksportuje klucz publiczny na keyserver.
 # Usage: gpg_sw_export <keyid> [ubuntu|openpgp|both]
 #   ubuntu  — keyserver.ubuntu.com (SKS-owy, publikuje UID-y od razu)
@@ -638,7 +683,7 @@ function gpg_sw_generate() {
 ##
 function gpg_sw_export() {
     _gpg_sw_check_deps || return 1
-    local keyid="${1:-}" target="${2:-both}" rc=0
+    local keyid="${1:-}" target="${2:-both}" noverify="${3:-}" rc=0
 
     if [ -z "$keyid" ]; then
         log_error "Usage: gpg_sw_export <keyid> [ubuntu|openpgp|both]"
@@ -648,6 +693,12 @@ function gpg_sw_export() {
         ubuntu|openpgp|both) : ;;
         *) log_error "gpg_sw: nieznany cel eksportu '$target' (ubuntu|openpgp|both)"; return 1 ;;
     esac
+    # keyid to hex (8-40 znaków, opcjonalnie 0x) — odrzuca np. wielolinijkowy
+    # wynik --list-keys wklejony zamiast fingerprintu
+    if ! [[ "$keyid" =~ ^(0x)?[0-9A-Fa-f]{8,40}$ ]]; then
+        log_error "gpg_sw: '$keyid' nie wygląda na keyid/fingerprint (hex, 8-40 znaków)"
+        return 1
+    fi
 
     if [ "$target" = ubuntu ] || [ "$target" = both ]; then
         log_info "gpg_sw: eksport $keyid → keyserver.ubuntu.com"
@@ -655,12 +706,7 @@ function gpg_sw_export() {
     fi
 
     if [ "$target" = openpgp ] || [ "$target" = both ]; then
-        command -v curl &>/dev/null || { log_error "gpg_sw: curl wymagany do eksportu na keys.openpgp.org"; return 1; }
-        log_info "gpg_sw: eksport $keyid → keys.openpgp.org (VKS API)"
-        local resp
-        resp=$(gpg --export "$keyid" | curl -sS -T - https://keys.openpgp.org/vks/v1/upload) || rc=1
-        log_info "gpg_sw: odpowiedź keys.openpgp.org: $resp"
-        log_info "gpg_sw: UID-y pozostają niezweryfikowane, dopóki nie potwierdzisz linku z maila wysłanego przez keys.openpgp.org"
+        _gpg_sw_export_openpgp "$keyid" "$noverify" || rc=1
     fi
 
     return "$rc"
@@ -724,6 +770,124 @@ function gpg_maven_disable() {
 }
 
 ##
+# Odwołuje (revoke) klucz i publikuje odwołanie na keyserverach. Keyserverów
+# nie da się „wyczyścić” — SKS (keyserver.ubuntu.com) w ogóle nie kasuje, a
+# keys.openpgp.org pokazuje klucz jako unieważniony — dlatego rewokacja jest
+# właściwym sposobem „usunięcia” klucza z obiegu.
+# Certyfikat ląduje w ~/.config/git-configuration-signing/revoke-<fpr>.asc
+# (0600; zachowaj — jest też zapasem, gdy stracisz klucz prywatny).
+# Passphrase klucza poda się w pinentry gpg-agent.
+# Usage: gpg_sw_revoke <keyid> [ubuntu|openpgp|both|none]   (domyślnie both)
+# Powód: GPG_SW_REVOKE_REASON = 0 brak (domyślnie) | 1 skompromitowany |
+#        2 zastąpiony | 3 nieużywany
+##
+function gpg_sw_revoke() {
+    _gpg_sw_check_deps || return 1
+    local keyid="${1:-}" target="${2:-both}" reason="${GPG_SW_REVOKE_REASON:-0}"
+
+    if [ -z "$keyid" ]; then
+        log_error "Usage: gpg_sw_revoke <keyid> [ubuntu|openpgp|both|none]"
+        return 1
+    fi
+    if ! [[ "$keyid" =~ ^(0x)?[0-9A-Fa-f]{8,40}$ ]]; then
+        log_error "gpg_sw: '$keyid' nie wygląda na keyid/fingerprint (hex, 8-40 znaków)"
+        return 1
+    fi
+    case "$target" in
+        ubuntu|openpgp|both|none) : ;;
+        *) log_error "gpg_sw: nieznany cel '$target' (ubuntu|openpgp|both|none)"; return 1 ;;
+    esac
+    case "$reason" in
+        [0-3]) : ;;
+        *) log_error "gpg_sw: GPG_SW_REVOKE_REASON musi być 0-3"; return 1 ;;
+    esac
+
+    mkdir -p "$(_gpg_sw_config_dir)"
+    chmod 700 "$(_gpg_sw_config_dir)"
+    local cert
+    cert="$(_gpg_sw_config_dir)/revoke-${keyid#0x}.asc"
+
+    log_info "gpg_sw: generuję certyfikat odwołania $keyid — podaj passphrase gdy poprosi"
+    printf 'y\n%s\n\ny\n' "$reason" | gpg --batch --yes --command-fd 0 --output "$cert" --armor --gen-revoke "$keyid" || {
+        log_error "gpg_sw: generowanie certyfikatu odwołania nie powiodło się"
+        return 1
+    }
+    chmod 600 "$cert"
+
+    gpg --batch --import "$cert" || {
+        log_error "gpg_sw: import certyfikatu odwołania nie powiódł się"
+        return 1
+    }
+    log_info "gpg_sw: klucz $keyid odwołany lokalnie (certyfikat: $cert)"
+
+    [ "$target" = none ] && return 0
+    gpg_sw_export "$keyid" "$target" noverify
+}
+
+##
+# Usuwa z lokalnego keyringu WSZYSTKIE klucze prywatne (i ich publiczne
+# odpowiedniki), kasuje config gpg-sw.cfg i wyłącza profil gpg-sw-signing w
+# ~/.m2/settings.xml. Operacja nieodwracalna — wymaga wpisania "TAK"
+# (pomijalne przez GPG_SW_ASSUME_YES=1). Kluczy wysłanych na keyservery nie da
+# się stamtąd usunąć — dlatego PRZED usunięciem klucze są odwoływane
+# (gpg_sw_revoke) i odwołanie publikowane na keyserwerach. Sterowanie:
+# GPG_SW_REVOKE=1 zawsze | 0 nigdy | brak → pytanie [T/n].
+# Stuby kluczy z karty też znikną z keyringu (karta zachowuje klucz; odtworzysz
+# je przez gpg_git_setup / gpg --card-status).
+##
+function gpg_sw_delete_all() {
+    _gpg_sw_check_deps || return 1
+    local fprs fpr rc=0
+    fprs=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '/^sec:/ { want=1; next } want && /^fpr:/ { print $10; want=0 }')
+    if [ -z "$fprs" ]; then
+        log_warn "gpg_sw: brak kluczy prywatnych w keyringu — nic do usunięcia"
+        return 0
+    fi
+
+    log_warn "gpg_sw: zostaną NIEODWRACALNIE usunięte klucze (prywatne + publiczne):"
+    gpg --list-secret-keys --keyid-format=long
+    if [ "${GPG_SW_ASSUME_YES:-0}" != 1 ]; then
+        local confirm
+        read -r -p "Wpisz TAK, aby usunąć wszystkie powyższe klucze: " confirm
+        if [ "$confirm" != TAK ]; then
+            log_info "gpg_sw: anulowano"
+            return 1
+        fi
+    fi
+
+    local revoke="${GPG_SW_REVOKE:-}"
+    if [ -z "$revoke" ]; then
+        read -r -p "Odwołać klucze i opublikować odwołanie na keyserverach przed usunięciem? [T/n] " revoke
+        revoke="${revoke:-T}"
+    fi
+    case "$revoke" in
+        1|[tTyY]*) revoke=1 ;;
+        *) revoke=0 ;;
+    esac
+
+    while IFS= read -r fpr; do
+        [ -n "$fpr" ] || continue
+        if [ "$revoke" = 1 ]; then
+            gpg_sw_revoke "$fpr" both || {
+                log_error "gpg_sw: odwołanie $fpr nie powiodło się — pomijam usuwanie tego klucza"
+                rc=1
+                continue
+            }
+        fi
+        if gpg --batch --yes --delete-secret-and-public-keys "$fpr"; then
+            log_info "gpg_sw: usunięto $fpr"
+        else
+            log_error "gpg_sw: nie udało się usunąć $fpr"
+            rc=1
+        fi
+    done <<< "$fprs"
+
+    rm -f "$(_gpg_sw_cfg_path)"
+    gpg_maven_disable
+    return "$rc"
+}
+
+##
 # Jedno polecenie na cały proces: generuje klucz, eksportuje na keyserver,
 # opcjonalnie dopina do Mavena. Interaktywne pytania pomijalne przez
 # GPG_SW_NAME/GPG_SW_EMAIL/GPG_SW_EXPORT_TARGET/GPG_SW_MAVEN_CONFIRM.
@@ -767,6 +931,8 @@ function gpg_sw_setup() {
 export -f gpg_sw_list_keys
 export -f gpg_sw_generate
 export -f gpg_sw_export
+export -f gpg_sw_revoke
 export -f gpg_maven_setup
 export -f gpg_maven_disable
+export -f gpg_sw_delete_all
 export -f gpg_sw_setup

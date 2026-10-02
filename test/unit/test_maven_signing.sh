@@ -95,9 +95,23 @@ echo "$*" >> "$MOCK_STATE/calls"
 case " $* " in
   *" --quick-generate-key "*)
     [ "${MOCK_FAIL:-}" = generate ] && exit 1
+    echo "pub   ed25519 2026-01-01 [SC]"
+    exit 0 ;;
+  *" --list-keys "*"--with-colons"*)
+    echo "uid:u::::1::HASH::Jan Test <jan@example.com>::::::::::0:"
     exit 0 ;;
   *" --list-secret-keys "*"--with-colons"*)
-    printf 'fpr:::::::::%s:\n' "${MOCK_FPR:-DEADBEEF1234567890DEADBEEF1234567890ABCD}"
+    printf 'sec:u:255:22:KEYID:1::::::::::\nfpr:::::::::%s:\n' "${MOCK_FPR:-DEADBEEF1234567890DEADBEEF1234567890ABCD}"
+    exit 0 ;;
+  *" --gen-revoke "*)
+    [ "${MOCK_FAIL:-}" = revoke ] && cat >/dev/null && exit 1
+    cat >/dev/null
+    out=""; prev=""
+    for a in "$@"; do [ "$prev" = --output ] && out="$a"; prev="$a"; done
+    [ -n "$out" ] && echo "REVOKECERT" > "$out"
+    exit 0 ;;
+  *" --delete-secret-and-public-keys "*)
+    [ "${MOCK_FAIL:-}" = delete ] && exit 1
     exit 0 ;;
   *" --list-secret-keys "*)
     echo "sec   ed25519/${MOCK_FPR:-DEADBEEF} 2026-01-01 [SC]"
@@ -118,7 +132,8 @@ MOCK
 echo "$*" >> "$MOCK_STATE/calls"
 cat >/dev/null
 [ "${MOCK_FAIL:-}" = export_openpgp ] && exit 1
-echo '{"status":"ok"}'
+[ "${MOCK_FAIL:-}" = openpgp_reject ] && { echo '{"error":"bad key"}'; exit 0; }
+echo '{"key_fpr":"DEADBEEF","status":{"a@b.c":"unpublished"},"token":"TOK123"}'
 exit 0
 MOCK
     chmod +x "$_BIN/curl"
@@ -549,6 +564,111 @@ testExportFailsWhenUbuntuSendFails() {
 
 testExportFailsWhenOpenpgpUploadFails() {
     MOCK_FAIL=export_openpgp gpg_sw_export DEADBEEF openpgp >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testExportRejectsNonHexKeyid() {
+    gpg_sw_export "pub ed25519 [SC]
+      DEADBEEF" openpgp >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testExportOpenpgpFailsWhenServerRejects() {
+    MOCK_FAIL=openpgp_reject gpg_sw_export DEADBEEF openpgp >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testExportOpenpgpPostsJsonAndRequestsVerify() {
+    gpg_sw_export DEADBEEF openpgp >/dev/null 2>&1
+    local calls
+    calls="$(cat "$_STATE/calls")"
+    assertContains "$calls" "-X POST"
+    assertContains "$calls" "vks/v1/upload"
+    assertContains "$calls" "vks/v1/request-verify"
+    assertContains "$calls" "TOK123"
+    assertContains "$calls" "jan@example.com"
+}
+
+testGenerateStdoutIsOnlyFingerprint() {
+    local out
+    out=$(gpg_sw_generate "Jan Test" "jan@example.com" 2>/dev/null)
+    assertEquals "DEADBEEF1234567890DEADBEEF1234567890ABCD" "$out"
+}
+
+testDeleteAllDeletesEachKeyAndCfgWithAssumeYes() {
+    mkdir -p "$(_gpg_sw_config_dir)"; echo KEYID=X > "$(_gpg_sw_cfg_path)"
+    GPG_SW_REVOKE=0 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
+    assertEquals 0 $?
+    assertContains "$(cat "$_STATE/calls")" "--delete-secret-and-public-keys DEADBEEF1234567890DEADBEEF1234567890ABCD"
+    assertFalse "cfg zostaje" "[ -f \"$(_gpg_sw_cfg_path)\" ]"
+}
+
+testDeleteAllAbortsWithoutTak() {
+    echo nie | gpg_sw_delete_all >/dev/null 2>&1
+    assertEquals 1 $?
+    assertNotContains "$(cat "$_STATE/calls")" "--delete-secret-and-public-keys"
+}
+
+testDeleteAllProceedsOnTak() {
+    printf "TAK\nn\n" | gpg_sw_delete_all >/dev/null 2>&1
+    assertContains "$(cat "$_STATE/calls")" "--delete-secret-and-public-keys"
+}
+
+testRevokeFailsWithoutKeyid() {
+    gpg_sw_revoke >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testRevokeRejectsNonHexKeyid() {
+    gpg_sw_revoke "not a key" >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testRevokeRejectsBadReason() {
+    GPG_SW_REVOKE_REASON=9 gpg_sw_revoke DEADBEEF none >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testRevokeGeneratesCertImportsAndPublishesBoth() {
+    gpg_sw_revoke DEADBEEF1234 both >/dev/null 2>&1
+    assertEquals 0 $?
+    local calls
+    calls="$(cat "$_STATE/calls")"
+    assertContains "$calls" "--gen-revoke DEADBEEF1234"
+    assertContains "$calls" "--import"
+    assertContains "$calls" "keyserver.ubuntu.com"
+    assertContains "$calls" "vks/v1/upload"
+    assertNotContains "$calls" "request-verify"
+    assertTrue "cert brak" "[ -f \"$(_gpg_sw_config_dir)/revoke-DEADBEEF1234.asc\" ]"
+}
+
+testRevokeNoneSkipsPublishing() {
+    gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
+    assertNotContains "$(cat "$_STATE/calls")" "keyserver.ubuntu.com"
+}
+
+testRevokeFailsWhenGenRevokeFails() {
+    MOCK_FAIL=revoke gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
+    assertEquals 1 $?
+}
+
+testDeleteAllRevokesBeforeDeleting() {
+    GPG_SW_REVOKE=1 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
+    assertEquals 0 $?
+    local calls
+    calls="$(cat "$_STATE/calls")"
+    assertContains "$calls" "--gen-revoke"
+    assertContains "$calls" "--delete-secret-and-public-keys"
+}
+
+testDeleteAllSkipsDeleteWhenRevokeFails() {
+    MOCK_FAIL=revoke GPG_SW_REVOKE=1 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
+    assertEquals 1 $?
+    assertNotContains "$(cat "$_STATE/calls")" "--delete-secret-and-public-keys"
+}
+
+testDeleteAllFailsWhenGpgDeleteFails() {
+    MOCK_FAIL=delete GPG_SW_REVOKE=0 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
     assertEquals 1 $?
 }
 
