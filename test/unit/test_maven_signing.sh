@@ -98,6 +98,7 @@ case " $* " in
     echo "pub   ed25519 2026-01-01 [SC]"
     exit 0 ;;
   *" --list-keys "*"--with-colons"*)
+    echo "fpr:::::::::${MOCK_FPR:-DEADBEEF1234567890DEADBEEF1234567890ABCD}:"
     echo "uid:u::::1::HASH::Jan Test <jan@example.com>::::::::::0:"
     exit 0 ;;
   *" --list-secret-keys "*"--with-colons"*)
@@ -640,6 +641,40 @@ testRevokeGeneratesCertImportsAndPublishesBoth() {
     assertContains "$calls" "vks/v1/upload"
     assertNotContains "$calls" "request-verify"
     assertTrue "cert brak" "[ -f \"$(_gpg_sw_config_dir)/revoke-DEADBEEF1234.asc\" ]"
+}
+
+testRevokeUsesPregeneratedRevocCertWhenPresent() {
+    local gh="$_WORK/gnupg"
+    mkdir -p "$gh/openpgp-revocs.d"
+    printf 'opis\n:-----BEGIN PGP PUBLIC KEY BLOCK-----\nDATA\n-----END PGP PUBLIC KEY BLOCK-----\n' \
+        > "$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
+    GNUPGHOME="$gh" gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
+    assertEquals 0 $?
+    assertNotContains "$(cat "$_STATE/calls")" "--gen-revoke"
+    assertContains "$(cat "$(_gpg_sw_config_dir)/revoke-DEADBEEF1234.asc")" "
+-----BEGIN PGP PUBLIC KEY BLOCK-----"
+    assertNotContains "$(cat "$(_gpg_sw_config_dir)/revoke-DEADBEEF1234.asc")" ":-----BEGIN"
+}
+
+testRevokeWithCustomReasonSkipsPregeneratedCert() {
+    local gh="$_WORK/gnupg"
+    mkdir -p "$gh/openpgp-revocs.d"
+    echo x > "$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
+    GNUPGHOME="$gh" GPG_SW_REVOKE_REASON=1 gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
+    assertContains "$(cat "$_STATE/calls")" "--gen-revoke"
+}
+
+testRevokeGenRevokeIsNotBatch() {
+    GNUPGHOME="$_WORK/none" gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
+    local line
+    line=$(grep -- '--gen-revoke' "$_STATE/calls")
+    assertNotContains "$line" "--batch"
+}
+
+testDeleteAllKeepsCfgWhenRevokeFails() {
+    mkdir -p "$(_gpg_sw_config_dir)"; echo KEYID=X > "$(_gpg_sw_cfg_path)"
+    MOCK_FAIL=revoke GPG_SW_REVOKE=1 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
+    assertTrue "cfg skasowany mimo błędu" "[ -f \"$(_gpg_sw_cfg_path)\" ]"
 }
 
 testRevokeNoneSkipsPublishing() {

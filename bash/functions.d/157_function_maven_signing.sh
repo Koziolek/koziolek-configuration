@@ -807,11 +807,28 @@ function gpg_sw_revoke() {
     local cert
     cert="$(_gpg_sw_config_dir)/revoke-${keyid#0x}.asc"
 
-    log_info "gpg_sw: generuję certyfikat odwołania $keyid — podaj passphrase gdy poprosi"
-    printf 'y\n%s\n\ny\n' "$reason" | gpg --batch --yes --command-fd 0 --output "$cert" --armor --gen-revoke "$keyid" || {
-        log_error "gpg_sw: generowanie certyfikatu odwołania nie powiodło się"
-        return 1
-    }
+    # GnuPG ≥ 2.1 zapisuje certyfikat odwołania przy generowaniu klucza w
+    # $GNUPGHOME/openpgp-revocs.d/<fpr>.rev (z dwukropkiem przed nagłówkiem, żeby
+    # nie dało się go zaimportować przez pomyłkę) — użyj go: bez passphrase i
+    # bez interakcji. Własny powód (REASON != 0) wymaga świeżego --gen-revoke.
+    local fpr rev
+    fpr=$(gpg --list-keys --with-colons "$keyid" 2>/dev/null | awk -F: '/^fpr:/ { print $10; exit }')
+    rev="${GNUPGHOME:-$HOME/.gnupg}/openpgp-revocs.d/${fpr}.rev"
+    if [ "$reason" = 0 ] && [ -n "$fpr" ] && [ -f "$rev" ]; then
+        log_info "gpg_sw: używam certyfikatu odwołania wygenerowanego razem z kluczem ($rev)"
+        sed 's/^:-----BEGIN PGP PUBLIC KEY BLOCK-----/-----BEGIN PGP PUBLIC KEY BLOCK-----/' "$rev" > "$cert" || {
+            log_error "gpg_sw: nie udało się odczytać $rev"
+            return 1
+        }
+    else
+        # bez --batch: --gen-revoke odmawia pracy w trybie wsadowym; odpowiedzi
+        # na pytania idą przez --command-fd (potwierdzenie, powód, opis, ok)
+        log_info "gpg_sw: generuję certyfikat odwołania $keyid — podaj passphrase gdy poprosi"
+        printf 'y\n%s\n\ny\n' "$reason" | gpg --yes --command-fd 0 --output "$cert" --armor --gen-revoke "$keyid" || {
+            log_error "gpg_sw: generowanie certyfikatu odwołania nie powiodło się"
+            return 1
+        }
+    fi
     chmod 600 "$cert"
 
     gpg --batch --import "$cert" || {
@@ -882,9 +899,13 @@ function gpg_sw_delete_all() {
         fi
     done <<< "$fprs"
 
+    if [ "$rc" -ne 0 ]; then
+        log_warn "gpg_sw: nie wszystkie klucze usunięte — zostawiam gpg-sw.cfg i profil gpg-sw-signing"
+        return "$rc"
+    fi
     rm -f "$(_gpg_sw_cfg_path)"
     gpg_maven_disable
-    return "$rc"
+    return 0
 }
 
 ##
