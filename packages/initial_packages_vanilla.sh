@@ -142,20 +142,38 @@ safe_apt_install() {
 # sysusers faktycznie obsługuje. Kontener apx nie ma pełnego systemd, tylko
 # minimalny `systemd-standalone-sysusers` — a nic w `Depends:` pcscd nie
 # wymusza jego wersji, więc apt nie podciąga go automatycznie przy instalacji
-# security_tools. Rozjazd wersji psuje postinst ("Unknown modifier 'u!'") i
-# wywala CAŁĄ transakcję dpkg razem z resztą pakietów w tym samym wywołaniu.
-# Wymuszenie upgrade'u z wyprzedzeniem jest bezpieczne nawet gdy pakiet nie
-# istnieje (np. gdy kontener ma pełny systemd) — `|| true` to ignoruje.
+# security_tools. Rozjazd wersji psuje postinst ("Unknown modifier 'u!'").
+#
+# Zwykłe `apt-get install --only-upgrade` tu NIE wystarczy: skoro pcscd już
+# raz padł, apt przy KAŻDYM kolejnym wywołaniu najpierw samo próbuje domknąć
+# pozostawiony w stanie "half-configured" pcscd (ten sam błąd, zanim zdąży
+# podciągnąć nowszy sysusers) — stąd błąd wciąż wraca nawet po dodaniu tego
+# kroku, jeśli maszyna już wcześniej ugrzęzła na tym pakiecie. Obchodzimy to
+# przez goły `dpkg -i`: w przeciwieństwie do apt, dpkg wywołane z konkretnym
+# plikiem konfiguruje TYLKO ten pakiet, nie dotykając innych pozostawionych
+# w locie — więc nowszy sysusers ląduje skonfigurowany PRZED jakimkolwiek
+# `apt-get install`, które by wywołało tę pułapkę.
 fix_sysusers_version_skew() {
-    $SUDO apt-get install -qqy --only-upgrade systemd-standalone-sysusers >/dev/null 2>&1 || true
+    local sysusers_bin owner_pkg tmp_dir
+    sysusers_bin=$(command -v systemd-sysusers 2>/dev/null) || return 0
+    owner_pkg=$(dpkg -S "$sysusers_bin" 2>/dev/null | cut -d: -f1 | head -1)
+    [ -n "$owner_pkg" ] || return 0
+
+    tmp_dir=$(mktemp -d)
+    (
+        cd "$tmp_dir" || exit 0
+        $SUDO apt-get download "$owner_pkg" >/dev/null 2>&1 || exit 0
+        $SUDO dpkg -i "${owner_pkg}"_*.deb >/dev/null 2>&1 || true
+    )
+    rm -rf "$tmp_dir"
 }
 
 install_initial_packages() {
     $SUDO apt-get -qq update
+    fix_sysusers_version_skew
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update
-    fix_sysusers_version_skew
     safe_apt_install "${all_packages[@]}"
 }
 
@@ -277,13 +295,19 @@ install_sdkman() {
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
 
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
+    # SDKMAN (sourcowany init, ale też wewnętrzne skrypty wywoływane przez
+    # `sdk install`, np. sdkman-install.sh) nie jest pisany pod `set -u` —
+    # odwołuje się do niepodanych argumentów pozycyjnych (`$2`), co pod naszym
+    # `set -Eeuo pipefail` wywala "$2: unbound variable" przy PIERWSZEJ
+    # instalacji kandydata, nie tylko przy samym source'owaniu. `set -u` musi
+    # więc zostać wyłączone na czas WSZYSTKICH wywołań `sdk`, nie tylko source.
     set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
-    set -u
     sdk i java
     sdk i maven
     sdk i mvnd
+    set -u
 }
 
 install_apps() {
@@ -440,7 +464,14 @@ install_podman_compose() {
 
 prepare_bashrc() {
     cd "$HOME/" || return
-    cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
+    # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
+    # WSKAZUJĄCYM na ten sam plik szablonu (np. po ręcznej migracji na wzór
+    # modelu include z git_config.template), samo `>` najpierw obcina CEL
+    # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
+    # bezpowrotnie prawdziwy szablon. `rm -f` usuwa wpis `~/.bashrc` PRZED
+    # zapisem, więc `cp` nigdy nie pisze przez symlink do własnego źródła.
+    rm -f "$HOME/.bashrc"
+    cp "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" "$HOME/.bashrc"
 }
 
 final_notes() {

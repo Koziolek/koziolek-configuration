@@ -166,13 +166,18 @@ install_sdkman() {
     # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
     # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
+    # SDKMAN nie jest pisany pod `set -u` — jego wewnętrzne skrypty (np.
+    # sdkman-install.sh, wołane przy PIERWSZEJ instalacji kandydata) odwołują
+    # się do niepodanych argumentów pozycyjnych, co pod naszym
+    # `set -Eeuo pipefail` wywala "$2: unbound variable". `set -u` musi więc
+    # zostać wyłączone na czas WSZYSTKICH wywołań `sdk`, nie tylko source.
     set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
-    set -u
     sdk install java
     sdk install maven
     sdk install mvnd
+    set -u
 }
 
 install_gh() {
@@ -202,7 +207,15 @@ install_docker() {
 prepare_bashrc() {
     local template="$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template"
     if [ -f "$template" ]; then
-        cat "$template" > "$HOME/.bashrc"
+        # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
+        # wskazującym na ten sam plik szablonu, samo `>` najpierw obcina CEL
+        # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
+        # bezpowrotnie prawdziwy szablon (patrz initial_packages_vanilla.sh).
+        # `rm -f` usuwa wpis `~/.bashrc` PRZED zapisem, więc `cp` nigdy nie
+        # pisze przez symlink do własnego źródła. (Nie `cp --remove-destination`
+        # — to flaga GNU coreutils, BSD `cp` z macOS jej nie ma.)
+        rm -f "$HOME/.bashrc"
+        cp "$template" "$HOME/.bashrc"
     fi
     # On Mac, .bash_profile sources .bashrc if it exists
     if [ ! -f "$HOME/.bash_profile" ]; then
