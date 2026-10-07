@@ -81,6 +81,15 @@ pliki: `bash_history`, `bash_misc`, `bash_colors`, `bash_aliases`, `bash_exports
 `bash_start_window`, `bash_chat`. Na końcu — **`load_contexts`** (nadpisania per-system), a potem `bash_customs`
 (nadpisania per-maszyna).
 
+`bash_customs.sh` (nadpisania per-maszyna, ładowany ostatni) klonuje przez `install_lib` zewnętrzne repozytoria do
+`$WORKSPACE_TOOLS`: `shunit2` (framework testów, `-e shunit2.sh`), `BashMan` (generator man z komentarzy funkcji, `-e bashman.sh -x`), `FossFLOW` (diagramy izometryczne),
+`maven-bash-completion` (+ symlink `~/.maven-bash-completion`), `claude-bash-completion` (completion dla `claude`,
+sourcowany w `bash_completion.sh` z `$WORKSPACE_TOOLS/claude-bash-completion/claude-completion.bash`; test:
+`test/unit/test_claude_completion.sh`), `klaudyna` (**prywatny** warsztat skilli Claude Code:
+`/prepare-commit`, `/create-skill`; skille rejestrowane symlinkami `~/.claude/skills/<nazwa>` → `skills/<nazwa>/`) oraz
+`fix-comp` (**prywatne** skrypty diagnostyczne). Oba prywatne repo idą z `-p`: `install_lib -p` = bezpieczny klon, brak
+dostępu to ostrzeżenie i pominięcie, nie błąd (bez `-p` `git clone` pyta o hasło).
+
 Odpowiedzialność kluczowych plików funkcji:
 
 - `functions.d/000_*` — uruchomienie/inicjalizacja (`resize_to_full` routuje przez `detect_display_env`)
@@ -197,7 +206,11 @@ Odpowiedzialność kluczowych plików funkcji:
   `gpg_sw_delete_all` — nieodwracalne usunięcie wszystkich kluczy z keyringu (`--delete-secret-and-
   public-keys`), `gpg-sw.cfg` i profilu `gpg-sw-signing`; potwierdzenie wpisaniem `TAK`
   (`GPG_SW_ASSUME_YES=1` pomija), przed usunięciem odwołuje klucze (`GPG_SW_REVOKE=1|0`, brak =
-  pytanie); klucz, którego odwołanie się nie powiodło, nie jest usuwany. Usuwa też stuby kart;
+  pytanie); klucz, którego odwołanie się nie powiodło, nie jest usuwany (wtedy `gpg-sw.cfg` i profil
+  Mavena też zostają). `gpg_sw_revoke` bierze gotowy certyfikat z `$GNUPGHOME/openpgp-revocs.d/<fpr>.rev`
+  (gpg ≥ 2.1 tworzy go przy generowaniu klucza; zdejmowany dwukropek sprzed nagłówka `-----BEGIN`),
+  a `--gen-revoke` — **bez** `--batch`, bo ten tryb go odrzuca ("nie działa w trybie wsadowym") —
+  tylko gdy pliku brak albo `GPG_SW_REVOKE_REASON` ≠ 0. Usuwa też stuby kart;
   nie rusza SSH-sk ani JKS.
   **Wspólne** — `~/.m2/settings.xml`: `~/.m2/settings.xml` może już mieć realną konfigurację
   (mirrory/servery Nexusa, patrz `services/nexus/key_setup.sh`) — **nigdy nie
@@ -348,6 +361,19 @@ Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`
 `fix_sysusers_version_skew` ze wspólnego `packages/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
 `dpkg -i`, zanim postinst pcscd padnie na `u!`) — sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
 (htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
+
+We wszystkich czterech `initial_packages_*.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
+`sdk i …` — wewnętrzny `sdkman-install.sh` sięga po niepodane `$2` (`$2: unbound variable` pod `set -Eeuo
+pipefail`), `set -u` wraca dopiero po ostatnim `sdk`; na Vanilli dodatkowo czyszczone są zmienne proxy przed
+SDKMAN; (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` — gdy
+`~/.bashrc` jest symlinkiem na szablon, `>` obcinało cel przez symlink i kasowało szablon (nie `cp
+--remove-destination`: GNU-only, nie działa na macOS).
+
+Claude Code: `install_claude` w każdym `initial_packages_*.sh` (po `install_gh`) i `update_claude` w
+`update_packages_*.sh` (po SDKMAN). Linux: `curl -fsSL https://claude.ai/install.sh | bash` przez
+`verify_and_run_script` (brak sumy → zawsze pyta; odmowa = ostrzeżenie, `return 0`, nie przerywa `set -e`);
+macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
+Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
 difftastic instaluje się przez `cargo install --locked difftastic` (wszędzie: install + update,
 linux/vanilla/mac). Bez `--locked` cargo dobiera najnowsze zależności semver, które co jakiś czas

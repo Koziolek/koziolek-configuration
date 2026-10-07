@@ -2,8 +2,9 @@ install_lib -r "https://github.com/kward/shunit2.git" -t "shunit2" -e "shunit2.s
 install_lib -r "https://github.com/Koziolek/BashMan.git" -t "BashMan" -e "bashman.sh" -x
 install_lib -r "https://github.com/Koziolek/FossFLOW.git" -t "FossFLOW"
 install_lib -r "https://github.com/juven/maven-bash-completion.git" -t "maven-bash-completion"
-install_lib -r "https://github.com/Koziolek/klaudyna.git" -t "klaudyna"
+install_lib -r "git@github.com:Koziolek/klaudyna.git" -t "klaudyna" -p
 install_lib -r "git@github.com:Koziolek/fix-comp.git" -t "fix-comp" -p
+install_lib -r "https://github.com/cldotdev/claude-bash-completion.git" -t "claude-bash-completion"
 
 if [ ! -L $HOME/.maven-bash-completion ] && [ ! -d $HOME/.maven-bash-completion ]; then
     ln -s $WORKSPACE_TOOLS/maven-bash-completion $HOME/.maven-bash-completion

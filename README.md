@@ -68,6 +68,43 @@ Wersja Vanilla musi lecieć **wewnątrz subsystemu** (`vso shell` / `apx enter`)
 Używa `podman` + `podman-compose` zamiast Dockera, pomija `add-apt-repository universe` (baza to Debian
 sid) i po `git clone` uruchamia `git/migrate_gitconfig.sh`.
 
+Vanilla (Debian sid) to **rolling release**, stąd dwie rzeczy, których nie ma w wariantach stabilnych:
+
+- **`apt-get full-upgrade` zamiast częściowego upgrade'u.** Instalator robi pełny upgrade systemu przed
+  instalacją listy pakietów, a `update_packages_vanilla.sh` używa go zamiast
+  `install --only-upgrade <lista>`. Pakiet zbudowany na nowszej bibliotece potrafi zadeklarować w `Depends:`
+  zbyt luźną wersję, a częściowy upgrade zostawia wtedy starą bibliotekę przy nowej binarce (np. `htop` vs
+  `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
+- **`fix_sysusers_version_skew`** (`packages/sysusers_fix.sh`, wspólny dla obu skryptów, sourcowany lokalnie
+  albo pobierany z GitHuba tym samym wzorcem co `apt_packages.sh`). Kontener `apx` ma tylko
+  `systemd-standalone-sysusers`, a nowsze pakiety (np. `pcscd` ≥ 2.5.2) używają składni `sysusers.d`
+  (`u!`, systemd 257), której starsza binarka nie zna → postinst pada na `Unknown modifier 'u!'` i wywala
+  całą transakcję dpkg. Funkcja pobiera `apt-get download` pakiet z `systemd-sysusers` i instaluje go
+  gołym `dpkg -i` (apt przy każdym wywołaniu najpierw próbuje domknąć „half-configured” `pcscd`, więc
+  `--only-upgrade` nie wystarcza). Woła się ją po `apt-get update`, przed `full-upgrade`.
+
+**Wspólne dla wszystkich `initial_packages_*.sh`:**
+
+- **SDKMAN i `set -u`.** SDKMAN nie jest pisany pod `set -u` (wewnętrzny `sdkman-install.sh` sięga po niepodane
+  argumenty → `$2: unbound variable` przy pierwszej instalacji kandydata), więc `set +u` obejmuje teraz
+  `source sdkman-init.sh` **oraz** wszystkie `sdk i java|maven|mvnd`, a `set -u` wraca dopiero po nich.
+  Na Vanilli instalator dodatkowo czyści zmienne proxy (`http_proxy` itd.) przed SDKMAN.
+- **`prepare_bashrc`: `rm -f` + `cp` zamiast `cat … >`.** Gdy `~/.bashrc` jest symlinkiem na plik szablonu,
+  `>` obcinałoby cel przez symlink i `cat` czytałby już pustą treść — kasując szablon. `rm -f` usuwa wpis
+  przed zapisem, a `cp` (nie GNU-owe `--remove-destination`) działa też na BSD/macOS.
+
+**Claude Code (`claude`)** jest instalowany we wszystkich czterech `initial_packages_*.sh` (`install_claude`, zaraz po
+`install_gh`) i aktualizowany w `update_packages_*.sh` (`update_claude`, ostatni krok po SDKMAN):
+
+| System | Instalacja | Aktualizacja |
+|---|---|---|
+| Linux (Ubuntu/Debian, Vanilla, RedHat) | `curl -fsSL https://claude.ai/install.sh \| bash` (przez `verify_and_run_script`) | `claude update` |
+| macOS | `brew install --cask claude-code` | `claude update` |
+
+Instalator linuksowy nie ma sumy kontrolnej do zweryfikowania, więc `verify_and_run_script` pyta o zgodę (jak
+przy SDKMAN); odmowa nie przerywa instalacji — wypisuje ostrzeżenie z ręcznym poleceniem. Gdy `claude` jest już
+zainstalowany, instalacja jest pomijana; gdy go brak, `update_claude` tylko ostrzega.
+
 `install_rust_and_difft` / `update_difft` instalują difftastic przez **`cargo install --locked difftastic`**.
 Bez `--locked` cargo dobiera najnowsze zależności semver (`tree-sitter-language`), a te wymuszają nowszego
 `rustc` niż daje asdf → `rustc X is not supported by the following packages`.
@@ -168,11 +205,31 @@ Klonuje repozytorium narzędzia do `$WORKSPACE_TOOLS/<nazwa>` jeśli jeszcze nie
 plik.
 
 ```bash
-install_lib -r <repo_url >[-t <katalog >] [-e <plik >] [-x]
+install_lib -r <repo_url >[-t <katalog >] [-e <plik >] [-x] [-p]
 # -x  sourcuje plik wskazany przez -e
+# -p  repo prywatne: najpierw sprawdza dostęp (bez promptu o hasło/token); brak dostępu =
+#     ostrzeżenie i pominięcie, NIE błąd
 ```
 
 Kolejne wywołania przy istniejącym katalogu są pomijane (fast-path bez parsowania getopts).
+
+##### Narzędzia klonowane przez `bash_customs.sh`
+
+`bash/bash_customs.sh` (ładowany na końcu, po `load_contexts`) woła `install_lib` dla zewnętrznych repozytoriów.
+Lądują w `$WORKSPACE_TOOLS` (domyślnie `~/workspace/tools`):
+
+| Repozytorium | Katalog | Opcje | Do czego |
+|---|---|---|---|
+| `kward/shunit2` | `shunit2` | `-e shunit2.sh` | framework testowy (`test/run.sh`) |
+| `Koziolek/BashMan` | `BashMan` | `-e bashman.sh -x` | generator dokumentacji (man) z komentarzy funkcji bash (sourcowany, `bashman`) |
+| `Koziolek/FossFLOW` | `FossFLOW` | — | izometryczne diagramy (PWA, React) — samo klonowanie |
+| `juven/maven-bash-completion` | `maven-bash-completion` | — | uzupełnianie `mvn`; `bash_customs.sh` linkuje je jako `~/.maven-bash-completion` |
+| `cldotdev/claude-bash-completion` | `claude-bash-completion` | — | completion dla `claude` (slash-komendy, flagi, własne skille); `bash_completion.sh` sourcuje `claude-completion.bash` z tego katalogu |
+| `Koziolek/klaudyna` | `klaudyna` | `-p` | **prywatny** warsztat skilli Claude Code (m.in. `/prepare-commit`, `/create-skill`); skille rejestruje się symlinkami `~/.claude/skills/<nazwa>` → `skills/<nazwa>/` |
+| `Koziolek/fix-comp` | `fix-comp` | `-p` | **prywatne** skrypty diagnostyczne (`run_diagnostic`, FIDO2 — patrz „Diagnostyka systemu”) |
+
+Repo prywatne (`klaudyna`, `fix-comp`) są wołane z `-p`: na maszynie bez dostępu klon jest pomijany z
+ostrzeżeniem zamiast pytać o hasło.
 
 #### `resize_to_full`
 
@@ -467,10 +524,16 @@ z UID-a — nie trzeba robić tego ręcznie na stronie.
 (`keyserver.ubuntu.com`) w ogóle nie kasuje, a `keys.openpgp.org` po odwołaniu pokazuje go jako
 unieważniony (pełne usunięcie tylko ręcznie przez `/manage` z potwierdzeniem mailem). Dlatego
 właściwa droga to rewokacja — `gpg_sw_revoke` generuje certyfikat odwołania (passphrase w
-pinentry), importuje go lokalnie i publikuje odwołany klucz (bez `request-verify`). Certyfikat
-leży w `~/.config/git-configuration-signing/revoke-<fpr>.asc` — zachowaj go. `gpg_sw_delete_all`
+pinentry), importuje go lokalnie i publikuje odwołany klucz (bez `request-verify`). GnuPG ≥ 2.1
+zapisuje certyfikat odwołania już przy generowaniu klucza w `$GNUPGHOME/openpgp-revocs.d/<fpr>.rev`
+(z dwukropkiem przed nagłówkiem, żeby nie zaimportować go przez pomyłkę) — `gpg_sw_revoke` używa go
+w pierwszej kolejności (zdejmuje dwukropek; bez passphrase i bez interakcji), a `gpg --gen-revoke`
+(bez `--batch` — ten tryb go nie obsługuje) odpala dopiero gdy pliku brak albo `GPG_SW_REVOKE_REASON`
+jest inny niż `0` (plik `.rev` ma powód „unspecified”). Certyfikat leży w
+`~/.config/git-configuration-signing/revoke-<fpr>.asc` — zachowaj go. `gpg_sw_delete_all`
 robi to dla wszystkich kluczy przed usunięciem z keyringu; gdy odwołanie któregoś się nie uda,
-tego klucza **nie** usuwa (inaczej straciłbyś możliwość odwołania go później). Uwaga: usuwa też
+tego klucza **nie** usuwa (inaczej straciłbyś możliwość odwołania go później) i zostawia
+`gpg-sw.cfg` oraz profil Mavena. Uwaga: usuwa też
 stuby kluczy z karty (sam klucz na karcie zostaje; odtworzysz je `gpg_git_setup` /
 `gpg --card-status`). Nie rusza kluczy SSH-sk ani keystore'u JKS.
 
@@ -613,5 +676,5 @@ Projekt zawiera skrypty diagnostyczne, raporty i narzędzia do analizy stanu sta
 Testy jednostkowe/integracyjne (`shunit2`) w `test/unit/` i `test/integration/`, e2e w `test/e2e/`.
 Warianty per-OS w podkatalogach `linux/` i `darwin/` (uruchamiane zależnie od `uname -s`). Konteksty:
 mechanizm — `test/unit/test_context_detect.sh`; warstwy — `test/unit/linux/test_{debian,vanilla,wsl}_context.sh`,
-`test_{vanilla,linux}_aliases.sh`, `test_resize_to_full.sh`; macOS — `test/unit/darwin/test_darwin_{screen,process_guards,aliases}.sh`.
+`test_{vanilla,linux}_aliases.sh`, `test_resize_to_full.sh`; completion `claude` — `test/unit/test_claude_completion.sh`; macOS — `test/unit/darwin/test_darwin_{screen,process_guards,aliases}.sh`.
 Wyniki w `test/results/`. CI: `.github/workflows/test.yml`.

@@ -62,3 +62,7 @@ fi
 if [ -n "$MVND_HOME" ] && [ -f "$MVND_HOME/bin/mvnd-bash-completion.bash" ]; then
     . "$MVND_HOME/bin/mvnd-bash-completion.bash"
 fi
+
+if [ -f "$WORKSPACE_TOOLS/claude-bash-completion/claude-completion.bash" ]; then
+    . "$WORKSPACE_TOOLS/claude-bash-completion/claude-completion.bash"
+fi

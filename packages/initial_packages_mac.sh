@@ -180,6 +180,15 @@ install_sdkman() {
     set -u
 }
 
+install_claude() {
+    if command -v claude &>/dev/null || brew list --cask claude-code &>/dev/null; then
+        echo "✓ Claude Code już zainstalowany"
+        return 0
+    fi
+    echo "Instalacja Claude Code..."
+    brew install --cask claude-code
+}
+
 install_gh() {
     if command -v gh &>/dev/null; then
         echo "✓ gh już zainstalowany: $(gh --version | head -1)"
@@ -241,6 +250,7 @@ install_asdf
 install_rust_and_difft
 install_sdkman
 install_gh
+install_claude
 install_docker
 prepare_bashrc
 

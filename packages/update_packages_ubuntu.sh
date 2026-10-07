@@ -293,6 +293,21 @@ update_kubectl() {
     rm -rf "$tmp_dir"
 }
 
+update_claude() {
+    echo ""
+    echo "=== Claude Code ==="
+    if ! command -v claude &>/dev/null; then
+        warn "Claude Code nie zainstalowany — uruchom initial_packages_ubuntu.sh aby zainstalować"
+        return 0
+    fi
+    info "Aktualizacja Claude Code..."
+    if claude update; then
+        ok "Claude Code zaktualizowany"
+    else
+        warn "claude update zakończony błędem — sprawdź ręcznie: claude update"
+    fi
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -407,6 +422,7 @@ update_kubectl
 update_asdf
 update_difft
 update_sdkman
+update_claude
 
 echo ""
 echo "======================================="

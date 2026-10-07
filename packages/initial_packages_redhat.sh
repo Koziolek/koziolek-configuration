@@ -229,6 +229,20 @@ install_sdkman() {
     set -u
 }
 
+install_claude() {
+    if command -v claude &>/dev/null || [ -x "$HOME/.local/bin/claude" ]; then
+        echo "✓ Claude Code już zainstalowany"
+        return 0
+    fi
+    echo "Instalacja Claude Code..."
+    # claude.ai/install.sh nie jest plikiem w repo GitHuba — brak oficjalnej sumy
+    # kontrolnej, więc verify_and_run_script zawsze zapyta o zgodę (jak przy SDKMAN).
+    verify_and_run_script "instalator Claude Code" "https://claude.ai/install.sh" || {
+        echo "⚠️  Claude Code pominięty — zainstaluj ręcznie: curl -fsSL https://claude.ai/install.sh | bash"
+        return 0
+    }
+}
+
 install_apps() {
     echo "⚠️ Spotify/1Password/Steam są dystrybuowane jako .deb / repo apt —"
     echo "   brak sensownego instalatora yum, pomijam. Zainstaluj ręcznie:"
@@ -411,6 +425,7 @@ install_rust_and_difft
 install_sdkman
 install_apps
 install_gh
+install_claude
 install_kubectl
 install_docker
 prepare_bashrc
