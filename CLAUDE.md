@@ -375,6 +375,14 @@ Claude Code: `install_claude` w każdym `initial_packages_*.sh` (po `install_gh`
 macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
 Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
+Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
+`initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
+`install_claude`) linkuje każdy `<klaudyna>/skills/<nazwa>/` do `~/.claude/skills/<nazwa>`, dzięki czemu
+skille są wspólne między maszynami. Repo `klaudyna` (`$KLAUDYNA_DIR`, domyślnie
+`~/workspace/tools/klaudyna` — to samo miejsce co `install_lib` w `bash_customs.sh`) klonowane bez promptu,
+gdy brak; brak dostępu (repo prywatne) = ostrzeżenie i `return 0`. Idempotentne; istniejący prawdziwy
+katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/unit/test_link_claude_skills.sh`.
+
 difftastic instaluje się przez `cargo install --locked difftastic` (wszędzie: install + update,
 linux/vanilla/mac). Bez `--locked` cargo dobiera najnowsze zależności semver, które co jakiś czas
 podbijają wymóg `rustc` ponad to, co daje asdf → `rustc X is not supported by the following packages`.

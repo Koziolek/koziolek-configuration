@@ -190,6 +190,22 @@ else
     unset _pw_tmp
 fi
 
+# link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
+# (packages/link_claude_skills.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/link_claude_skills.sh" ]; then
+    # shellcheck source=packages/link_claude_skills.sh
+    source "$SCRIPT_DIR/link_claude_skills.sh"
+else
+    _lcs_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/link_claude_skills.sh" \
+        -o "$_lcs_tmp"
+    # shellcheck disable=SC1090
+    source "$_lcs_tmp"
+    rm -f "$_lcs_tmp"
+    unset _lcs_tmp
+fi
+
 # Model include ~/.gitconfig (stub -> ~/.gitconfig.generated) nie migruje się sam.
 # Maszyna zainicjowana pod starym modelem ma martwy symlink ~/.gitconfig, który
 # psuje `git config` przy każdym starcie powłoki. migrate_gitconfig.sh jest
@@ -511,6 +527,7 @@ install_sdkman
 install_apps
 install_gh
 install_claude
+link_claude_skills
 install_kubectl
 install_podman_compose
 prepare_bashrc

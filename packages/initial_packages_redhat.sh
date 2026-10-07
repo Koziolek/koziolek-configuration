@@ -131,6 +131,22 @@ else
     unset _pw_tmp
 fi
 
+# link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
+# (packages/link_claude_skills.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/link_claude_skills.sh" ]; then
+    # shellcheck source=packages/link_claude_skills.sh
+    source "$SCRIPT_DIR/link_claude_skills.sh"
+else
+    _lcs_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/link_claude_skills.sh" \
+        -o "$_lcs_tmp"
+    # shellcheck disable=SC1090
+    source "$_lcs_tmp"
+    rm -f "$_lcs_tmp"
+    unset _lcs_tmp
+fi
+
 install_asdf() {
     echo "Pobieranie informacji o najnowszej wersji asdf..."
 
@@ -426,6 +442,7 @@ install_sdkman
 install_apps
 install_gh
 install_claude
+link_claude_skills
 install_kubectl
 install_docker
 prepare_bashrc
