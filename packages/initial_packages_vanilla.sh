@@ -137,8 +137,37 @@ safe_apt_install() {
   fi
 }
 
+# fix_sysusers_version_skew — wspólna z update_packages_vanilla.sh
+# (packages/sysusers_fix.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/sysusers_fix.sh" ]; then
+    # shellcheck source=packages/sysusers_fix.sh
+    source "$SCRIPT_DIR/sysusers_fix.sh"
+else
+    _sysusers_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/sysusers_fix.sh" \
+        -o "$_sysusers_tmp"
+    # shellcheck disable=SC1090
+    source "$_sysusers_tmp"
+    rm -f "$_sysusers_tmp"
+    unset _sysusers_tmp
+fi
+
+# Debian sid to rolling release: pakiet zbudowany na nowszej bibliotece potrafi
+# zadeklarować w `Depends:` zbyt luźną wersję, więc instalacja/upgrade samego
+# pakietu zostawia starą bibliotekę (np. htop vs libunwind8 → "undefined symbol:
+# _Ux86_64_get_elf_filename"). Na sid jedyny spójny stan to pełny upgrade całego
+# systemu — dlatego robimy go PRZED instalacją listy pakietów. Po
+# fix_sysusers_version_skew, żeby pcscd nie ugrzązł na postinst.
+full_upgrade_system() {
+    echo "Pełna aktualizacja systemu (apt-get full-upgrade, Debian sid)..."
+    $SUDO apt-get -qqy full-upgrade
+}
+
 install_initial_packages() {
     $SUDO apt-get -qq update
+    fix_sysusers_version_skew
+    full_upgrade_system
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update
@@ -263,13 +292,19 @@ install_sdkman() {
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
 
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
+    # SDKMAN (sourcowany init, ale też wewnętrzne skrypty wywoływane przez
+    # `sdk install`, np. sdkman-install.sh) nie jest pisany pod `set -u` —
+    # odwołuje się do niepodanych argumentów pozycyjnych (`$2`), co pod naszym
+    # `set -Eeuo pipefail` wywala "$2: unbound variable" przy PIERWSZEJ
+    # instalacji kandydata, nie tylko przy samym source'owaniu. `set -u` musi
+    # więc zostać wyłączone na czas WSZYSTKICH wywołań `sdk`, nie tylko source.
     set +u
     # shellcheck source=/dev/null
     source "$HOME/.sdkman/bin/sdkman-init.sh"
-    set -u
     sdk i java
     sdk i maven
     sdk i mvnd
+    set -u
 }
 
 install_apps() {
@@ -426,7 +461,14 @@ install_podman_compose() {
 
 prepare_bashrc() {
     cd "$HOME/" || return
-    cat "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" > "$HOME/.bashrc"
+    # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
+    # WSKAZUJĄCYM na ten sam plik szablonu (np. po ręcznej migracji na wzór
+    # modelu include z git_config.template), samo `>` najpierw obcina CEL
+    # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
+    # bezpowrotnie prawdziwy szablon. `rm -f` usuwa wpis `~/.bashrc` PRZED
+    # zapisem, więc `cp` nigdy nie pisze przez symlink do własnego źródła.
+    rm -f "$HOME/.bashrc"
+    cp "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" "$HOME/.bashrc"
 }
 
 final_notes() {
