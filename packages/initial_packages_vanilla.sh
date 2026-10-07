@@ -137,11 +137,25 @@ safe_apt_install() {
   fi
 }
 
+# Pakiety bywają spakowane z sysusers.d, który używa nowszej składni (np.
+# modyfikator `u!`, dodany w systemd 257 — tak ma pcscd ≥2.5.2) niż binarka
+# sysusers faktycznie obsługuje. Kontener apx nie ma pełnego systemd, tylko
+# minimalny `systemd-standalone-sysusers` — a nic w `Depends:` pcscd nie
+# wymusza jego wersji, więc apt nie podciąga go automatycznie przy instalacji
+# security_tools. Rozjazd wersji psuje postinst ("Unknown modifier 'u!'") i
+# wywala CAŁĄ transakcję dpkg razem z resztą pakietów w tym samym wywołaniu.
+# Wymuszenie upgrade'u z wyprzedzeniem jest bezpieczne nawet gdy pakiet nie
+# istnieje (np. gdy kontener ma pełny systemd) — `|| true` to ignoruje.
+fix_sysusers_version_skew() {
+    $SUDO apt-get install -qqy --only-upgrade systemd-standalone-sysusers >/dev/null 2>&1 || true
+}
+
 install_initial_packages() {
     $SUDO apt-get -qq update
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update
+    fix_sysusers_version_skew
     safe_apt_install "${all_packages[@]}"
 }
 
