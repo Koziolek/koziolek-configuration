@@ -137,40 +137,37 @@ safe_apt_install() {
   fi
 }
 
-# Pakiety bywają spakowane z sysusers.d, który używa nowszej składni (np.
-# modyfikator `u!`, dodany w systemd 257 — tak ma pcscd ≥2.5.2) niż binarka
-# sysusers faktycznie obsługuje. Kontener apx nie ma pełnego systemd, tylko
-# minimalny `systemd-standalone-sysusers` — a nic w `Depends:` pcscd nie
-# wymusza jego wersji, więc apt nie podciąga go automatycznie przy instalacji
-# security_tools. Rozjazd wersji psuje postinst ("Unknown modifier 'u!'").
-#
-# Zwykłe `apt-get install --only-upgrade` tu NIE wystarczy: skoro pcscd już
-# raz padł, apt przy KAŻDYM kolejnym wywołaniu najpierw samo próbuje domknąć
-# pozostawiony w stanie "half-configured" pcscd (ten sam błąd, zanim zdąży
-# podciągnąć nowszy sysusers) — stąd błąd wciąż wraca nawet po dodaniu tego
-# kroku, jeśli maszyna już wcześniej ugrzęzła na tym pakiecie. Obchodzimy to
-# przez goły `dpkg -i`: w przeciwieństwie do apt, dpkg wywołane z konkretnym
-# plikiem konfiguruje TYLKO ten pakiet, nie dotykając innych pozostawionych
-# w locie — więc nowszy sysusers ląduje skonfigurowany PRZED jakimkolwiek
-# `apt-get install`, które by wywołało tę pułapkę.
-fix_sysusers_version_skew() {
-    local sysusers_bin owner_pkg tmp_dir
-    sysusers_bin=$(command -v systemd-sysusers 2>/dev/null) || return 0
-    owner_pkg=$(dpkg -S "$sysusers_bin" 2>/dev/null | cut -d: -f1 | head -1)
-    [ -n "$owner_pkg" ] || return 0
+# fix_sysusers_version_skew — wspólna z update_packages_vanilla.sh
+# (packages/sysusers_fix.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/sysusers_fix.sh" ]; then
+    # shellcheck source=packages/sysusers_fix.sh
+    source "$SCRIPT_DIR/sysusers_fix.sh"
+else
+    _sysusers_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/sysusers_fix.sh" \
+        -o "$_sysusers_tmp"
+    # shellcheck disable=SC1090
+    source "$_sysusers_tmp"
+    rm -f "$_sysusers_tmp"
+    unset _sysusers_tmp
+fi
 
-    tmp_dir=$(mktemp -d)
-    (
-        cd "$tmp_dir" || exit 0
-        $SUDO apt-get download "$owner_pkg" >/dev/null 2>&1 || exit 0
-        $SUDO dpkg -i "${owner_pkg}"_*.deb >/dev/null 2>&1 || true
-    )
-    rm -rf "$tmp_dir"
+# Debian sid to rolling release: pakiet zbudowany na nowszej bibliotece potrafi
+# zadeklarować w `Depends:` zbyt luźną wersję, więc instalacja/upgrade samego
+# pakietu zostawia starą bibliotekę (np. htop vs libunwind8 → "undefined symbol:
+# _Ux86_64_get_elf_filename"). Na sid jedyny spójny stan to pełny upgrade całego
+# systemu — dlatego robimy go PRZED instalacją listy pakietów. Po
+# fix_sysusers_version_skew, żeby pcscd nie ugrzązł na postinst.
+full_upgrade_system() {
+    echo "Pełna aktualizacja systemu (apt-get full-upgrade, Debian sid)..."
+    $SUDO apt-get -qqy full-upgrade
 }
 
 install_initial_packages() {
     $SUDO apt-get -qq update
     fix_sysusers_version_skew
+    full_upgrade_system
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update

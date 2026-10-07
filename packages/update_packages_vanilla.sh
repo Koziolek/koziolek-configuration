@@ -10,6 +10,8 @@
 #   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
 #   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
 #     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany;
+#   • pakiety apt: `apt-get full-upgrade` zamiast `install --only-upgrade <lista>`
+#     (sid jest rolling — częściowy upgrade zostawia rozjechane biblioteki);
 #   • reszta (asdf, difft, sdkman, gh, kubectl, klucze GPG) — jak w wersji Ubuntu,
 #     bo kontener jest debianowy.
 
@@ -74,6 +76,10 @@ declare -a REPOS_DEAD=()
 # refresh_apt_gpg_keys — wspólna z update_packages_ubuntu.sh (packages/gpg_fix.sh).
 # shellcheck source=packages/gpg_fix.sh
 source "$SCRIPT_DIR/gpg_fix.sh"
+
+# fix_sysusers_version_skew — wspólna z initial_packages_vanilla.sh (packages/sysusers_fix.sh).
+# shellcheck source=packages/sysusers_fix.sh
+source "$SCRIPT_DIR/sysusers_fix.sh"
 
 # Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
 # są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest
@@ -236,10 +242,20 @@ update_apt_packages() {
     echo ""
     echo "=== Aktualizacja pakietów apt ==="
 
-    if [ "${#APT_INSTALLED[@]}" -gt 0 ]; then
-        info "Aktualizacja zainstalowanych..."
-        $SUDO apt-get install -qqy --only-upgrade "${APT_INSTALLED[@]}" 2>/dev/null || true
-        ok "Zainstalowane zaktualizowane"
+    # Debian sid (rolling): `install --only-upgrade <lista>` podnosi tylko wymienione
+    # pakiety, a zależności — wyłącznie gdy wymusza to `Depends:`. Przy zbyt luźnej
+    # deklaracji zostaje stara biblioteka (np. htop vs libunwind8 → "undefined
+    # symbol: _Ux86_64_get_elf_filename"). Pełny upgrade całego systemu daje
+    # spójny stan i obejmuje też wszystko z APT_INSTALLED.
+    # Najpierw nowszy sysusers — inaczej full-upgrade może ugrząźć na postinst
+    # pcscd ("Unknown modifier 'u!'"), patrz packages/sysusers_fix.sh.
+    # (apt-get update zrobił już refresh_apt_gpg_keys.)
+    fix_sysusers_version_skew
+    info "Pełna aktualizacja systemu (apt-get full-upgrade)..."
+    if $SUDO apt-get -qqy full-upgrade; then
+        ok "System zaktualizowany"
+    else
+        warn "apt-get full-upgrade zakończony błędem — sprawdź: sudo apt-get full-upgrade"
     fi
 
     if [ "${#APT_MISSING[@]}" -gt 0 ]; then

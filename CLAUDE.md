@@ -343,7 +343,11 @@ Wszystkie ścieżki niżej są względem `packages/`.
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
 `apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
 `add-apt-repository universe` (baza = Debian sid), po `git clone` woła `git/migrate_gitconfig.sh`,
-`update_packages_vanilla.sh` sprząta martwe źródła apt (`docker.list`).
+`update_packages_vanilla.sh` sprząta martwe źródła apt (`docker.list`). Oba robią `apt-get full-upgrade`
+(install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
+`fix_sysusers_version_skew` ze wspólnego `packages/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
+`dpkg -i`, zanim postinst pcscd padnie na `u!`) — sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
+(htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
 
 difftastic instaluje się przez `cargo install --locked difftastic` (wszędzie: install + update,
 linux/vanilla/mac). Bez `--locked` cargo dobiera najnowsze zależności semver, które co jakiś czas
