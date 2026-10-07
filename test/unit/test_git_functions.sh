@@ -32,6 +32,9 @@ _CAPTURED_CHECKOUT_ORPHAN=0
 _MOCK_UNTRACKED=''
 _MOCK_TAGS=''
 _MOCK_RENAME_FAIL=0
+_MOCK_HAS_CHANGES=1
+_MOCK_UNPUSHED=0
+_MOCK_NO_UPSTREAM=0
 
 log_info()  { :; }
 log_error() { :; }
@@ -87,10 +90,19 @@ git() {
             [ "$_MOCK_BACKUP_EXISTS" = 1 ] && return 0 || return 1
             ;;
         rev-list)
-            [[ "$*" == *"--count"* ]] && echo "$_MOCK_OLD_COMMITS"
+            if [[ "$*" == *"@{u}"* ]]; then
+                [ "$_MOCK_NO_UPSTREAM" = 1 ] && return 1
+                echo "$_MOCK_UNPUSHED"
+            elif [[ "$*" == *"--count"* ]]; then
+                echo "$_MOCK_OLD_COMMITS"
+            fi
             ;;
         status)
-            [ -n "$_MOCK_UNTRACKED" ] && printf '%s\n' "$_MOCK_UNTRACKED"
+            if [[ "$*" == "status --porcelain" ]]; then
+                [ "$_MOCK_HAS_CHANGES" = 1 ] && echo " M plik"
+            else
+                [ -n "$_MOCK_UNTRACKED" ] && printf '%s\n' "$_MOCK_UNTRACKED"
+            fi
             ;;
         tag)
             [ -n "$_MOCK_TAGS" ] && printf '%s\n' "$_MOCK_TAGS"
@@ -138,6 +150,9 @@ setUp() {
     _MOCK_UNTRACKED=''
     _MOCK_TAGS=''
     _MOCK_RENAME_FAIL=0
+    _MOCK_HAS_CHANGES=1
+    _MOCK_UNPUSHED=0
+    _MOCK_NO_UPSTREAM=0
 }
 
 tearDown() {
@@ -279,6 +294,77 @@ testBleehClearsFileAfterCommit() {
     _MOCK_COMMIT_COUNT=0
     git_bleeh "cokolwiek"
     assertEquals 'plik pusty' "" "$(cat commit-message.txt)"
+}
+
+# ---------------------------------------------------------------------------
+# pre-check "brak zmian" (git_vomit / git_bleeh)
+# ---------------------------------------------------------------------------
+
+testVomitNoChangesNoUnpushedDoesNothing() {
+    _MOCK_BRANCH="master"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0; _MOCK_UNPUSHED=0
+    git_vomit
+    assertEquals 'zwraca 0' 0 $?
+    assertEquals 'brak commita' 0 "$_CAPTURED_COMMIT_DONE"
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testVomitNoChangesNoUnpushedIgnoresEmptyFile() {
+    _MOCK_BRANCH="master"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0
+    : > commit-message.txt
+    git_vomit
+    assertEquals 'brak bledu o pustym pliku — kod 0' 0 $?
+}
+
+testVomitNoChangesWithParamsDoesNotTouchFile() {
+    _MOCK_BRANCH="master"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0
+    git_vomit "cokolwiek"
+    assertFalse 'plik nie powstaje' "[ -e commit-message.txt ]"
+}
+
+testVomitNoChangesButUnpushedPushes() {
+    _MOCK_BRANCH="feature/APB-1-opis"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0; _MOCK_UNPUSHED=2
+    git_vomit
+    assertEquals 'brak commita' 0 "$_CAPTURED_COMMIT_DONE"
+    assertEquals 'jeden push' 1 "$_PUSH_CALLS"
+    assertEquals '-u origin <branch>' "-u origin feature/APB-1-opis" "$_CAPTURED_PUSH_ARGS"
+}
+
+testVomitNoChangesNoUpstreamPushes() {
+    _MOCK_BRANCH="feature/APB-1-opis"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0; _MOCK_NO_UPSTREAM=1
+    git_vomit
+    assertEquals 'push nowej galezi' 1 "$_PUSH_CALLS"
+}
+
+testVomitWithChangesProceedsAsBefore() {
+    _MOCK_BRANCH="master"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=1
+    git_vomit "zmiana"
+    assertEquals 'zmiana' "$_CAPTURED_COMMIT_MSG"
+    assertEquals 'jeden push' 1 "$_PUSH_CALLS"
+}
+
+testBleehNoChangesNoUnpushedDoesNothing() {
+    _MOCK_BRANCH="master"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0; _MOCK_UNPUSHED=0; _MOCK_COMMIT_COUNT=3
+    git_bleeh
+    assertEquals 'zwraca 0' 0 $?
+    assertEquals 'brak commita' 0 "$_CAPTURED_COMMIT_DONE"
+    assertEquals 'brak resetu' 0 "$_MOCK_RESET_DONE"
+    assertEquals 'brak pusha' 0 "$_PUSH_CALLS"
+}
+
+testBleehNoChangesButUnpushedPushesWithoutForce() {
+    _MOCK_BRANCH="feature/APB-1-opis"; _MOCK_PREFIX=""
+    _MOCK_HAS_CHANGES=0; _MOCK_UNPUSHED=1; _MOCK_COMMIT_COUNT=3
+    git_bleeh
+    assertEquals 'brak resetu' 0 "$_MOCK_RESET_DONE"
+    assertEquals 'jeden push' 1 "$_PUSH_CALLS"
+    assertEquals 'zwykly push, bez force' "-u origin feature/APB-1-opis" "$_CAPTURED_PUSH_ARGS"
 }
 
 # ---------------------------------------------------------------------------

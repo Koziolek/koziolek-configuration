@@ -303,6 +303,14 @@ treścią pliku. Potwierdzenie `[T/n]` (ścieżka bez parametrów) jest domyśln
 `git/main.sh` ustawia `GIT_ASSUME_YES=1`; ustaw `GIT_ASSUME_YES=0` (np. w `~/.senv`) aby wymusić
 podgląd, lub użyj `git vomit -y` do jednorazowej auto-akceptacji.
 
+**Pre-check „brak zmian”:** obie funkcje zaczynają od `git status --porcelain` (staged + unstaged +
+untracked, bo i tak idzie `git add .`). Brak zmian → `INFO: Brak zmian` i **zamiast błędu o pustym
+`commit-message.txt`** (ani dopisywania do pliku) sprawdzane są niewypchnięte commity
+(`git rev-list --count @{u}..HEAD`; brak upstreamu = gałąź jeszcze niepushowana = też push): są →
+zwykły `git push -u origin <gałąź>` (także w `git bleeh` — bez `--force-with-lease`, bo historii nie
+przepisywano), nie ma → koniec z kodem 0. Są zmiany → działanie jak dotąd. Helpery:
+`__git_has_changes_or_push`, `__git_has_unpushed` (niewyeksportowane).
+
 ### Funkcja `git_context`
 
 Interaktywne narzędzie do przełączania `user.name`/`user.email` git per-repozytorium, sterowane plikiem

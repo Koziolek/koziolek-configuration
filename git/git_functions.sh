@@ -266,8 +266,30 @@ function __git_prepare_commit_file() {
   __GIT_COMMIT_FILE="$file"
 }
 
+# Pre-check dla git_vomit/git_bleeh: czy jest cokolwiek do zacommitowania (staged, unstaged, untracked).
+# Zwraca 0 gdy są zmiany. Gdy ich nie ma: loguje "Brak zmian", pushuje tylko jeśli są niewypchnięte
+# commity i zwraca 1 — wołający kończy wtedy normalnie (kod wyjścia pusha, 0 gdy nic do pushowania).
+function __git_has_changes_or_push() {
+  [ -n "$(git status --porcelain)" ] && return 0
+  log_info "Brak zmian"
+  __GIT_PRECHECK_RC=0
+  if __git_has_unpushed; then
+    __git_push_branch
+    __GIT_PRECHECK_RC=$?
+  fi
+  return 1
+}
+
+# Czy HEAD ma commity niewypchnięte do upstreamu. Brak upstreamu (gałąź jeszcze niepushowana) = tak.
+function __git_has_unpushed() {
+  local n
+  n=$(git rev-list --count '@{u}..HEAD' 2>/dev/null) || return 0
+  [ "${n:-0}" -gt 0 ]
+}
+
 # Stage all, commit with message from commit-message.txt, push to remote
 function git_vomit() {
+  __git_has_changes_or_push || return "$__GIT_PRECHECK_RC"
   __git_prepare_commit_file "$@" || return 1
   git add .
   git ci -a -F "$__GIT_COMMIT_FILE"
@@ -277,6 +299,8 @@ function git_vomit() {
 
 # Stage all, squash all branch commits into one (message from commit-message.txt), force-push
 function git_bleeh() {
+  __git_has_changes_or_push || return "$__GIT_PRECHECK_RC"
+
   local base_branch
   base_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
   base_branch="${base_branch:-master}"
