@@ -33,6 +33,11 @@ MSG_INFO[screen.fake_poweroff_supported_hint]="fake_poweroff: obsługiwane: GNOM
 MSG_INFO[screen.fake_poweroff_off]="fake_poweroff: monitor wygaszony (%s)"
 MSG_INFO[screen.fake_poweroff_usermod_hint]="fake_poweroff: sudo usermod -aG input \$USER, potem wyloguj się i zaloguj ponownie"
 MSG_INFO[screen.fake_poweroff_on]="fake_poweroff: monitor przywrócony (%s)"
+MSG_INFO[image.processing_file_scale]="Przetwarzanie pliku: %s (skala: %s%%)"
+MSG_INFO[image.processing_all_png]="Przetwarzanie wszystkich plików PNG w bieżącym katalogu (skala: %s%%)"
+MSG_INFO[image.processing_all_jpg]="Przetwarzanie wszystkich plików JPG/JPEG w bieżącym katalogu (skala: %s%%)"
+MSG_INFO[image.processing_file]="Przetwarzanie pliku: %s"
+MSG_INFO[image.done]="Przetwarzanie zakończone."
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -70,6 +75,9 @@ MSG_ERROR[docker.compose_file_missing]="❌ Plik %s nie istnieje!"
 MSG_ERROR[docker.services_problems]="❌ Problemy z usługami:"
 MSG_ERROR[docker.services_start_failed]="❌ Nie udało się uruchomić usług"
 MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: nieobsługiwane środowisko graficzne (detect_display_env='%s')"
+MSG_ERROR[image.scale_invalid]="Skala musi być liczbą całkowitą z zakresu 1-100."
+MSG_ERROR[image.not_png]="Plik '%s' nie istnieje lub nie jest plikiem PNG."
+MSG_ERROR[image.not_jpg]="Plik '%s' nie istnieje lub nie jest plikiem JPG/JPEG."
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"

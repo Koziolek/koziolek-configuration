@@ -30,6 +30,11 @@ MSG_INFO[screen.fake_poweroff_supported_hint]="fake_poweroff: supported: GNOME (
 MSG_INFO[screen.fake_poweroff_off]="fake_poweroff: monitor off (%s)"
 MSG_INFO[screen.fake_poweroff_usermod_hint]="fake_poweroff: sudo usermod -aG input \$USER, then log out and back in"
 MSG_INFO[screen.fake_poweroff_on]="fake_poweroff: monitor restored (%s)"
+MSG_INFO[image.processing_file_scale]="Processing file: %s (scale: %s%%)"
+MSG_INFO[image.processing_all_png]="Processing all PNG files in the current directory (scale: %s%%)"
+MSG_INFO[image.processing_all_jpg]="Processing all JPG/JPEG files in the current directory (scale: %s%%)"
+MSG_INFO[image.processing_file]="Processing file: %s"
+MSG_INFO[image.done]="Processing finished."
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -67,6 +72,9 @@ MSG_ERROR[docker.compose_file_missing]="❌ File %s does not exist!"
 MSG_ERROR[docker.services_problems]="❌ Problems with services:"
 MSG_ERROR[docker.services_start_failed]="❌ Failed to start services"
 MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: unsupported display environment (detect_display_env='%s')"
+MSG_ERROR[image.scale_invalid]="Scale must be an integer between 1 and 100."
+MSG_ERROR[image.not_png]="File '%s' does not exist or is not a PNG file."
+MSG_ERROR[image.not_jpg]="File '%s' does not exist or is not a JPG/JPEG file."
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
