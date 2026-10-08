@@ -52,6 +52,10 @@ MSG_INFO[gab.running]="Uruchamiam: %s"
 MSG_INFO[gab.build_ok]="Budowanie (%s) zakończone pomyślnie ✓"
 MSG_INFO[gab.detected_dry_run]="Wykryto: %s (dry-run, nie buduję)"
 MSG_INFO[gab.available_systems]="Dostępne systemy:"
+MSG_INFO[bash.asdf_up_to_date]="asdf jest aktualne (%s)"
+MSG_INFO[bash.asdf_updating]="Aktualizacja asdf: %s → %s"
+MSG_INFO[bash.asdf_updated]="asdf zaktualizowany do %s"
+MSG_INFO[bash.reload_ok]="Konfiguracja przeładowana z %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -83,6 +87,10 @@ MSG_WARN[apt_trust.bind_manually]="ale NIE dowiązany do repo. Dowiąż ręcznie
 MSG_WARN[apt_trust.unbound_warning]="%s klucz(e) nie dowiązano automatycznie do repo — apt nadal będzie zgłaszał NO_PUBKEY."
 MSG_WARN[gab.plugin_incomplete]="Plugin %s jest niekompletny, pomijam"
 MSG_WARN[gab.skip_pull]="Pomijam git pull (--skip-pull)"
+MSG_WARN[bash.no_source_dir]="Nie podano katalogu ani ustawiono \$BASH_CONFIGURATION_DIR. Nie można niezawodnie załadować plików."
+MSG_WARN[bash.source_file_missing]="Plik '%s' nie istnieje w '%s'"
+MSG_WARN[bash.var_not_set]="Zmienna %s nie jest ustawiona"
+MSG_WARN[bash.dir_missing]="Katalog %s nie istnieje"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -109,6 +117,12 @@ MSG_ERROR[gab.pull_failed]="Git pull nie powiódł się"
 MSG_ERROR[gab.build_failed]="Budowanie (%s) nie powiodło się ✗"
 MSG_ERROR[gab.unknown_option]="Nieznana opcja: %s"
 MSG_ERROR[gab.not_recognized]="Nie rozpoznano systemu budowania w %s"
+MSG_ERROR[bash.asdf_not_installed]="asdf nie jest zainstalowany w %s"
+MSG_ERROR[bash.asdf_latest_failed]="Nie udało się pobrać informacji o najnowszej wersji asdf"
+MSG_ERROR[bash.asdf_download_failed]="Nie udało się pobrać asdf %s"
+MSG_ERROR[bash.reload_no_main_dir]="MAIN_CONFIGURATION_DIR nie jest ustawione — nie można przeładować"
+MSG_ERROR[bash.reload_main_missing]="Nie znaleziono main.sh: %s"
+MSG_ERROR[bash.reload_failed]="Błąd podczas ładowania %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -120,3 +134,4 @@ módl się do Imperatora, a następnie:
 MSG_MAN[process.who_use_port_usage]="Użycie: who_use_port [--sudo] PORT"
 MSG_MAN[screen.fake_poweroff_usage]="Użycie: fake_poweroff {off|on}"
 MSG_MAN[apt_trust.fingerprint]="Fingerprint klucza %s (repo: %s):"
+MSG_MAN[bash.source_if_exists_usage]="Użycie: source_if_exists PLIK [KATALOG]"

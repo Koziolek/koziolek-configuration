@@ -49,6 +49,10 @@ MSG_INFO[gab.running]="Running: %s"
 MSG_INFO[gab.build_ok]="Build (%s) finished successfully ✓"
 MSG_INFO[gab.detected_dry_run]="Detected: %s (dry-run, not building)"
 MSG_INFO[gab.available_systems]="Available systems:"
+MSG_INFO[bash.asdf_up_to_date]="asdf is up to date (%s)"
+MSG_INFO[bash.asdf_updating]="Updating asdf: %s → %s"
+MSG_INFO[bash.asdf_updated]="asdf updated to %s"
+MSG_INFO[bash.reload_ok]="Configuration reloaded from %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -80,6 +84,10 @@ MSG_WARN[apt_trust.bind_manually]="but NOT bound to the repo. Bind manually: add
 MSG_WARN[apt_trust.unbound_warning]="%s key(s) not bound to the repo automatically — apt will keep reporting NO_PUBKEY."
 MSG_WARN[gab.plugin_incomplete]="Plugin %s is incomplete, skipping"
 MSG_WARN[gab.skip_pull]="Skipping git pull (--skip-pull)"
+MSG_WARN[bash.no_source_dir]="Neither directory parameter nor \$BASH_CONFIGURATION_DIR is set. Cannot source files reliably."
+MSG_WARN[bash.source_file_missing]="File '%s' does not exist in '%s'"
+MSG_WARN[bash.var_not_set]="Var %s is not set"
+MSG_WARN[bash.dir_missing]="Directory %s doesn't exist"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -106,6 +114,12 @@ MSG_ERROR[gab.pull_failed]="Git pull failed"
 MSG_ERROR[gab.build_failed]="Build (%s) failed ✗"
 MSG_ERROR[gab.unknown_option]="Unknown option: %s"
 MSG_ERROR[gab.not_recognized]="Build system not recognized in %s"
+MSG_ERROR[bash.asdf_not_installed]="asdf is not installed in %s"
+MSG_ERROR[bash.asdf_latest_failed]="Failed to fetch the latest asdf version"
+MSG_ERROR[bash.asdf_download_failed]="Failed to download asdf %s"
+MSG_ERROR[bash.reload_no_main_dir]="MAIN_CONFIGURATION_DIR is not set — cannot reload"
+MSG_ERROR[bash.reload_main_missing]="main.sh not found: %s"
+MSG_ERROR[bash.reload_failed]="Error while loading %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -117,3 +131,4 @@ pray to Emperor and then:
 MSG_MAN[process.who_use_port_usage]="Usage: who_use_port [--sudo] PORT"
 MSG_MAN[screen.fake_poweroff_usage]="Usage: fake_poweroff {off|on}"
 MSG_MAN[apt_trust.fingerprint]="Fingerprint of key %s (repo: %s):"
+MSG_MAN[bash.source_if_exists_usage]="Usage: source_if_exists FILE [DIRECTORY]"
