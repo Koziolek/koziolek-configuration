@@ -11,10 +11,16 @@
 #
 # Zmienne:
 #   MESSAGES_LANG  wymuszenie języka (np. w ~/.senv), ma pierwszeństwo przed locale
-#   MESSAGES_DIR   katalog z plikami messages.<LANG>.sh (domyślnie bash/messages obok tego pliku)
+#   MESSAGES_DIR   katalog z plikami messages.<LANG>.sh (domyślnie bash/messages obok tego pliku;
+#                  w procesie potomnym: $_MESSAGES_DIR_DEFAULT, a gdy go brak — $BASH_CONFIGURATION_DIR/messages)
 
 MESSAGES_DEFAULT_LANG="pl"
+export MESSAGES_DEFAULT_LANG
+# MESSAGES_DEFAULT_LANG i ta ścieżka są eksportowane: funkcje z `export -f` działają też w procesach
+# potomnych (np. `git fun …` z aliasów), gdzie ten plik nie jest sourcowany, a bez nich log_<poziom>
+# wypisałby sam klucz (nie znalazłby plików komunikatów).
 _MESSAGES_DIR_DEFAULT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../messages" 2>/dev/null && pwd)"
+export _MESSAGES_DIR_DEFAULT
 
 # Wybrany język (dwuliterowy kod): MESSAGES_LANG > LC_ALL > LC_MESSAGES > LANG; C/POSIX/puste → domyślny.
 # Usage: messages_lang
@@ -32,7 +38,7 @@ function messages_lang() {
 # (Prze)ładuje tablice komunikatów dla bieżącego języka.
 # Usage: messages_load
 function messages_load() {
-  local dir="${MESSAGES_DIR:-$_MESSAGES_DIR_DEFAULT}"
+  local dir="${MESSAGES_DIR:-${_MESSAGES_DIR_DEFAULT:-${BASH_CONFIGURATION_DIR:+$BASH_CONFIGURATION_DIR/messages}}}"
   local lang
   lang=$(messages_lang)
 

@@ -166,6 +166,19 @@ testRealLogInfoPrintsLocalizedText() {
     assertContains 'INFO: No changes' "$(MESSAGES_LANG=en messages_load; log_info git.no_changes)" 'INFO: No changes'
 }
 
+testLogWorksInChildShellWithExportedFunctions() {
+    # `git fun …` odpala funkcje w nowym bashu, który dostaje je tylko przez `export -f`
+    unset MESSAGES_DIR
+    eval "$_ORIG_LOG_MESSAGE"
+    export -f log_message
+    local out
+    out=$(bash -c 'log_info git.no_changes' 2>&1)
+    assertContains 'tekst, nie klucz' "$out" 'Brak zmian'
+    assertNotContains 'klucz nie wycieka' "$out" 'git.no_changes'
+    out=$(env -u _MESSAGES_DIR_DEFAULT BASH_CONFIGURATION_DIR="$PROJECT_ROOT/bash" bash -c 'log_info git.no_changes' 2>&1)
+    assertContains 'fallback przez BASH_CONFIGURATION_DIR' "$out" 'Brak zmian'
+}
+
 # ---------------------------------------------------------------------------
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
