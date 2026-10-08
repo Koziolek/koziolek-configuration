@@ -10,6 +10,18 @@ MSG_INFO[java.clear_mvn]="java_clear: mvn clean in %s"
 MSG_INFO[java.clear_gradle]="java_clear: gradle clean in %s"
 MSG_INFO[misc.dir_created]="Created directory: %s"
 MSG_INFO[diagnostic.hwinfo_install_hint]="hwinfo: install: sudo apt install dmidecode pciutils   (or: sudo yum install dmidecode pciutils)"
+MSG_INFO[ssl.generated]="
+  SSL certificates generated successfully!
+    Certificate: %s
+    Private key: %s
+  "
+MSG_INFO[ssl.next_steps]="
+  Next steps:
+  1. Add '127.0.0.1 koziolek.home' to your /etc/hosts file
+  2. Run: docker compose up -d
+  3. Access services at:
+     - https://koziolek.home/nexus
+     - https://koziolek.home/pgadmin"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"

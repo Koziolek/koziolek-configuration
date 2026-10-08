@@ -18,24 +18,14 @@ function prepare_cert() {
     -subj "/C=PL/ST=Lower Silesia/L=Wroclaw/O=Home/OU=IT/CN=koziolek.home" \
     -addext "subjectAltName=DNS:koziolek.home,DNS:home,IP:127.0.0.1"
 
-  log_info "
-  SSL certificates generated successfully!
-    Certificate: $NGINX_DATA/ssl/nginx.crt
-    Private key: $NGINX_DATA/ssl/nginx.key
-  "
+  log_info ssl.generated "$NGINX_DATA/ssl/nginx.crt" "$NGINX_DATA/ssl/nginx.key"
 
   # Ustaw odpowiednie uprawnienia
   $SUDO chmod 600 $NGINX_DATA/ssl/nginx.key
   $SUDO chmod 644 $NGINX_DATA/ssl/nginx.crt
 
   unmake_me_sudo
-  log_info "
-  Next steps:
-  1. Add '127.0.0.1 koziolek.home' to your /etc/hosts file
-  2. Run: docker compose up -d
-  3. Access services at:
-     - https://koziolek.home/nexus
-     - https://koziolek.home/pgadmin"
+  log_info ssl.next_steps
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
