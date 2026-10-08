@@ -55,6 +55,11 @@ MSG_ERROR[weather.fetch_failed]="Unable to fetch weather for %s."
 MSG_ERROR[diagnostic.hwinfo_missing_deps]="hwinfo: missing dependencies: %s"
 MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: %s not found (fix-comp not cloned? check install_lib -p above)"
 MSG_ERROR[certs.import_failed]="Failed to import certificate into %s"
+MSG_ERROR[docker.compose_unavailable]="compose unavailable (DOCKER_COMPOSE='%s')"
+MSG_ERROR[docker.container_name_required]="Container name parameter is required"
+MSG_ERROR[docker.compose_file_missing]="❌ File %s does not exist!"
+MSG_ERROR[docker.services_problems]="❌ Problems with services:"
+MSG_ERROR[docker.services_start_failed]="❌ Failed to start services"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"

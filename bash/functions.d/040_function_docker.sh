@@ -9,7 +9,7 @@ function check_docker_compose_availability() {
         echo "$DOCKER_COMPOSE"
         return 0
     else
-        log_error "compose niedostępny (DOCKER_COMPOSE='${DOCKER_COMPOSE:-}')"
+        log_error docker.compose_unavailable "${DOCKER_COMPOSE:-}"
         return 1
     fi
 }
@@ -19,7 +19,7 @@ function check_docker_compose_availability() {
 function check_container_status() {
   local container_name="$1"
   if [ -z "$container_name" ]; then
-      log_error "Container name parameter is required"
+      log_error docker.container_name_required
       return 1
   fi
 
@@ -43,7 +43,7 @@ function check_compose_status() {
 
     # Check if compose file exists
     if [ ! -f "$compose_file" ]; then
-        log_error "❌ File $compose_file does not exist!"
+        log_error docker.compose_file_missing "$compose_file"
         return 1
     fi
 
@@ -78,7 +78,7 @@ function check_all_services_healthy() {
         echo -e "${C_GREEN}✅ All services are working correctly${C_NC}"
         return 0
     else
-        log_error "❌ Problems with services:"
+        log_error docker.services_problems
         for service in "${failed_services[@]}"; do
             log_error "${C_RED}   - $service"
         done
@@ -94,7 +94,7 @@ function start_compose_services() {
 
     # Check if compose file exists
     if [ ! -f "$compose_file" ]; then
-        log_error "❌ File $compose_file does not exist!"
+        log_error docker.compose_file_missing "$compose_file"
         return 1
     fi
 
@@ -104,7 +104,7 @@ function start_compose_services() {
         log_info "${C_GREEN}✅ Services started successfully${C_NC}"
         return 0
     else
-        log_error "❌ Failed to start services"
+        log_error docker.services_start_failed
         return 1
     fi
 }

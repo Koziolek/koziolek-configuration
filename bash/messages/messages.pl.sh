@@ -58,6 +58,11 @@ MSG_ERROR[weather.fetch_failed]="Nie udało się pobrać pogody dla %s."
 MSG_ERROR[diagnostic.hwinfo_missing_deps]="hwinfo: brakujące zależności: %s"
 MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: brak %s (fix-comp niesklonowany? sprawdź install_lib -p wyżej)"
 MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
+MSG_ERROR[docker.compose_unavailable]="compose niedostępny (DOCKER_COMPOSE='%s')"
+MSG_ERROR[docker.container_name_required]="Parametr z nazwą kontenera jest wymagany"
+MSG_ERROR[docker.compose_file_missing]="❌ Plik %s nie istnieje!"
+MSG_ERROR[docker.services_problems]="❌ Problemy z usługami:"
+MSG_ERROR[docker.services_start_failed]="❌ Nie udało się uruchomić usług"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
