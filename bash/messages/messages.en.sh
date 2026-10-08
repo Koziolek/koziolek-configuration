@@ -17,6 +17,15 @@ MSG_WARN[install_lib.no_access]="install_lib: no access to '%s' (private repo / 
 MSG_WARN[misc.dir_exists]="Directory '%s' already exists, skipping..."
 MSG_WARN[diagnostic.hwinfo_needs_root]="hwinfo: dmidecode requires root — run via sudo"
 MSG_WARN[hub.install_failed]="hub: installation via %s failed — git works without the alias"
+MSG_WARN[darwin.reswap_unavailable]="reswap: swapoff/swapon unavailable on macOS"
+MSG_WARN[darwin.who_use_swap_unavailable]="who_use_swap: /proc unavailable on macOS"
+MSG_WARN[darwin.async_profiler_on_unavailable]="turn_async_profiler_on: /proc/sys/kernel does not exist on macOS"
+MSG_WARN[darwin.async_profiler_off_unavailable]="turn_async_profiler_off: /proc/sys/kernel does not exist on macOS"
+MSG_WARN[darwin.start_x_unavailable]="start_x: systemctl/lightdm unavailable on macOS"
+MSG_WARN[darwin.fake_poweroff_unavailable]="fake_poweroff: gdbus/xset/wlopm unavailable on macOS — use pmset/caffeinate"
+MSG_WARN[darwin.netconf_diag_unavailable]="netconf_diag: requires Linux tools (ip, iw, nmcli, journalctl) — unavailable on macOS"
+MSG_WARN[darwin.refresh_apt_gpg_keys_unavailable]="refresh_apt_gpg_keys: apt unavailable on macOS"
+MSG_WARN[darwin.pinentry_missing]="gpg: pinentry-mac missing (brew install pinentry-mac)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
