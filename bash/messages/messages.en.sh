@@ -26,6 +26,7 @@ MSG_WARN[darwin.fake_poweroff_unavailable]="fake_poweroff: gdbus/xset/wlopm unav
 MSG_WARN[darwin.netconf_diag_unavailable]="netconf_diag: requires Linux tools (ip, iw, nmcli, journalctl) — unavailable on macOS"
 MSG_WARN[darwin.refresh_apt_gpg_keys_unavailable]="refresh_apt_gpg_keys: apt unavailable on macOS"
 MSG_WARN[darwin.pinentry_missing]="gpg: pinentry-mac missing (brew install pinentry-mac)"
+MSG_WARN[nexus.secret_template_missing]="%s file not found"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
