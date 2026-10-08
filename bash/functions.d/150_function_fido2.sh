@@ -17,8 +17,8 @@ _fido2_check_deps() {
     command -v fido2-token &>/dev/null || missing+=("fido2-tools")
     command -v pamu2fcfg   &>/dev/null || missing+=("libpam-u2f/pamu2fcfg")
     if [ "${#missing[@]}" -gt 0 ]; then
-        log_error "fido2: brakujące zależności: ${missing[*]}"
-        log_info "fido2: zainstaluj przez scripts/bezpieczenstwo/01-fido2-diagnostic.sh w fix-comp"
+        log_error fido2.missing_dependencies "${missing[*]}"
+        log_info fido2.install_via_scripts_bezpieczenstwo_01
         return 1
     fi
     return 0
@@ -57,7 +57,7 @@ _fido2_resolve_device() {
     done < <(_fido2_all_devices)
 
     if [ "${#devices[@]}" -eq 0 ]; then
-        log_error "fido2: brak podłączonego klucza FIDO2/U2F (i nie podano urządzenia jawnie)" >&2
+        log_error fido2.no_fido2_u2f_key_connected >&2
         return 1
     fi
 
@@ -91,7 +91,7 @@ _fido2_resolve_device() {
 ##
 function fido2_list_devices() {
     if ! command -v fido2-token &>/dev/null; then
-        log_error "fido2: brakuje fido2-tools (fido2-token) — zainstaluj przez scripts/bezpieczenstwo/01-fido2-diagnostic.sh w fix-comp"
+        log_error fido2.fido2_tools_fido2_token_missing
         return 1
     fi
     local found=0 h desc
@@ -101,7 +101,7 @@ function fido2_list_devices() {
         echo "${C_GREEN}$h${C_NC}: $desc"
     done < <(_fido2_all_devices)
     if [ "$found" -eq 0 ]; then
-        log_warn "fido2: brak podłączonych kluczy FIDO2/U2F"
+        log_warn fido2.no_fido2_u2f_keys_connected
         return 1
     fi
     return 0
@@ -127,7 +127,7 @@ function fido2_set_pin() {
     _fido2_check_deps || return 1
     local dev
     dev=$(_fido2_resolve_device "${1:-}") || return 1
-    log_info "fido2: ustawianie PIN na $dev — podaj PIN gdy poprosi (min. długość zależy od klucza)"
+    log_info fido2.setting_pin_on_enter_the "$dev"
     fido2-token -S "$dev"
 }
 
@@ -150,7 +150,7 @@ function fido2_enroll() {
     _fido2_check_deps || return 1
     local dev
     dev=$(_fido2_resolve_device "${1:-}") || return 1
-    log_info "fido2: enrollment biometrii na $dev — kilkukrotnie dotknij/zeskanuj palec wg promptów"
+    log_info fido2.biometric_enrollment_on_touch_scan "$dev"
     fido2-token -S -e "$dev"
 }
 
@@ -171,7 +171,7 @@ function fido2_enroll_list() {
 function fido2_enroll_name() {
     local template_id="$1" name="$2"
     if [ -z "$template_id" ] || [ -z "$name" ]; then
-        log_error "Usage: fido2_enroll_name <template_id> <nazwa> [device]"
+        log_error fido2.usage_fido2_enroll_name_template_id
         return 1
     fi
     _fido2_check_deps || return 1
@@ -187,7 +187,7 @@ function fido2_enroll_name() {
 function fido2_enroll_delete() {
     local template_id="$1"
     if [ -z "$template_id" ]; then
-        log_error "Usage: fido2_enroll_delete <template_id> [device]"
+        log_error fido2.usage_fido2_enroll_delete_template_id
         return 1
     fi
     _fido2_check_deps || return 1
@@ -211,11 +211,11 @@ function fido2_register_sudo() {
     local u2f_keys="$u2f_dir/u2f_keys"
 
     if [ -s "$u2f_keys" ]; then
-        log_warn "fido2: $u2f_keys już istnieje i ma wpisy — to NADPISZE plik."
-        log_warn "Do dopisania kolejnego klucza użyj fido2_register_sudo_backup zamiast tej funkcji."
+        log_warn fido2.already_exists_and_has_entries "$u2f_keys"
+        log_warn fido2.to_append_another_key_use_fido2
     fi
 
-    log_info "fido2: rejestracja $dev do sudo — potwierdź na kluczu (dotyk/odcisk) gdy poprosi"
+    log_info fido2.registering_for_sudo_confirm_on "$dev"
     mkdir -p "$u2f_dir"
     chmod 700 "$u2f_dir"
 
@@ -223,16 +223,16 @@ function fido2_register_sudo() {
     # klucz) nie może skasować już zarejestrowanych kluczy w u2f_keys.
     local tmp_keys
     tmp_keys=$(mktemp "${u2f_keys}.XXXXXX") || {
-        log_error "fido2: nie udało się utworzyć pliku tymczasowego"
+        log_error fido2.failed_to_create_a_temporary
         return 1
     }
     if pamu2fcfg > "$tmp_keys"; then
         chmod 600 "$tmp_keys"
         mv "$tmp_keys" "$u2f_keys"
-        log_info "fido2: zarejestrowano → $u2f_keys"
+        log_info fido2.registered "$u2f_keys"
         return 0
     else
-        log_error "fido2: rejestracja nie powiodła się — $u2f_keys pozostawiono bez zmian"
+        log_error fido2.registration_failed_left_unchanged "$u2f_keys"
         rm -f "$tmp_keys"
         return 1
     fi
@@ -252,18 +252,18 @@ function fido2_register_sudo_backup() {
     local u2f_keys="$u2f_dir/u2f_keys"
 
     if [ ! -s "$u2f_keys" ]; then
-        log_warn "fido2: $u2f_keys nie istnieje jeszcze — użyj fido2_register_sudo dla pierwszego klucza"
+        log_warn fido2.does_not_exist_yet_use "$u2f_keys"
         return 1
     fi
 
-    log_info "fido2: dopisywanie zapasowego klucza ($dev) do sudo — potwierdź na kluczu"
+    log_info fido2.appending_backup_key_to_sudo "$dev"
     mkdir -p "$u2f_dir"
     if pamu2fcfg -n >> "$u2f_keys" 2>/dev/null; then
         chmod 600 "$u2f_keys"
-        log_info "fido2: dopisano zapasowy klucz → $u2f_keys"
+        log_info fido2.backup_key_appended "$u2f_keys"
         return 0
     else
-        log_error "fido2: dopisanie zapasowego klucza nie powiodło się"
+        log_error fido2.appending_the_backup_key_failed
         return 1
     fi
 }
@@ -275,7 +275,7 @@ function fido2_register_sudo_backup() {
 function fido2_sudo_keys_list() {
     local u2f_keys="$HOME/.config/Yubico/u2f_keys"
     if [ ! -s "$u2f_keys" ]; then
-        log_warn "fido2: brak zarejestrowanych kluczy ($u2f_keys nie istnieje lub jest pusty)"
+        log_warn fido2.no_registered_keys_does_not "$u2f_keys"
         return 1
     fi
     local line user count

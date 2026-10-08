@@ -55,6 +55,13 @@ MSG_INFO[bash.asdf_updated]="asdf updated to %s"
 MSG_INFO[bash.reload_ok]="Configuration reloaded from %s"
 MSG_INFO[hub.creating_pr]="Vomiting and creating PR in GH"
 MSG_INFO[hub.merging_pr]="Merging pull request %s"
+MSG_INFO[fido2.install_via_scripts_bezpieczenstwo_01]="fido2: install via scripts/bezpieczenstwo/01-fido2-diagnostic.sh in fix-comp"
+MSG_INFO[fido2.setting_pin_on_enter_the]="fido2: setting PIN on %s — enter the PIN when prompted (minimum length depends on the key)"
+MSG_INFO[fido2.biometric_enrollment_on_touch_scan]="fido2: biometric enrollment on %s — touch/scan your finger several times as prompted"
+MSG_INFO[fido2.registering_for_sudo_confirm_on]="fido2: registering %s for sudo — confirm on the key (touch/fingerprint) when prompted"
+MSG_INFO[fido2.registered]="fido2: registered → %s"
+MSG_INFO[fido2.appending_backup_key_to_sudo]="fido2: appending backup key (%s) to sudo — confirm on the key"
+MSG_INFO[fido2.backup_key_appended]="fido2: backup key appended → %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -90,6 +97,11 @@ MSG_WARN[bash.no_source_dir]="Neither directory parameter nor \$BASH_CONFIGURATI
 MSG_WARN[bash.source_file_missing]="File '%s' does not exist in '%s'"
 MSG_WARN[bash.var_not_set]="Var %s is not set"
 MSG_WARN[bash.dir_missing]="Directory %s doesn't exist"
+MSG_WARN[fido2.no_fido2_u2f_keys_connected]="fido2: no FIDO2/U2F keys connected"
+MSG_WARN[fido2.already_exists_and_has_entries]="fido2: %s already exists and has entries — this will OVERWRITE the file."
+MSG_WARN[fido2.to_append_another_key_use_fido2]="To append another key use fido2_register_sudo_backup instead of this function."
+MSG_WARN[fido2.does_not_exist_yet_use]="fido2: %s does not exist yet — use fido2_register_sudo for the first key"
+MSG_WARN[fido2.no_registered_keys_does_not]="fido2: no registered keys (%s does not exist or is empty)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -123,6 +135,14 @@ MSG_ERROR[bash.reload_no_main_dir]="MAIN_CONFIGURATION_DIR is not set — cannot
 MSG_ERROR[bash.reload_main_missing]="main.sh not found: %s"
 MSG_ERROR[bash.reload_failed]="Error while loading %s"
 MSG_ERROR[hub.pr_not_found]="Pull request with number %s does not exists. Existing pull requests:"
+MSG_ERROR[fido2.missing_dependencies]="fido2: missing dependencies: %s"
+MSG_ERROR[fido2.no_fido2_u2f_key_connected]="fido2: no FIDO2/U2F key connected (and no device given explicitly)"
+MSG_ERROR[fido2.fido2_tools_fido2_token_missing]="fido2: fido2-tools (fido2-token) missing — install via scripts/bezpieczenstwo/01-fido2-diagnostic.sh in fix-comp"
+MSG_ERROR[fido2.usage_fido2_enroll_name_template_id]="Usage: fido2_enroll_name <template_id> <name> [device]"
+MSG_ERROR[fido2.usage_fido2_enroll_delete_template_id]="Usage: fido2_enroll_delete <template_id> [device]"
+MSG_ERROR[fido2.failed_to_create_a_temporary]="fido2: failed to create a temporary file"
+MSG_ERROR[fido2.registration_failed_left_unchanged]="fido2: registration failed — %s left unchanged"
+MSG_ERROR[fido2.appending_the_backup_key_failed]="fido2: appending the backup key failed"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"

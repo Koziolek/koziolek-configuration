@@ -58,6 +58,13 @@ MSG_INFO[bash.asdf_updated]="asdf zaktualizowany do %s"
 MSG_INFO[bash.reload_ok]="Konfiguracja przeładowana z %s"
 MSG_INFO[hub.creating_pr]="Vomit i tworzenie PR w GH"
 MSG_INFO[hub.merging_pr]="Scalanie pull requesta %s"
+MSG_INFO[fido2.install_via_scripts_bezpieczenstwo_01]="fido2: zainstaluj przez scripts/bezpieczenstwo/01-fido2-diagnostic.sh w fix-comp"
+MSG_INFO[fido2.setting_pin_on_enter_the]="fido2: ustawianie PIN na %s — podaj PIN gdy poprosi (min. długość zależy od klucza)"
+MSG_INFO[fido2.biometric_enrollment_on_touch_scan]="fido2: enrollment biometrii na %s — kilkukrotnie dotknij/zeskanuj palec wg promptów"
+MSG_INFO[fido2.registering_for_sudo_confirm_on]="fido2: rejestracja %s do sudo — potwierdź na kluczu (dotyk/odcisk) gdy poprosi"
+MSG_INFO[fido2.registered]="fido2: zarejestrowano → %s"
+MSG_INFO[fido2.appending_backup_key_to_sudo]="fido2: dopisywanie zapasowego klucza (%s) do sudo — potwierdź na kluczu"
+MSG_INFO[fido2.backup_key_appended]="fido2: dopisano zapasowy klucz → %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -93,6 +100,11 @@ MSG_WARN[bash.no_source_dir]="Ani parametr katalogu, ani \$BASH_CONFIGURATION_DI
 MSG_WARN[bash.source_file_missing]="Plik '%s' nie istnieje w '%s'"
 MSG_WARN[bash.var_not_set]="Zmienna %s nie jest ustawiona"
 MSG_WARN[bash.dir_missing]="Katalog %s nie istnieje"
+MSG_WARN[fido2.no_fido2_u2f_keys_connected]="fido2: brak podłączonych kluczy FIDO2/U2F"
+MSG_WARN[fido2.already_exists_and_has_entries]="fido2: %s już istnieje i ma wpisy — to NADPISZE plik."
+MSG_WARN[fido2.to_append_another_key_use_fido2]="Do dopisania kolejnego klucza użyj fido2_register_sudo_backup zamiast tej funkcji."
+MSG_WARN[fido2.does_not_exist_yet_use]="fido2: %s nie istnieje jeszcze — użyj fido2_register_sudo dla pierwszego klucza"
+MSG_WARN[fido2.no_registered_keys_does_not]="fido2: brak zarejestrowanych kluczy (%s nie istnieje lub jest pusty)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -126,6 +138,14 @@ MSG_ERROR[bash.reload_no_main_dir]="MAIN_CONFIGURATION_DIR nie jest ustawione �
 MSG_ERROR[bash.reload_main_missing]="Nie znaleziono main.sh: %s"
 MSG_ERROR[bash.reload_failed]="Błąd podczas ładowania %s"
 MSG_ERROR[hub.pr_not_found]="Pull request o numerze %s nie istnieje. Istniejące pull requesty:"
+MSG_ERROR[fido2.missing_dependencies]="fido2: brakujące zależności: %s"
+MSG_ERROR[fido2.no_fido2_u2f_key_connected]="fido2: brak podłączonego klucza FIDO2/U2F (i nie podano urządzenia jawnie)"
+MSG_ERROR[fido2.fido2_tools_fido2_token_missing]="fido2: brakuje fido2-tools (fido2-token) — zainstaluj przez scripts/bezpieczenstwo/01-fido2-diagnostic.sh w fix-comp"
+MSG_ERROR[fido2.usage_fido2_enroll_name_template_id]="Usage: fido2_enroll_name <template_id> <nazwa> [device]"
+MSG_ERROR[fido2.usage_fido2_enroll_delete_template_id]="Usage: fido2_enroll_delete <template_id> [device]"
+MSG_ERROR[fido2.failed_to_create_a_temporary]="fido2: nie udało się utworzyć pliku tymczasowego"
+MSG_ERROR[fido2.registration_failed_left_unchanged]="fido2: rejestracja nie powiodła się — %s pozostawiono bez zmian"
+MSG_ERROR[fido2.appending_the_backup_key_failed]="fido2: dopisanie zapasowego klucza nie powiodło się"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
