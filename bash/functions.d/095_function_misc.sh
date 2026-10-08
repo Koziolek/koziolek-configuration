@@ -52,16 +52,16 @@ EOF
     x) exp=true ;;
     p) safe=true ;;            # bezpieczne klonowanie repo prywatnego (patrz help)
     *)
-      log_warn "Nieznana opcja: -$OPTARG"
-      log_man "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
+      log_warn install_lib.unknown_option "$OPTARG"
+      log_man install_lib.usage
       return 1
       ;;
     esac
   done
 
   if [ -z "$repo_url" ]; then
-    log_error "Adres repozytorium (-r) jest obowiązkowy."
-    log_man "Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
+    log_error install_lib.repo_required
+    log_man install_lib.usage
     return 1
   fi
 
@@ -80,7 +80,7 @@ EOF
   # błąd zamiast interaktywnego promptu o login/hasło/token (co inaczej zawiesiłoby
   # start powłoki na maszynie bez skonfigurowanego dostępu do repo prywatnego).
   if [ "$safe" = true ] && ! GIT_TERMINAL_PROMPT=0 git ls-remote "$repo_url" >/dev/null 2>&1; then
-    log_warn "install_lib: brak dostępu do '$repo_url' (repo prywatne/niedostępne z tej maszyny) — pomijam."
+    log_warn install_lib.no_access "$repo_url"
     return 0
   fi
 
@@ -88,11 +88,11 @@ EOF
     # Dostęp potwierdzony wyżej — mimo to bez promptu, na wypadek utraty dostępu
     # między sprawdzeniem a klonowaniem (błąd wtedy traktowany jak normalny — patrz niżej).
     if ! GIT_TERMINAL_PROMPT=0 git clone "$repo_url" "$target_dir"; then
-      log_error "Nie udało się sklonować repozytorium '$repo_url'."
+      log_error install_lib.clone_failed "$repo_url"
       return 1
     fi
   elif ! git clone "$repo_url" "$target_dir"; then
-    log_error "Nie udało się sklonować repozytorium '$repo_url'."
+    log_error install_lib.clone_failed "$repo_url"
     return 1
   fi
 

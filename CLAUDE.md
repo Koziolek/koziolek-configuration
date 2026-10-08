@@ -93,7 +93,9 @@ dostępu to ostrzeżenie i pominięcie, nie błąd (bez `-p` `git clone` pyta o 
 Odpowiedzialność kluczowych plików funkcji:
 
 - `functions.d/000_*` — uruchomienie/inicjalizacja (`resize_to_full` routuje przez `detect_display_env`)
-- `functions.d/010_*` — logowanie (`log_info`, `log_error`, `log_warn`, `log_man`)
+- `functions.d/005_function_messages.sh` — komunikaty wielojęzyczne: `messages_lang`, `messages_load`,
+  `messages_ensure_loaded` (patrz „Komunikaty (i18n)" niżej)
+- `functions.d/010_*` — logowanie (`log_info`, `log_error`, `log_warn`, `log_man`, `log_debug`)
 - `functions.d/015_*` — prompt PS1
 - `functions.d/040_*` — helpery Docker
 - `functions.d/096_function_apt_trust.sh` — `refresh_apt_gpg_keys` (naprawa `NO_PUBKEY`/martwych
@@ -268,6 +270,28 @@ swojej warstwy (aliasy, `export`, redefinicje funkcji). Wspólne rzeczy zostają
 `wsl` (`in-window`→`wslview`), `redhat` (hub/yum), `darwin` (Homebrew, hub/brew, redefinicje funkcji);
 `ubuntu` pusty. Testy: `test/unit/test_context_detect.sh`,
 `test/unit/linux/test_{vanilla_aliases,vanilla_context,debian_context,wsl_context,redhat_context}.sh`.
+
+### Komunikaty (i18n) — `bash/messages/`
+
+Komunikaty logów żyją w `bash/messages/messages.<LANG>.sh` (bazowy `pl`, dodatkowo `en`) — same
+przypisania do **pięciu tablic asocjacyjnych, po jednej na poziom**: `MSG_DEBUG`, `MSG_INFO`,
+`MSG_WARN`, `MSG_ERROR`, `MSG_MAN`. Klucz `<obszar>.<nazwa>` (np. `install_lib.no_access`) → szablon
+dla `printf` (`%s`, `%d`). Każda funkcja `log_<poziom>` czyta **wyłącznie własną tablicę**
+(`log_warn` → `MSG_WARN`): `log_warn install_lib.no_access "$url"`. Pierwszy argument, który nie jest
+kluczem własnej tablicy, to dosłowny tekst — stare wywołania `log_info "tekst"` działają bez zmian,
+migracja może iść plik po pliku. Do **`log_message` (niezmienionego) trafia gotowy komunikat**, który
+tylko dostaje prefiks/kolor.
+
+Język: `MESSAGES_LANG` (np. w `~/.senv`) > `LC_ALL` > `LC_MESSAGES` > `LANG` (dwuliterowy kod; `C`/`POSIX`/
+puste/nieznany plik → `pl`). Ładowany jest zawsze `pl`, a wybrany język nakłada się na niego, więc
+klucz bez tłumaczenia wraca po polsku. Ładowanie jest leniwe (pierwsze użycie komunikatu) — start
+powłoki nic nie kosztuje; działa też w procesach potomnych z `export -f`, gdzie tablice nie są
+dziedziczone. Wartości placeholderów są danymi (`%`, `$(…)` w argumencie nie są interpretowane);
+liczba argumentów musi odpowiadać placeholderom (nadmiarowe powtarzają szablon — zachowanie `printf`).
+`MESSAGES_DIR` przekierowuje na inny katalog (testy). Nowy język = nowy plik `messages.<lang>.sh`
+(test `testEveryPolishKeyHasEnglishTranslation` pilnuje kompletności `en`). Test:
+`test/unit/test_messages.sh`. Na razie zmigrowane: `install_lib` i `git vomit`/`bleeh` („Brak zmian”);
+reszta repozytorium nadal używa dosłownych tekstów.
 
 ### System pluginów `get_and_build` (gab)
 

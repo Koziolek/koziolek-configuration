@@ -271,7 +271,7 @@ function __git_prepare_commit_file() {
 # commity i zwraca 1 — wołający kończy wtedy normalnie (kod wyjścia pusha, 0 gdy nic do pushowania).
 function __git_has_changes_or_push() {
   [ -n "$(git status --porcelain)" ] && return 0
-  log_info "Brak zmian"
+  log_info git.no_changes
   __GIT_PRECHECK_RC=0
   if __git_has_unpushed; then
     __git_push_branch
