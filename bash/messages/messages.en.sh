@@ -17,3 +17,4 @@ MSG_ERROR[install_lib.clone_failed]="Failed to clone repository '%s'."
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
+MSG_MAN[prompt.answer_yn]="Please answer with 'y' or 'n'"

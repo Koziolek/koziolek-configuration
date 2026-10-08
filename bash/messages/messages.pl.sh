@@ -20,3 +20,4 @@ MSG_ERROR[install_lib.clone_failed]="Nie udało się sklonować repozytorium '%s
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
+MSG_MAN[prompt.answer_yn]="Odpowiedz 'y' lub 'n'"
