@@ -56,6 +56,8 @@ MSG_INFO[bash.asdf_up_to_date]="asdf jest aktualne (%s)"
 MSG_INFO[bash.asdf_updating]="Aktualizacja asdf: %s → %s"
 MSG_INFO[bash.asdf_updated]="asdf zaktualizowany do %s"
 MSG_INFO[bash.reload_ok]="Konfiguracja przeładowana z %s"
+MSG_INFO[hub.creating_pr]="Vomit i tworzenie PR w GH"
+MSG_INFO[hub.merging_pr]="Scalanie pull requesta %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -123,6 +125,7 @@ MSG_ERROR[bash.asdf_download_failed]="Nie udało się pobrać asdf %s"
 MSG_ERROR[bash.reload_no_main_dir]="MAIN_CONFIGURATION_DIR nie jest ustawione — nie można przeładować"
 MSG_ERROR[bash.reload_main_missing]="Nie znaleziono main.sh: %s"
 MSG_ERROR[bash.reload_failed]="Błąd podczas ładowania %s"
+MSG_ERROR[hub.pr_not_found]="Pull request o numerze %s nie istnieje. Istniejące pull requesty:"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -135,3 +138,6 @@ MSG_MAN[process.who_use_port_usage]="Użycie: who_use_port [--sudo] PORT"
 MSG_MAN[screen.fake_poweroff_usage]="Użycie: fake_poweroff {off|on}"
 MSG_MAN[apt_trust.fingerprint]="Fingerprint klucza %s (repo: %s):"
 MSG_MAN[bash.source_if_exists_usage]="Użycie: source_if_exists PLIK [KATALOG]"
+MSG_MAN[hub.merge_pr_usage]="Użycie: merge_pr NUMER
+      NUMER - numer istniejącego, otwartego pull requesta w repozytorium github
+    "

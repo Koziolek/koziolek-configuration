@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function hub_amen() {
-  log_info "Vomiting and creating PR in GH"
+  log_info hub.creating_pr
   git_vomit "$*";
   hub pull-request -m "$*"
 }
@@ -11,21 +11,19 @@ function hub_merge_pr() {
   local pr="$1"
 
   if [ -z "$pr" ]; then
-    log_man "Usage: merge_pr NUMBER
-      NUMBER - number of existing, open pull request in github repository
-    "
+    log_man hub.merge_pr_usage
     return 1;
   fi
 
   local to_merge=$(hub pr list -f %U%n | grep -E "/${pr}\$")
 
   if [ -z "$to_merge" ]; then
-    log_error "Pull request with number ${pr} does not exists. Existing pull requests:"
+    log_error hub.pr_not_found "$pr"
     hub pr list -f %U%n
     return 1;
   fi
 
-  log_info "Merging pull request ${to_merge}"
+  log_info hub.merging_pr "$to_merge"
   git home
   hub merge $to_merge
   git push
