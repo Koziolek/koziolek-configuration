@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Komunikaty z tablic MSG_* (005_function_messages.sh) — doładuj, gdy ten plik sourcowany osobno (np. w testach).
+declare -F messages_ensure_loaded >/dev/null || . "$(dirname "${BASH_SOURCE[0]}")/005_function_messages.sh"
+
 # Log a message with specified log level and color formatting
 # Usage: log_message <level> <message...>
 #
@@ -43,24 +46,69 @@ function log_message() {
   echo -e "${prefix}${messages[*]}${C_NC}"
 }
 
+# Funkcje log_<poziom>: pierwszy argument będący kluczem z własnej tablicy MSG_<POZIOM> jest szablonem
+# (reszta argumentów = wartości placeholderów); inny pierwszy argument to dosłowny tekst jak dotąd.
+# Do log_message trafia zawsze gotowy komunikat.
+# Usage: log_info <klucz> [wartości...]   |   log_info <tekst...>
 function log_debug() {
-  log_message "debug" "$@"
+  messages_ensure_loaded
+  if [[ -n "${1:-}" && -n "${MSG_DEBUG[$1]+x}" ]]; then
+    local _tpl="${MSG_DEBUG[$1]}" _msg
+    shift
+    printf -v _msg -- "$_tpl" "$@"
+    log_message "debug" "$_msg"
+  else
+    log_message "debug" "$@"
+  fi
 }
 
 function log_info() {
-  log_message "info" "$@"
+  messages_ensure_loaded
+  if [[ -n "${1:-}" && -n "${MSG_INFO[$1]+x}" ]]; then
+    local _tpl="${MSG_INFO[$1]}" _msg
+    shift
+    printf -v _msg -- "$_tpl" "$@"
+    log_message "info" "$_msg"
+  else
+    log_message "info" "$@"
+  fi
 }
 
 function log_warn() {
-  log_message "warn" "$@"
+  messages_ensure_loaded
+  if [[ -n "${1:-}" && -n "${MSG_WARN[$1]+x}" ]]; then
+    local _tpl="${MSG_WARN[$1]}" _msg
+    shift
+    printf -v _msg -- "$_tpl" "$@"
+    log_message "warn" "$_msg"
+  else
+    log_message "warn" "$@"
+  fi
 }
+
 function log_error() {
-  log_message "error" "$@"
+  messages_ensure_loaded
+  if [[ -n "${1:-}" && -n "${MSG_ERROR[$1]+x}" ]]; then
+    local _tpl="${MSG_ERROR[$1]}" _msg
+    shift
+    printf -v _msg -- "$_tpl" "$@"
+    log_message "error" "$_msg"
+  else
+    log_message "error" "$@"
+  fi
   print_stack_trace
 }
 
 function log_man() {
-  log_message "man" "$@"
+  messages_ensure_loaded
+  if [[ -n "${1:-}" && -n "${MSG_MAN[$1]+x}" ]]; then
+    local _tpl="${MSG_MAN[$1]}" _msg
+    shift
+    printf -v _msg -- "$_tpl" "$@"
+    log_message "man" "$_msg"
+  else
+    log_message "man" "$@"
+  fi
 }
 
 function print_stack_trace() {
