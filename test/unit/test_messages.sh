@@ -159,6 +159,21 @@ testEveryPolishKeyHasEnglishTranslation() {
     assertEquals 'klucze bez tłumaczenia en' '' "$missing"
 }
 
+testEveryKeyUsedInCodeIsDefinedForItsLevel() {
+    # log_<poziom> <obszar.nazwa> w kodzie → klucz musi istnieć w MSG_<POZIOM> (pl i en);
+    # inaczej log wypisałby sam klucz zamiast tekstu
+    local lang level key file missing=''
+    while read -r file level key; do
+        for lang in pl en; do
+            grep -qE "^MSG_${level^^}\[${key//./\\.}\]=" "$PROJECT_ROOT/bash/messages/messages.$lang.sh" \
+                || missing+="$lang:MSG_${level^^}[$key] ($file) "
+        done
+    done < <(grep -rEo --include='*.sh' "\blog_(debug|info|warn|error|man) +[a-z_]+\.[a-z_]+" \
+                 "$PROJECT_ROOT/bash" "$PROJECT_ROOT/git" "$PROJECT_ROOT/services" \
+             | sed -E 's|^[^:]*/([^/:]+):log_([a-z]+) +(.*)$|\1 \2 \3|')
+    assertEquals 'klucze użyte w kodzie bez definicji' '' "$missing"
+}
+
 testRealLogInfoPrintsLocalizedText() {
     unset MESSAGES_DIR
     eval "$_ORIG_LOG_MESSAGE"

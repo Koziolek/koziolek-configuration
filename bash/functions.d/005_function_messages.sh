@@ -19,7 +19,11 @@ export MESSAGES_DEFAULT_LANG
 # MESSAGES_DEFAULT_LANG i ta ścieżka są eksportowane: funkcje z `export -f` działają też w procesach
 # potomnych (np. `git fun …` z aliasów), gdzie ten plik nie jest sourcowany, a bez nich log_<poziom>
 # wypisałby sam klucz (nie znalazłby plików komunikatów).
-_MESSAGES_DIR_DEFAULT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../messages" 2>/dev/null && pwd)"
+# Bez zewnętrznych poleceń (dirname) — plik bywa sourcowany przy pustym/okrojonym PATH.
+_messages_src="${BASH_SOURCE[0]}"
+[[ "$_messages_src" == */* ]] || _messages_src="./$_messages_src"
+_MESSAGES_DIR_DEFAULT="$(cd "${_messages_src%/*}/../messages" 2>/dev/null && pwd)"
+unset _messages_src
 export _MESSAGES_DIR_DEFAULT
 
 # Wybrany język (dwuliterowy kod): MESSAGES_LANG > LC_ALL > LC_MESSAGES > LANG; C/POSIX/puste → domyślny.
