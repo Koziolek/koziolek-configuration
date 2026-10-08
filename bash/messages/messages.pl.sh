@@ -38,6 +38,12 @@ MSG_INFO[image.processing_all_png]="Przetwarzanie wszystkich plików PNG w bież
 MSG_INFO[image.processing_all_jpg]="Przetwarzanie wszystkich plików JPG/JPEG w bieżącym katalogu (skala: %s%%)"
 MSG_INFO[image.processing_file]="Przetwarzanie pliku: %s"
 MSG_INFO[image.done]="Przetwarzanie zakończone."
+MSG_INFO[apt_trust.checking]="Sprawdzanie kluczy GPG repozytoriów apt..."
+MSG_INFO[apt_trust.removed_count]="Usunięto %s wygasłych kluczy"
+MSG_INFO[apt_trust.no_problems]="Brak problemów z kluczami GPG"
+MSG_INFO[apt_trust.fetching_key]="Pobieranie klucza %s z %s..."
+MSG_INFO[apt_trust.key_bound]="Klucz %s przypięty do %s (signed-by=%s)"
+MSG_INFO[apt_trust.updating]="apt-get update po naprawie kluczy..."
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -60,6 +66,13 @@ MSG_WARN[certs.no_sdkman_jdks]="Brak katalogu %s - sdkman nie ma zainstalowanych
 MSG_WARN[certs.no_cacerts]="Brak cacerts w %s, pomijam"
 MSG_WARN[screen.fake_poweroff_no_libinput]="fake_poweroff: brak libinput — zainstaluj pakiet libinput-tools, żeby auto-wybudzenie działało"
 MSG_WARN[screen.fake_poweroff_no_input_group]="fake_poweroff: user nie jest w grupie 'input' — auto-wybudzenie nie zadziała"
+MSG_WARN[apt_trust.removing_expired]="Usuwanie wygasłego klucza: %s"
+MSG_WARN[apt_trust.dead_repos]="Martwe repozytoria (wymagają ręcznego usunięcia z /etc/apt/sources.list.d/):"
+MSG_WARN[apt_trust.missing_keys]="Brakujące klucze GPG:"
+MSG_WARN[apt_trust.import_declined]="Pominięto import klucza %s (odrzucone przez użytkownika)"
+MSG_WARN[apt_trust.no_source_file]="Nie znaleziono pliku źródła dla %s — klucz zapisany w %s,"
+MSG_WARN[apt_trust.bind_manually]="ale NIE dowiązany do repo. Dowiąż ręcznie: dodaj [signed-by=%s] do wpisu deb."
+MSG_WARN[apt_trust.unbound_warning]="%s klucz(e) nie dowiązano automatycznie do repo — apt nadal będzie zgłaszał NO_PUBKEY."
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -78,6 +91,7 @@ MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: nieobsługiwane 
 MSG_ERROR[image.scale_invalid]="Skala musi być liczbą całkowitą z zakresu 1-100."
 MSG_ERROR[image.not_png]="Plik '%s' nie istnieje lub nie jest plikiem PNG."
 MSG_ERROR[image.not_jpg]="Plik '%s' nie istnieje lub nie jest plikiem JPG/JPEG."
+MSG_ERROR[apt_trust.fetch_failed]="Klucz %s: nie udało się pobrać z keyserver"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -88,3 +102,4 @@ módl się do Imperatora, a następnie:
   exterminatus WZORZEC"
 MSG_MAN[process.who_use_port_usage]="Użycie: who_use_port [--sudo] PORT"
 MSG_MAN[screen.fake_poweroff_usage]="Użycie: fake_poweroff {off|on}"
+MSG_MAN[apt_trust.fingerprint]="Fingerprint klucza %s (repo: %s):"

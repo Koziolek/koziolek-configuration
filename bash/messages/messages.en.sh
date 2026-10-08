@@ -35,6 +35,12 @@ MSG_INFO[image.processing_all_png]="Processing all PNG files in the current dire
 MSG_INFO[image.processing_all_jpg]="Processing all JPG/JPEG files in the current directory (scale: %s%%)"
 MSG_INFO[image.processing_file]="Processing file: %s"
 MSG_INFO[image.done]="Processing finished."
+MSG_INFO[apt_trust.checking]="Checking GPG keys of apt repositories..."
+MSG_INFO[apt_trust.removed_count]="Removed %s expired keys"
+MSG_INFO[apt_trust.no_problems]="No problems with GPG keys"
+MSG_INFO[apt_trust.fetching_key]="Fetching key %s from %s..."
+MSG_INFO[apt_trust.key_bound]="Key %s bound to %s (signed-by=%s)"
+MSG_INFO[apt_trust.updating]="apt-get update after fixing keys..."
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -57,6 +63,13 @@ MSG_WARN[certs.no_sdkman_jdks]="Directory %s is missing - sdkman has no JDKs ins
 MSG_WARN[certs.no_cacerts]="No cacerts in %s, skipping"
 MSG_WARN[screen.fake_poweroff_no_libinput]="fake_poweroff: libinput missing — install libinput-tools for auto-wake to work"
 MSG_WARN[screen.fake_poweroff_no_input_group]="fake_poweroff: user is not in the 'input' group — auto-wake will not work"
+MSG_WARN[apt_trust.removing_expired]="Removing expired key: %s"
+MSG_WARN[apt_trust.dead_repos]="Dead repositories (remove manually from /etc/apt/sources.list.d/):"
+MSG_WARN[apt_trust.missing_keys]="Missing GPG keys:"
+MSG_WARN[apt_trust.import_declined]="Skipped importing key %s (declined by user)"
+MSG_WARN[apt_trust.no_source_file]="Source file for %s not found — key saved in %s,"
+MSG_WARN[apt_trust.bind_manually]="but NOT bound to the repo. Bind manually: add [signed-by=%s] to the deb entry."
+MSG_WARN[apt_trust.unbound_warning]="%s key(s) not bound to the repo automatically — apt will keep reporting NO_PUBKEY."
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -75,6 +88,7 @@ MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: unsupported disp
 MSG_ERROR[image.scale_invalid]="Scale must be an integer between 1 and 100."
 MSG_ERROR[image.not_png]="File '%s' does not exist or is not a PNG file."
 MSG_ERROR[image.not_jpg]="File '%s' does not exist or is not a JPG/JPEG file."
+MSG_ERROR[apt_trust.fetch_failed]="Key %s: failed to fetch from keyserver"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -85,3 +99,4 @@ pray to Emperor and then:
   exterminatus PATTERN"
 MSG_MAN[process.who_use_port_usage]="Usage: who_use_port [--sudo] PORT"
 MSG_MAN[screen.fake_poweroff_usage]="Usage: fake_poweroff {off|on}"
+MSG_MAN[apt_trust.fingerprint]="Fingerprint of key %s (repo: %s):"
