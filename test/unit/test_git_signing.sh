@@ -10,6 +10,10 @@
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# Asercje na polskie teksty komunikatów — niezależnie od LANG maszyny (np. en_US na macOS);
+# eksport dziedziczą też powłoki harnessów (bash -c).
+export MESSAGES_LANG=pl
+
 SIG_FPR='AAAA1111BBBB2222CCCC3333DDDD4444EEEE5555'
 PRIMARY_FPR='9999888877776666555544443333222211110000'
 PUB_BLOB='sk-ssh-ed25519@openssh.com AAAAGnNrLXNzaC1lZDI1NTE5QG9wZW5zc2guY29tAAAAIMOCK'
