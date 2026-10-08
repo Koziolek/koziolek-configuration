@@ -7,6 +7,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
 export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 
+# Asercje na polskie teksty komunikatów — niezależnie od LANG maszyny (np. en_US na macOS)
+export MESSAGES_LANG=pl
+
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/bash/functions.d/010_function_log.sh"
 # shellcheck source=/dev/null

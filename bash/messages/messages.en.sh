@@ -41,6 +41,14 @@ MSG_INFO[apt_trust.no_problems]="No problems with GPG keys"
 MSG_INFO[apt_trust.fetching_key]="Fetching key %s from %s..."
 MSG_INFO[apt_trust.key_bound]="Key %s bound to %s (signed-by=%s)"
 MSG_INFO[apt_trust.updating]="apt-get update after fixing keys..."
+MSG_INFO[gab.plugins_loaded]="Loaded %s plugin(s)"
+MSG_INFO[gab.pulling]="Running git pull in %s..."
+MSG_INFO[gab.pull_ok]="Git pull finished successfully"
+MSG_INFO[gab.detected]="Detected build system: %s"
+MSG_INFO[gab.running]="Running: %s"
+MSG_INFO[gab.build_ok]="Build (%s) finished successfully ✓"
+MSG_INFO[gab.detected_dry_run]="Detected: %s (dry-run, not building)"
+MSG_INFO[gab.available_systems]="Available systems:"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -70,6 +78,8 @@ MSG_WARN[apt_trust.import_declined]="Skipped importing key %s (declined by user)
 MSG_WARN[apt_trust.no_source_file]="Source file for %s not found — key saved in %s,"
 MSG_WARN[apt_trust.bind_manually]="but NOT bound to the repo. Bind manually: add [signed-by=%s] to the deb entry."
 MSG_WARN[apt_trust.unbound_warning]="%s key(s) not bound to the repo automatically — apt will keep reporting NO_PUBKEY."
+MSG_WARN[gab.plugin_incomplete]="Plugin %s is incomplete, skipping"
+MSG_WARN[gab.skip_pull]="Skipping git pull (--skip-pull)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -89,6 +99,13 @@ MSG_ERROR[image.scale_invalid]="Scale must be an integer between 1 and 100."
 MSG_ERROR[image.not_png]="File '%s' does not exist or is not a PNG file."
 MSG_ERROR[image.not_jpg]="File '%s' does not exist or is not a JPG/JPEG file."
 MSG_ERROR[apt_trust.fetch_failed]="Key %s: failed to fetch from keyserver"
+MSG_ERROR[gab.plugins_dir_missing]="Plugin directory does not exist: %s"
+MSG_ERROR[gab.no_plugins]="No plugins found in %s"
+MSG_ERROR[gab.not_git_repo]="Directory %s is not a Git repository"
+MSG_ERROR[gab.pull_failed]="Git pull failed"
+MSG_ERROR[gab.build_failed]="Build (%s) failed ✗"
+MSG_ERROR[gab.unknown_option]="Unknown option: %s"
+MSG_ERROR[gab.not_recognized]="Build system not recognized in %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"

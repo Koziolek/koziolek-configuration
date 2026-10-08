@@ -44,6 +44,14 @@ MSG_INFO[apt_trust.no_problems]="Brak problemów z kluczami GPG"
 MSG_INFO[apt_trust.fetching_key]="Pobieranie klucza %s z %s..."
 MSG_INFO[apt_trust.key_bound]="Klucz %s przypięty do %s (signed-by=%s)"
 MSG_INFO[apt_trust.updating]="apt-get update po naprawie kluczy..."
+MSG_INFO[gab.plugins_loaded]="Załadowano %s plugin(ów)"
+MSG_INFO[gab.pulling]="Wykonuję git pull w %s..."
+MSG_INFO[gab.pull_ok]="Git pull zakończony pomyślnie"
+MSG_INFO[gab.detected]="Wykryto system budowania: %s"
+MSG_INFO[gab.running]="Uruchamiam: %s"
+MSG_INFO[gab.build_ok]="Budowanie (%s) zakończone pomyślnie ✓"
+MSG_INFO[gab.detected_dry_run]="Wykryto: %s (dry-run, nie buduję)"
+MSG_INFO[gab.available_systems]="Dostępne systemy:"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -73,6 +81,8 @@ MSG_WARN[apt_trust.import_declined]="Pominięto import klucza %s (odrzucone prze
 MSG_WARN[apt_trust.no_source_file]="Nie znaleziono pliku źródła dla %s — klucz zapisany w %s,"
 MSG_WARN[apt_trust.bind_manually]="ale NIE dowiązany do repo. Dowiąż ręcznie: dodaj [signed-by=%s] do wpisu deb."
 MSG_WARN[apt_trust.unbound_warning]="%s klucz(e) nie dowiązano automatycznie do repo — apt nadal będzie zgłaszał NO_PUBKEY."
+MSG_WARN[gab.plugin_incomplete]="Plugin %s jest niekompletny, pomijam"
+MSG_WARN[gab.skip_pull]="Pomijam git pull (--skip-pull)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -92,6 +102,13 @@ MSG_ERROR[image.scale_invalid]="Skala musi być liczbą całkowitą z zakresu 1-
 MSG_ERROR[image.not_png]="Plik '%s' nie istnieje lub nie jest plikiem PNG."
 MSG_ERROR[image.not_jpg]="Plik '%s' nie istnieje lub nie jest plikiem JPG/JPEG."
 MSG_ERROR[apt_trust.fetch_failed]="Klucz %s: nie udało się pobrać z keyserver"
+MSG_ERROR[gab.plugins_dir_missing]="Katalog pluginów nie istnieje: %s"
+MSG_ERROR[gab.no_plugins]="Nie znaleziono żadnych pluginów w %s"
+MSG_ERROR[gab.not_git_repo]="Katalog %s nie jest repozytorium Git"
+MSG_ERROR[gab.pull_failed]="Git pull nie powiódł się"
+MSG_ERROR[gab.build_failed]="Budowanie (%s) nie powiodło się ✗"
+MSG_ERROR[gab.unknown_option]="Nieznana opcja: %s"
+MSG_ERROR[gab.not_recognized]="Nie rozpoznano systemu budowania w %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
