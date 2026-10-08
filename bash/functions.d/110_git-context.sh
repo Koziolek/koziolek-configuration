@@ -91,7 +91,7 @@ EOF
     current_email="$(git config user.email 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
     current_project="$(git config project.name 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
 
-    log_man git_context.ncurrent_git_configuration "${C_BOLD}" "${C_NC}"
+    log_man git_context.current_git_configuration "${C_BOLD}" "${C_NC}"
     log_info "user.name     = $current_name"
     log_info "user.email    = $current_email"
     log_info "project.name  = $current_project"
@@ -102,7 +102,7 @@ EOF
 
     _gc_display_current_config
 
-    log_man git_context.navailable_contexts "${C_BOLD}" "${C_NC}"
+    log_man git_context.available_contexts "${C_BOLD}" "${C_NC}"
     for i in "${!GC_CTX_ORDER[@]}"; do
       local ctx="${GC_CTX_ORDER[$i]}"
       printf "  ${C_YELLOW}%2d)${C_NC} %-20s  %s <%s>\n" \
@@ -148,7 +148,7 @@ EOF
     local name="$2"
     local email="$3"
 
-    log_man git_context.nsetting_git_configuration "${C_BOLD}" "${C_NC}"
+    log_man git_context.setting_git_configuration "${C_BOLD}" "${C_NC}"
     log_man git_context.context "${C_YELLOW}" "${ctx}" "${C_NC}"
 
     git config user.name "$name"
@@ -162,7 +162,7 @@ EOF
     local default_project
     local project_name
 
-    log_man git_context.nproject_name "${C_BOLD}" "${C_NC}"
+    log_man git_context.project_name_header "${C_BOLD}" "${C_NC}"
 
     default_project="$(basename "$(git rev-parse --show-toplevel)")"
 
@@ -180,7 +180,7 @@ EOF
   _gc_display_summary() {
     local key value
 
-    log_man git_context.ncurrent_local_repository_configuration "${C_BOLD}" "${C_NC}"
+    log_man git_context.current_local_repository_configuration "${C_BOLD}" "${C_NC}"
     echo
     git config --local --list | sort | while IFS='=' read -r key value; do
       printf "  ${C_CYAN}%-30s${C_NC} = %s\n" "$key" "$value"
@@ -199,7 +199,7 @@ EOF
 
     mkdir -p "$(dirname "$GC_CONFIG_FILE")"
 
-    log_man git_context.ndata_for_profile_default "${C_BOLD}" "${C_NC}"
+    log_man git_context.default_profile_data "${C_BOLD}" "${C_NC}"
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name
@@ -231,7 +231,7 @@ EOF
       return 1
     fi
 
-    log_man git_context.ndata_for_profile "${C_BOLD}" "$ctx_name" "${C_NC}"
+    log_man git_context.profile_data "${C_BOLD}" "$ctx_name" "${C_NC}"
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name

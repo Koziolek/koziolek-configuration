@@ -286,7 +286,7 @@ MSG_ERROR[git.renaming_armageddon_failed_aborted_before_th]="przeniesienie __arm
 MSG_ERROR[git.history_on_untouched_head_is_now]="historia na %s NIE ruszona. HEAD jest teraz na gałęzi __armageddon__ (1 commit)."
 MSG_ERROR[git.fix_manually_git_branch_m_armageddon]="Napraw ręcznie: git branch -M __armageddon__ %s   (lub) git checkout %s && git branch -D __armageddon__"
 MSG_ERROR[git.fun_missing_function_name]="git fun: brak nazwy funkcji"
-MSG_ERROR[git.unknown_function_n_available_functions]="Nieznana funkcja: '%s'
+MSG_ERROR[git.unknown_function]="Nieznana funkcja: '%s'
       Dostępne funkcje: %s"
 MSG_ERROR[git_signing.gpg_missing_dependencies]="gpg: brakujące zależności: %s"
 MSG_ERROR[git_signing.gpg_no_openpgp_card_detected_gpg]="gpg: nie widzę karty OpenPGP (gpg --card-status)."
@@ -372,12 +372,12 @@ MSG_MAN[bash.source_if_exists_usage]="Użycie: source_if_exists PLIK [KATALOG]"
 MSG_MAN[hub.merge_pr_usage]="Użycie: merge_pr NUMER
       NUMER - numer istniejącego, otwartego pull requesta w repozytorium github
     "
-MSG_MAN[git_context.ncurrent_git_configuration]="\\n%sBieżąca konfiguracja git:%s"
-MSG_MAN[git_context.navailable_contexts]="\\n%sDostępne konteksty:%s"
-MSG_MAN[git_context.nsetting_git_configuration]="\\n%sUstawiam konfigurację git:%s"
+MSG_MAN[git_context.current_git_configuration]="\\n%sBieżąca konfiguracja git:%s"
+MSG_MAN[git_context.available_contexts]="\\n%sDostępne konteksty:%s"
+MSG_MAN[git_context.setting_git_configuration]="\\n%sUstawiam konfigurację git:%s"
 MSG_MAN[git_context.context]="  Kontekst: %s%s%s"
-MSG_MAN[git_context.nproject_name]="\\n%sNazwa projektu:%s"
-MSG_MAN[git_context.ncurrent_local_repository_configuration]="\\n%sAktualna konfiguracja lokalna repozytorium:%s"
-MSG_MAN[git_context.ndata_for_profile_default]="\\n%sDane dla profilu 'default':%s"
-MSG_MAN[git_context.ndata_for_profile]="\\n%sDane dla profilu '%s':%s"
+MSG_MAN[git_context.project_name_header]="\\n%sNazwa projektu:%s"
+MSG_MAN[git_context.current_local_repository_configuration]="\\n%sAktualna konfiguracja lokalna repozytorium:%s"
+MSG_MAN[git_context.default_profile_data]="\\n%sDane dla profilu 'default':%s"
+MSG_MAN[git_context.profile_data]="\\n%sDane dla profilu '%s':%s"
 MSG_MAN[git.would_you_like_to_use_multi]="%sCzy chcesz użyć multi-hooków?%s "

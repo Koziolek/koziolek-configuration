@@ -461,7 +461,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if declare -f "$1" > /dev/null && [[ "$1" == git_* || "$1" == hub_* ]]; then
     "$@"
   else
-    log_error git.unknown_function_n_available_functions "$1" "$(declare -F | awk '{print $3}' | grep -E '^(git|hub)_' | tr '\n' ' ')"
+    log_error git.unknown_function "$1" "$(declare -F | awk '{print $3}' | grep -E '^(git|hub)_' | tr '\n' ' ')"
     exit 1
   fi
 fi
