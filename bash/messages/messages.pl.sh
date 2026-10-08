@@ -25,6 +25,7 @@ MSG_INFO[ssl.next_steps]="
   3. Usługi dostępne pod adresami:
      - https://koziolek.home/nexus
      - https://koziolek.home/pgadmin"
+MSG_INFO[certs.imported]="Certyfikat zaimportowany do %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -42,6 +43,9 @@ MSG_WARN[darwin.netconf_diag_unavailable]="netconf_diag: wymaga narzędzi Linux 
 MSG_WARN[darwin.refresh_apt_gpg_keys_unavailable]="refresh_apt_gpg_keys: apt niedostępne na macOS"
 MSG_WARN[darwin.pinentry_missing]="gpg: brak pinentry-mac (brew install pinentry-mac)"
 MSG_WARN[nexus.secret_template_missing]="Nie znaleziono pliku %s"
+MSG_WARN[certs.cert_missing]="Certyfikat %s nie istnieje - uruchom najpierw prepare_cert"
+MSG_WARN[certs.no_sdkman_jdks]="Brak katalogu %s - sdkman nie ma zainstalowanych JDK"
+MSG_WARN[certs.no_cacerts]="Brak cacerts w %s, pomijam"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -50,6 +54,7 @@ MSG_ERROR[java.clear_no_fdfind]="java_clear: fdfind nie znaleziony"
 MSG_ERROR[weather.fetch_failed]="Nie udało się pobrać pogody dla %s."
 MSG_ERROR[diagnostic.hwinfo_missing_deps]="hwinfo: brakujące zależności: %s"
 MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: brak %s (fix-comp niesklonowany? sprawdź install_lib -p wyżej)"
+MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
