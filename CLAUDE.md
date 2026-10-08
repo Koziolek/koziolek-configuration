@@ -296,8 +296,12 @@ ma definicję w tablicy swojego poziomu w `pl` i `en`. Testy asertujące polskie
 `010_function_log.sh` nie używają zewnętrznych poleceń (`dirname`) — działają przy pustym `PATH`;
 `MESSAGES_DEFAULT_LANG` i `_MESSAGES_DIR_DEFAULT` są eksportowane, bo w procesach potomnych
 (`git fun …`) plik `005` nie jest sourcowany. Zmigrowane: `install_lib`, `git vomit`/`bleeh` („Brak
-zmian”), `015`, `030`, `095`, `140`, `contexts/{debian,redhat,darwin}.sh`, `services/` (nexus, ssl_setup,
-services_functions); lista pozostałych: issue #135. Pliki bez loggerów (`echo` w `packages/*.sh`,
+zmian”), `015`, `020`, `030`, `040`, `090`, `095`, `096`, `100`, `130`, `140`, `bash_functions.sh`,
+`contexts/{debian,redhat,darwin}.sh`, `git/hub_functions.sh`, `services/` (nexus, ssl_setup,
+services_functions); lista pozostałych: issue #135. Dosłownie zostają linie, w których kolor lub
+element listy jest częścią komunikatu (`"${C_RED}   - $service"`, `"  - $r"`) oraz generyczny
+`log_error "$message"`. Wartości z kolorem przekazuj jako argument (`"${C_BOLD}$name${C_NC}"`), nie w
+szablonie; literalny `%` po placeholderze to `%%`. Testy, które mockują `log_*`, widzą „klucz argumenty”. Pliki bez loggerów (`echo` w `packages/*.sh`,
 `install.sh` itd.) **nie podlegają migracji**.
 
 ### System pluginów `get_and_build` (gab)
