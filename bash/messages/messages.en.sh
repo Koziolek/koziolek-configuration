@@ -62,6 +62,10 @@ MSG_INFO[fido2.registering_for_sudo_confirm_on]="fido2: registering %s for sudo 
 MSG_INFO[fido2.registered]="fido2: registered → %s"
 MSG_INFO[fido2.appending_backup_key_to_sudo]="fido2: appending backup key (%s) to sudo — confirm on the key"
 MSG_INFO[fido2.backup_key_appended]="fido2: backup key appended → %s"
+MSG_INFO[git_context.cancelled]="Cancelled"
+MSG_INFO[git_context.file_created_with_profile_default]="File %s created with profile 'default'"
+MSG_INFO[git_context.profile_added_to]="Profile '%s' added to %s"
+MSG_INFO[git_context.run_git_context_without_parameters_to]="Run git_context without parameters to create the configuration file"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -102,6 +106,7 @@ MSG_WARN[fido2.already_exists_and_has_entries]="fido2: %s already exists and has
 MSG_WARN[fido2.to_append_another_key_use_fido2]="To append another key use fido2_register_sudo_backup instead of this function."
 MSG_WARN[fido2.does_not_exist_yet_use]="fido2: %s does not exist yet — use fido2_register_sudo for the first key"
 MSG_WARN[fido2.no_registered_keys_does_not]="fido2: no registered keys (%s does not exist or is empty)"
+MSG_WARN[git_context.invalid_choice_enter_a_number_from]="Invalid choice. Enter a number from 1 to %s (0 to exit)"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -143,6 +148,17 @@ MSG_ERROR[fido2.usage_fido2_enroll_delete_template_id]="Usage: fido2_enroll_dele
 MSG_ERROR[fido2.failed_to_create_a_temporary]="fido2: failed to create a temporary file"
 MSG_ERROR[fido2.registration_failed_left_unchanged]="fido2: registration failed — %s left unchanged"
 MSG_ERROR[fido2.appending_the_backup_key_failed]="fido2: appending the backup key failed"
+MSG_ERROR[git_context.current_directory_is_not_a_git]="Current directory is not a git repository"
+MSG_ERROR[git_context.file_contains_no_contexts]="File %s contains no contexts"
+MSG_ERROR[git_context.context_has_no_name_defined]="Context '%s' has no 'name' defined"
+MSG_ERROR[git_context.context_has_no_email_defined]="Context '%s' has no 'email' defined"
+MSG_ERROR[git_context.project_name_cannot_be_empty]="Project name cannot be empty"
+MSG_ERROR[git_context.field_cannot_be_empty]="Field cannot be empty"
+MSG_ERROR[git_context.profile_name_cannot_be_empty]="Profile name cannot be empty"
+MSG_ERROR[git_context.profile_already_exists_in]="Profile '%s' already exists in %s"
+MSG_ERROR[git_context.unknown_option]="Unknown option: %s"
+MSG_ERROR[git_context.unknown_argument]="Unknown argument: %s"
+MSG_ERROR[git_context.missing_configuration_file]="Missing configuration file: %s"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -158,3 +174,11 @@ MSG_MAN[bash.source_if_exists_usage]="Usage: source_if_exists FILE [DIRECTORY]"
 MSG_MAN[hub.merge_pr_usage]="Usage: merge_pr NUMBER
       NUMBER - number of existing, open pull request in github repository
     "
+MSG_MAN[git_context.ncurrent_git_configuration]="\\n%sCurrent git configuration:%s"
+MSG_MAN[git_context.navailable_contexts]="\\n%sAvailable contexts:%s"
+MSG_MAN[git_context.nsetting_git_configuration]="\\n%sSetting git configuration:%s"
+MSG_MAN[git_context.context]="  Context: %s%s%s"
+MSG_MAN[git_context.nproject_name]="\\n%sProject name:%s"
+MSG_MAN[git_context.ncurrent_local_repository_configuration]="\\n%sCurrent local repository configuration:%s"
+MSG_MAN[git_context.ndata_for_profile_default]="\\n%sData for profile 'default':%s"
+MSG_MAN[git_context.ndata_for_profile]="\\n%sData for profile '%s':%s"
