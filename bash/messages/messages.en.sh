@@ -26,6 +26,10 @@ MSG_INFO[certs.imported]="Certificate imported into %s"
 MSG_INFO[process.killed_header]="Matched processes:"
 MSG_INFO[process.no_listeners]="No listening processes"
 MSG_INFO[process.no_listener_on_port]="No process listening on a port matching '%s'"
+MSG_INFO[screen.fake_poweroff_supported_hint]="fake_poweroff: supported: GNOME (gdbus), X11 (xset), sway/wlroots (wlopm)"
+MSG_INFO[screen.fake_poweroff_off]="fake_poweroff: monitor off (%s)"
+MSG_INFO[screen.fake_poweroff_usermod_hint]="fake_poweroff: sudo usermod -aG input \$USER, then log out and back in"
+MSG_INFO[screen.fake_poweroff_on]="fake_poweroff: monitor restored (%s)"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -46,6 +50,8 @@ MSG_WARN[nexus.secret_template_missing]="%s file not found"
 MSG_WARN[certs.cert_missing]="Certificate %s does not exist - run prepare_cert first"
 MSG_WARN[certs.no_sdkman_jdks]="Directory %s is missing - sdkman has no JDKs installed"
 MSG_WARN[certs.no_cacerts]="No cacerts in %s, skipping"
+MSG_WARN[screen.fake_poweroff_no_libinput]="fake_poweroff: libinput missing — install libinput-tools for auto-wake to work"
+MSG_WARN[screen.fake_poweroff_no_input_group]="fake_poweroff: user is not in the 'input' group — auto-wake will not work"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
@@ -60,6 +66,7 @@ MSG_ERROR[docker.container_name_required]="Container name parameter is required"
 MSG_ERROR[docker.compose_file_missing]="❌ File %s does not exist!"
 MSG_ERROR[docker.services_problems]="❌ Problems with services:"
 MSG_ERROR[docker.services_start_failed]="❌ Failed to start services"
+MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: unsupported display environment (detect_display_env='%s')"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -69,3 +76,4 @@ MSG_MAN[process.exterminatus_usage]="Usage
 pray to Emperor and then:
   exterminatus PATTERN"
 MSG_MAN[process.who_use_port_usage]="Usage: who_use_port [--sudo] PORT"
+MSG_MAN[screen.fake_poweroff_usage]="Usage: fake_poweroff {off|on}"

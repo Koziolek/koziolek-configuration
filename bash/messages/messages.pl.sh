@@ -29,6 +29,10 @@ MSG_INFO[certs.imported]="Certyfikat zaimportowany do %s"
 MSG_INFO[process.killed_header]="Trafione procesy:"
 MSG_INFO[process.no_listeners]="Brak nasłuchujących procesów"
 MSG_INFO[process.no_listener_on_port]="Brak procesów nasłuchujących na porcie pasującym do '%s'"
+MSG_INFO[screen.fake_poweroff_supported_hint]="fake_poweroff: obsługiwane: GNOME (gdbus), X11 (xset), sway/wlroots (wlopm)"
+MSG_INFO[screen.fake_poweroff_off]="fake_poweroff: monitor wygaszony (%s)"
+MSG_INFO[screen.fake_poweroff_usermod_hint]="fake_poweroff: sudo usermod -aG input \$USER, potem wyloguj się i zaloguj ponownie"
+MSG_INFO[screen.fake_poweroff_on]="fake_poweroff: monitor przywrócony (%s)"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -49,6 +53,8 @@ MSG_WARN[nexus.secret_template_missing]="Nie znaleziono pliku %s"
 MSG_WARN[certs.cert_missing]="Certyfikat %s nie istnieje - uruchom najpierw prepare_cert"
 MSG_WARN[certs.no_sdkman_jdks]="Brak katalogu %s - sdkman nie ma zainstalowanych JDK"
 MSG_WARN[certs.no_cacerts]="Brak cacerts w %s, pomijam"
+MSG_WARN[screen.fake_poweroff_no_libinput]="fake_poweroff: brak libinput — zainstaluj pakiet libinput-tools, żeby auto-wybudzenie działało"
+MSG_WARN[screen.fake_poweroff_no_input_group]="fake_poweroff: user nie jest w grupie 'input' — auto-wybudzenie nie zadziała"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
@@ -63,6 +69,7 @@ MSG_ERROR[docker.container_name_required]="Parametr z nazwą kontenera jest wyma
 MSG_ERROR[docker.compose_file_missing]="❌ Plik %s nie istnieje!"
 MSG_ERROR[docker.services_problems]="❌ Problemy z usługami:"
 MSG_ERROR[docker.services_start_failed]="❌ Nie udało się uruchomić usług"
+MSG_ERROR[screen.fake_poweroff_unsupported_env]="fake_poweroff: nieobsługiwane środowisko graficzne (detect_display_env='%s')"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
@@ -72,3 +79,4 @@ MSG_MAN[process.exterminatus_usage]="Użycie
 módl się do Imperatora, a następnie:
   exterminatus WZORZEC"
 MSG_MAN[process.who_use_port_usage]="Użycie: who_use_port [--sudo] PORT"
+MSG_MAN[screen.fake_poweroff_usage]="Użycie: fake_poweroff {off|on}"
