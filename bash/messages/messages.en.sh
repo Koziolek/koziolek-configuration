@@ -6,6 +6,8 @@
 
 # --- MSG_INFO ---
 MSG_INFO[git.no_changes]="No changes"
+MSG_INFO[java.clear_mvn]="java_clear: mvn clean in %s"
+MSG_INFO[java.clear_gradle]="java_clear: gradle clean in %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -14,6 +16,7 @@ MSG_WARN[install_lib.no_access]="install_lib: no access to '%s' (private repo / 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
 MSG_ERROR[install_lib.clone_failed]="Failed to clone repository '%s'."
+MSG_ERROR[java.clear_no_fdfind]="java_clear: fdfind not found"
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"

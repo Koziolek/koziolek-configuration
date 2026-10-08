@@ -20,7 +20,7 @@ function java_clear() {
   local target_dir="${1:-.}"
 
   if ! command -v fdfind &>/dev/null; then
-    log_error "java_clear: fdfind nie znaleziony"
+    log_error java.clear_no_fdfind
     return 1
   fi
 
@@ -31,10 +31,10 @@ function java_clear() {
     filename="$(basename "$build_file")"
 
     if [[ "$filename" == "pom.xml" ]]; then
-      log_info "java_clear: mvn clean w $dir"
+      log_info java.clear_mvn "$dir"
       (cd "$dir" && mvn clean)
     elif [[ "$filename" == "build.gradle" || "$filename" == "build.gradle.kts" ]]; then
-      log_info "java_clear: gradle clean w $dir"
+      log_info java.clear_gradle "$dir"
       if [[ -f "$dir/gradlew" ]]; then
         (cd "$dir" && ./gradlew clean)
       else
