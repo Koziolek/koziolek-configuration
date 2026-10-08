@@ -8,16 +8,20 @@
 MSG_INFO[git.no_changes]="No changes"
 MSG_INFO[java.clear_mvn]="java_clear: mvn clean in %s"
 MSG_INFO[java.clear_gradle]="java_clear: gradle clean in %s"
+MSG_INFO[misc.dir_created]="Created directory: %s"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
 MSG_WARN[install_lib.no_access]="install_lib: no access to '%s' (private repo / unreachable from this machine) — skipping."
+MSG_WARN[misc.dir_exists]="Directory '%s' already exists, skipping..."
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
 MSG_ERROR[install_lib.clone_failed]="Failed to clone repository '%s'."
 MSG_ERROR[java.clear_no_fdfind]="java_clear: fdfind not found"
+MSG_ERROR[weather.fetch_failed]="Unable to fetch weather for %s."
 
 # --- MSG_MAN ---
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
 MSG_MAN[prompt.answer_yn]="Please answer with 'y' or 'n'"
+MSG_MAN[weather.usage]="Usage: get_weather <city_name>"
