@@ -34,12 +34,12 @@ function update_sdkman_jdk_certs() {
   local keystore_pass="changeit"
 
   if [ ! -f "$cert_file" ]; then
-    log_warn "Certyfikat $cert_file nie istnieje - uruchom najpierw prepare_cert"
+    log_warn certs.cert_missing "$cert_file"
     return 1
   fi
 
   if [ ! -d "$sdkman_java_dir" ]; then
-    log_warn "Brak katalogu $sdkman_java_dir - sdkman nie ma zainstalowanych JDK"
+    log_warn certs.no_sdkman_jdks "$sdkman_java_dir"
     return 1
   fi
 
@@ -48,7 +48,7 @@ function update_sdkman_jdk_certs() {
     [ -L "${jdk_dir%/}" ] && continue
     cacerts="${jdk_dir}lib/security/cacerts"
     if [ ! -f "$cacerts" ]; then
-      log_warn "Brak cacerts w $jdk_dir, pomijam"
+      log_warn certs.no_cacerts "$jdk_dir"
       continue
     fi
 
@@ -58,9 +58,9 @@ function update_sdkman_jdk_certs() {
     if keytool -importcert -noprompt -trustcacerts \
       -alias "$cert_alias" -file "$cert_file" \
       -keystore "$cacerts" -storepass "$keystore_pass" >/dev/null 2>&1; then
-      log_info "Certyfikat zaimportowany do $(basename "${jdk_dir%/}")"
+      log_info certs.imported "$(basename "${jdk_dir%/}")"
     else
-      log_error "Nie udało się zaimportować certyfikatu do $jdk_dir"
+      log_error certs.import_failed "$jdk_dir"
     fi
   done
 }

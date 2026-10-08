@@ -109,7 +109,7 @@ EOF
 
 function weather() {
   if [[ -z "$1" ]]; then
-    log_man "Usage: get_weather <city_name>"
+    log_man weather.usage
     return 1
   fi
 
@@ -118,7 +118,7 @@ function weather() {
   response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
 
   if [[ -z "$response" ]]; then
-    log_error "Unable to fetch weather for ${city_name}."
+    log_error weather.fetch_failed "$city_name"
     return 1
   fi
 
@@ -156,10 +156,10 @@ function generate_month_dirs() {
     dir_name=$(printf "%02d-%s" "$i" "${months[$((i - 1))]}")
 
     if [ -d "$dir_name" ]; then
-      log_warn "Directory '$dir_name' already exists, skipping..."
+      log_warn misc.dir_exists "$dir_name"
     else
       mkdir "$dir_name"
-      log_info "Created directory: $dir_name"
+      log_info misc.dir_created "$dir_name"
     fi
   done
 }

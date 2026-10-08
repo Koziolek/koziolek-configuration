@@ -78,8 +78,8 @@ function fake_poweroff() {
     case "$env" in
         gnome | x11 | sway | wlroots) ;;
         *)
-            log_error "fake_poweroff: nieobsługiwane środowisko graficzne (detect_display_env='$env')"
-            log_info "fake_poweroff: obsługiwane: GNOME (gdbus), X11 (xset), sway/wlroots (wlopm)"
+            log_error screen.fake_poweroff_unsupported_env "$env"
+            log_info screen.fake_poweroff_supported_hint
             return 1
             ;;
     esac
@@ -126,14 +126,14 @@ function fake_poweroff() {
     case "$action" in
     off)
         _fp_off
-        log_info "fake_poweroff: monitor wygaszony ($env)"
+        log_info screen.fake_poweroff_off "$env"
 
         if [[ "$env" != "x11" ]]; then
             if ! command -v libinput >/dev/null 2>&1; then
-                log_warn "fake_poweroff: brak libinput — zainstaluj pakiet libinput-tools, żeby auto-wybudzenie działało"
+                log_warn screen.fake_poweroff_no_libinput
             elif ! groups | grep -qw input; then
-                log_warn "fake_poweroff: user nie jest w grupie 'input' — auto-wybudzenie nie zadziała"
-                log_info "fake_poweroff: sudo usermod -aG input \$USER, potem wyloguj się i zaloguj ponownie"
+                log_warn screen.fake_poweroff_no_input_group
+                log_info screen.fake_poweroff_usermod_hint
             else
                 (
                     stdbuf -oL libinput debug-events 2>/dev/null | while IFS= read -r line; do
@@ -157,10 +157,10 @@ function fake_poweroff() {
             kill "$(cat "$pidfile")" 2>/dev/null
             rm -f "$pidfile"
         fi
-        log_info "fake_poweroff: monitor przywrócony ($env)"
+        log_info screen.fake_poweroff_on "$env"
         ;;
     *)
-        log_man "Użycie: fake_poweroff {off|on}"
+        log_man screen.fake_poweroff_usage
         return 1
         ;;
     esac

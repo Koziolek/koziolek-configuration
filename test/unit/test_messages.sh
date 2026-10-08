@@ -159,11 +159,64 @@ testEveryPolishKeyHasEnglishTranslation() {
     assertEquals 'klucze bez tłumaczenia en' '' "$missing"
 }
 
+# Liczba placeholderów (%s, po odjęciu %%) musi być taka sama w pl i en dla każdego klucza —
+# inaczej printf przesunąłby argumenty lub powtórzył szablon.
+_placeholder_counts() {
+    (
+        declare -A MSG_DEBUG MSG_INFO MSG_WARN MSG_ERROR MSG_MAN
+        # shellcheck source=/dev/null
+        . "$1"
+        local lvl k v s
+        for lvl in DEBUG INFO WARN ERROR MAN; do
+            declare -n _r="MSG_$lvl"
+            for k in "${!_r[@]}"; do
+                v="${_r[$k]//%%/}"; s="${v//[^%]/}"
+                echo "$lvl $k ${#s}"
+            done
+        done | sort
+    )
+}
+
+testPlaceholderCountsMatchBetweenLanguages() {
+    local diff_out
+    diff_out=$(diff <(_placeholder_counts "$PROJECT_ROOT/bash/messages/messages.pl.sh") \
+                    <(_placeholder_counts "$PROJECT_ROOT/bash/messages/messages.en.sh"))
+    assertEquals 'różna liczba placeholderów pl vs en' '' "$diff_out"
+}
+
+testEveryKeyUsedInCodeIsDefinedForItsLevel() {
+    # log_<poziom> <obszar.nazwa> w kodzie → klucz musi istnieć w MSG_<POZIOM> (pl i en);
+    # inaczej log wypisałby sam klucz zamiast tekstu
+    local lang level key file missing=''
+    while read -r file level key; do
+        for lang in pl en; do
+            grep -qE "^MSG_${level^^}\[${key//./\\.}\]=" "$PROJECT_ROOT/bash/messages/messages.$lang.sh" \
+                || missing+="$lang:MSG_${level^^}[$key] ($file) "
+        done
+    done < <(grep -rEo --include='*.sh' "\blog_(debug|info|warn|error|man) +[a-z0-9_]+\.[a-z0-9_]+" \
+                 "$PROJECT_ROOT/bash" "$PROJECT_ROOT/git" "$PROJECT_ROOT/services" \
+             | sed -E 's|^[^:]*/([^/:]+):log_([a-z]+) +(.*)$|\1 \2 \3|')
+    assertEquals 'klucze użyte w kodzie bez definicji' '' "$missing"
+}
+
 testRealLogInfoPrintsLocalizedText() {
     unset MESSAGES_DIR
     eval "$_ORIG_LOG_MESSAGE"
     assertContains 'INFO: Brak zmian' "$(MESSAGES_LANG=pl log_info git.no_changes)" 'INFO: Brak zmian'
     assertContains 'INFO: No changes' "$(MESSAGES_LANG=en messages_load; log_info git.no_changes)" 'INFO: No changes'
+}
+
+testLogWorksInChildShellWithExportedFunctions() {
+    # `git fun …` odpala funkcje w nowym bashu, który dostaje je tylko przez `export -f`
+    unset MESSAGES_DIR
+    eval "$_ORIG_LOG_MESSAGE"
+    export -f log_message
+    local out
+    out=$(bash -c 'log_info git.no_changes' 2>&1)
+    assertContains 'tekst, nie klucz' "$out" 'Brak zmian'
+    assertNotContains 'klucz nie wycieka' "$out" 'git.no_changes'
+    out=$(env -u _MESSAGES_DIR_DEFAULT BASH_CONFIGURATION_DIR="$PROJECT_ROOT/bash" bash -c 'log_info git.no_changes' 2>&1)
+    assertContains 'fallback przez BASH_CONFIGURATION_DIR' "$out" 'Brak zmian'
 }
 
 # ---------------------------------------------------------------------------

@@ -124,14 +124,14 @@ hwinfo_gpu() {
 # detect_display_env: wersja z functions.d/ nie zna macOS (usunęliśmy guard uname).
 detect_display_env() { echo "darwin"; }
 
-reswap() { log_warn "reswap: swapoff/swapon niedostępne na macOS"; return 1; }
-who_use_swap() { log_warn "who_use_swap: /proc niedostępny na macOS"; return 1; }
-turn_async_profiler_on() { log_warn "turn_async_profiler_on: /proc/sys/kernel nie istnieje na macOS"; return 1; }
-turn_async_profiler_off() { log_warn "turn_async_profiler_off: /proc/sys/kernel nie istnieje na macOS"; return 1; }
-start_x() { log_warn "start_x: systemctl/lightdm niedostępne na macOS"; return 1; }
-fake_poweroff() { log_warn "fake_poweroff: gdbus/xset/wlopm niedostępne na macOS — użyj pmset/caffeinate"; return 1; }
-netconf_diag() { log_warn "netconf_diag: wymaga narzędzi Linux (ip, iw, nmcli, journalctl) — niedostępnych na macOS"; return 1; }
-refresh_apt_gpg_keys() { log_warn "refresh_apt_gpg_keys: apt niedostępne na macOS"; return 1; }
+reswap() { log_warn darwin.reswap_unavailable; return 1; }
+who_use_swap() { log_warn darwin.who_use_swap_unavailable; return 1; }
+turn_async_profiler_on() { log_warn darwin.async_profiler_on_unavailable; return 1; }
+turn_async_profiler_off() { log_warn darwin.async_profiler_off_unavailable; return 1; }
+start_x() { log_warn darwin.start_x_unavailable; return 1; }
+fake_poweroff() { log_warn darwin.fake_poweroff_unavailable; return 1; }
+netconf_diag() { log_warn darwin.netconf_diag_unavailable; return 1; }
+refresh_apt_gpg_keys() { log_warn darwin.refresh_apt_gpg_keys_unavailable; return 1; }
 
 # ssh-keygen Apple (/usr/bin) jest zbudowany bez obsługi kluczy FIDO (-sk) —
 # 155_function_git_signing.sh (sekcja SSH-sk) musi użyć openssh z Homebrew.
@@ -143,7 +143,7 @@ fi
 # z edytora) — ustawiamy pinentry-mac w gpg-agent.conf (idempotentnie).
 _gpg_pinentry_setup() {
     local pinentry gnupg_home conf
-    pinentry=$(command -v pinentry-mac) || { log_warn "gpg: brak pinentry-mac (brew install pinentry-mac)"; return 1; }
+    pinentry=$(command -v pinentry-mac) || { log_warn darwin.pinentry_missing; return 1; }
     gnupg_home="${GNUPGHOME:-$HOME/.gnupg}"
     conf="$gnupg_home/gpg-agent.conf"
     mkdir -p "$gnupg_home" && chmod 700 "$gnupg_home"

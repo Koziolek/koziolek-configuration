@@ -58,7 +58,7 @@ testMissingMainConfigDirLogsError() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
     assertEquals 'brak MAIN_CONFIGURATION_DIR musi logować błąd' \
-        "ERROR: MAIN_CONFIGURATION_DIR is not set — cannot reload" "${_LOG_MESSAGES[0]:-}"
+        "ERROR: bash.reload_no_main_dir" "${_LOG_MESSAGES[0]:-}"
 }
 
 testEmptyMainConfigDirReturnsOne() {
@@ -73,7 +73,7 @@ testEmptyMainConfigDirLogsError() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
     assertEquals 'pusty MAIN_CONFIGURATION_DIR musi logować błąd' \
-        "ERROR: MAIN_CONFIGURATION_DIR is not set — cannot reload" "${_LOG_MESSAGES[0]:-}"
+        "ERROR: bash.reload_no_main_dir" "${_LOG_MESSAGES[0]:-}"
 }
 
 testMissingMainShReturnsOne() {
@@ -88,7 +88,7 @@ testMissingMainShLogsError() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
     assertEquals 'brak main.sh musi logować błąd' \
-        "ERROR: main.sh not found: /tmp/nieistniejacy_katalog_$$/main.sh" "${_LOG_MESSAGES[0]:-}"
+        "ERROR: bash.reload_main_missing /tmp/nieistniejacy_katalog_$$/main.sh" "${_LOG_MESSAGES[0]:-}"
 }
 
 testMainShIsDirectoryReturnsOne() {
@@ -105,7 +105,7 @@ testMainShIsDirectoryLogsError() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
     assertEquals 'main.sh jako katalog musi logować błąd' \
-        "ERROR: main.sh not found: $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
+        "ERROR: bash.reload_main_missing $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
 }
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ testSuccessfulReloadLogsInfo() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null
     assertEquals 'poprawny reload musi logować info' \
-        "INFO: Konfiguracja przeładowana z $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
+        "INFO: bash.reload_ok $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
 }
 
 testVariablesFromMainShVisibleAfterReload() {
@@ -182,7 +182,7 @@ testFailingMainShLogsError() {
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
     assertEquals 'main.sh z return 1 musi logować błąd' \
-        "ERROR: Błąd podczas ładowania $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
+        "ERROR: bash.reload_failed $_TMP_DIR/main.sh" "${_LOG_MESSAGES[0]:-}"
 }
 
 testFailingMainShDoesNotLogInfo() {

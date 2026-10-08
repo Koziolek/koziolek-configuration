@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
 # Komunikaty z tablic MSG_* (005_function_messages.sh) — doładuj, gdy ten plik sourcowany osobno (np. w testach).
-declare -F messages_ensure_loaded >/dev/null || . "$(dirname "${BASH_SOURCE[0]}")/005_function_messages.sh"
+# Bez dirname: plik bywa sourcowany przy pustym/okrojonym PATH.
+if ! declare -F messages_ensure_loaded >/dev/null; then
+  _log_src="${BASH_SOURCE[0]}"
+  [[ "$_log_src" == */* ]] || _log_src="./$_log_src"
+  . "${_log_src%/*}/005_function_messages.sh"
+  unset _log_src
+fi
 
 # Log a message with specified log level and color formatting
 # Usage: log_message <level> <message...>

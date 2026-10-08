@@ -11,6 +11,10 @@
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# Asercje na polskie teksty komunikatów — niezależnie od LANG maszyny (np. en_US na macOS);
+# eksport dziedziczą też powłoki harnessów (bash -c).
+export MESSAGES_LANG=pl
+
 export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
 export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 

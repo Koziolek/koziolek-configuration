@@ -290,8 +290,22 @@ dziedziczone. Wartości placeholderów są danymi (`%`, `$(…)` w argumencie ni
 liczba argumentów musi odpowiadać placeholderom (nadmiarowe powtarzają szablon — zachowanie `printf`).
 `MESSAGES_DIR` przekierowuje na inny katalog (testy). Nowy język = nowy plik `messages.<lang>.sh`
 (test `testEveryPolishKeyHasEnglishTranslation` pilnuje kompletności `en`). Test:
-`test/unit/test_messages.sh`. Na razie zmigrowane: `install_lib` i `git vomit`/`bleeh` („Brak zmian”);
-reszta repozytorium nadal używa dosłownych tekstów.
+`test/unit/test_messages.sh` — m.in. pilnuje, że każdy klucz użyty w kodzie (`log_<poziom> obszar.nazwa`)
+ma definicję w tablicy swojego poziomu w `pl` i `en`. Testy asertujące polskie teksty ustawiają
+`MESSAGES_LANG=pl` (inaczej wynik zależałby od `LANG` maszyny, np. en_US na macOS). Loader i guard w
+`010_function_log.sh` nie używają zewnętrznych poleceń (`dirname`) — działają przy pustym `PATH`;
+`MESSAGES_DEFAULT_LANG` i `_MESSAGES_DIR_DEFAULT` są eksportowane, bo w procesach potomnych
+(`git fun …`) plik `005` nie jest sourcowany. Zmigrowane są wszystkie pliki z `log_*` (lista i stan: issue #135), w tym podpisywanie
+(`150`, `155`, `157`), `110_git-context.sh` i `git/git_functions.sh`. Dosłownie zostają linie, w których
+kolor, element listy albo zrzut danych jest częścią komunikatu (`"${C_RED}   - $service"`, `"  - $r"`,
+`"user.name = $name"`, separatory `----`), polecenia do skopiowania (`"  git branch -M …"`,
+`"export SSH_SK_KEY_FILE=…"`), `"Push tagów: $(… echo tak || echo nie)"` (słowo tak/nie wplecione w
+argument) oraz generyczny `log_error "$message"`. Wartości z kolorem przekazuj jako argument
+(`"${C_BOLD}$name${C_NC}"`) albo, gdy kolor otacza tekst, jako dwa `%s` (`"\n%sTytuł:%s"` z `C_BOLD`/`C_NC`);
+literalny `%` po placeholderze to `%%`. Klucze nowych komunikatów nazywaj po angielsku (`obszar.krotki_opis`).
+Testy, które mockują `log_*`, widzą „klucz argumenty”. `test_messages.sh` pilnuje też zgodności liczby
+placeholderów `pl`/`en` dla każdego klucza. Pliki bez loggerów (`echo` w `packages/*.sh`,
+`install.sh` itd.) **nie podlegają migracji**.
 
 ### System pluginów `get_and_build` (gab)
 

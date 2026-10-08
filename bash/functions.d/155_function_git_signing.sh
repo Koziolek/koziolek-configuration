@@ -58,8 +58,8 @@ _gpg_card_check_deps() {
     command -v gpg     &>/dev/null || missing+=("gnupg")
     command -v gpgconf &>/dev/null || missing+=("gpgconf (gnupg)")
     if [ "${#missing[@]}" -gt 0 ]; then
-        log_error "gpg: brakujące zależności: ${missing[*]}"
-        log_info "gpg: Linux: apt install gnupg scdaemon pcscd; macOS: brew install gnupg pinentry-mac"
+        log_error git_signing.gpg_missing_dependencies "${missing[*]}"
+        log_info git_signing.gpg_linux_apt_install_gnupg_scdaemon
         return 1
     fi
     return 0
@@ -95,9 +95,9 @@ _gpg_card_require() {
     local status
     if ! status=$(_gpg_card_status_colons) || [ -z "$status" ]; then
         {
-            log_error "gpg: nie widzę karty OpenPGP (gpg --card-status)."
-            log_info  "gpg: czy klucz jest wpięty i ma aplet OpenPGP? Klucze czysto FIDO2/U2F go nie mają."
-            log_info  "gpg: przy konflikcie z pcscd: gpg_card_use_pcscd, potem gpg_agent_restart"
+            log_error git_signing.gpg_no_openpgp_card_detected_gpg
+            log_info git_signing.gpg_is_the_key_plugged_in
+            log_info git_signing.gpg_on_a_conflict_with_pcscd
         } >&2
         return 1
     fi
@@ -129,29 +129,29 @@ function gpg_card_import_pubkey() {
     status=$(_gpg_card_require) || return 1
     fpr=$(_gpg_card_signing_fpr "$status")
     if [ -z "$fpr" ]; then
-        log_error "gpg: slot podpisu na karcie jest pusty — najpierw wygeneruj/wgraj klucz (gpg --edit-key … keytocard)"
+        log_error git_signing.gpg_the_signature_slot_on_the
         return 1
     fi
 
     if gpg --list-keys "$fpr" &>/dev/null; then
-        log_info "gpg: klucz publiczny $fpr już jest w keyringu"
+        log_info git_signing.gpg_public_key_is_already_in "$fpr"
     else
         local card_url src
         card_url=$(_gpg_card_field url "$status")
         for src in "$card_url" "${GPG_PUBKEY_URL:-https://github.com/${GPG_CARD_GITHUB_USER}.gpg}"; do
             [ -n "$src" ] || continue
-            log_info "gpg: pobieram klucz publiczny z $src"
+            log_info git_signing.gpg_fetching_public_key_from "$src"
             gpg --fetch-keys "$src" &>/dev/null || true
             gpg --list-keys "$fpr" &>/dev/null && break
         done
         if ! gpg --list-keys "$fpr" &>/dev/null; then
             local ks="${GPG_KEYSERVER:-hkps://keys.openpgp.org}"
-            log_info "gpg: próbuję keyserver $ks"
+            log_info git_signing.gpg_trying_keyserver "$ks"
             gpg --keyserver "$ks" --recv-keys "$fpr" &>/dev/null || true
         fi
         if ! gpg --list-keys "$fpr" &>/dev/null; then
-            log_error "gpg: nie udało się pobrać klucza publicznego $fpr"
-            log_info  "gpg: ustaw GPG_PUBKEY_URL w ~/.senv albo zapisz URL na karcie (gpg --card-edit → admin → url)"
+            log_error git_signing.gpg_failed_to_fetch_public_key "$fpr"
+            log_info git_signing.gpg_set_gpg_pubkey_url_in
             return 1
         fi
     fi
@@ -165,7 +165,7 @@ function gpg_card_import_pubkey() {
         # Własny klucz — ultimate trust, inaczej `git log --show-signature` marudzi.
         printf '%s:6:\n' "$primary" | gpg --import-ownertrust &>/dev/null || true
     fi
-    log_info "gpg: klucz $fpr gotowy (prywatna część na karcie)"
+    log_info git_signing.gpg_key_ready_private_part_on "$fpr"
 }
 
 ##
@@ -175,7 +175,7 @@ function gpg_card_import_pubkey() {
 ##
 function gpg_git_setup() {
     _gpg_card_check_deps || return 1
-    command -v git &>/dev/null || { log_error "gpg: brak git"; return 1; }
+    command -v git &>/dev/null || { log_error git_signing.gpg_git_missing; return 1; }
 
     gpg_card_import_pubkey || return 1
 
@@ -183,7 +183,7 @@ function gpg_git_setup() {
     status=$(_gpg_card_require) || return 1
     fpr=$(_gpg_card_signing_fpr "$status")
 
-    _gpg_pinentry_setup || log_warn "gpg: konfiguracja pinentry nie powiodła się — PIN może nie mieć gdzie się pokazać"
+    _gpg_pinentry_setup || log_warn git_signing.gpg_pinentry_configuration_failed_the_pin
 
     # "!" = użyj DOKŁADNIE tego podklucza (podpisującego z karty), nie
     # "najlepszego" podklucza wybranego przez gpg.
@@ -193,8 +193,8 @@ function gpg_git_setup() {
     git config --global commit.gpgsign true
     git config --global tag.gpgSign true
 
-    log_info "gpg: git podpisuje commity i tagi kluczem ${fpr} (~/.gitconfig)"
-    log_info "gpg: sprawdź podpis: gpg_card_test (poprosi o PIN/dotyk)"
+    log_info git_signing.gpg_git_signs_commits_and_tags "${fpr}"
+    log_info git_signing.gpg_verify_the_signature_gpg_card
 }
 
 ##
@@ -206,7 +206,7 @@ function gpg_git_disable() {
     for k in commit.gpgsign tag.gpgSign user.signingkey gpg.program gpg.format; do
         git config --global --unset "$k" 2>/dev/null || true
     done
-    log_info "gpg: podpisywanie commitów wyłączone na tej maszynie"
+    log_info git_signing.gpg_commit_signing_disabled_on_this
 }
 
 ##
@@ -218,13 +218,13 @@ function gpg_card_test() {
     local status fpr
     status=$(_gpg_card_require) || return 1
     fpr=$(_gpg_card_signing_fpr "$status")
-    [ -n "$fpr" ] || { log_error "gpg: slot podpisu na karcie jest pusty"; return 1; }
+    [ -n "$fpr" ] || { log_error git_signing.gpg_the_signature_slot_on_the_2; return 1; }
 
-    log_info "gpg: próbny podpis kluczem $fpr — podaj PIN/dotknij klucza gdy poprosi"
+    log_info git_signing.gpg_test_signature_with_key_enter "$fpr"
     if echo "gpg_card_test $(date +%s)" | gpg --local-user "${fpr}!" --clearsign >/dev/null; then
-        log_info "gpg: podpis działa"
+        log_info git_signing.gpg_signature_works
     else
-        log_error "gpg: podpis nie powiódł się"
+        log_error git_signing.gpg_signature_failed
         return 1
     fi
 }
@@ -238,7 +238,7 @@ function gpg_agent_restart() {
     gpgconf --kill scdaemon
     gpgconf --kill gpg-agent
     gpg-connect-agent /bye &>/dev/null || true
-    log_info "gpg: gpg-agent i scdaemon zrestartowane"
+    log_info git_signing.gpg_gpg_agent_and_scdaemon_restarted
 }
 
 ##
@@ -255,7 +255,7 @@ function gpg_card_use_pcscd() {
     for line in disable-ccid pcsc-shared; do
         grep -qxF "$line" "$conf" || echo "$line" >> "$conf"
     done
-    log_info "gpg: scdaemon używa pcscd ($conf) — uruchom gpg_agent_restart"
+    log_info git_signing.gpg_scdaemon_uses_pcscd_run_gpg "$conf"
 }
 
 export -f gpg_card_status
@@ -310,8 +310,8 @@ _ssh_sk_check_deps() {
     command -v "$keygen" &>/dev/null || missing+=("ssh-keygen (openssh)")
     command -v git       &>/dev/null || missing+=("git")
     if [ "${#missing[@]}" -gt 0 ]; then
-        log_error "ssh-sk: brakujące zależności: ${missing[*]}"
-        log_info  "ssh-sk: Linux: openssh-client + libfido2; macOS: brew install openssh"
+        log_error git_signing.ssh_sk_missing_dependencies "${missing[*]}"
+        log_info git_signing.ssh_sk_linux_openssh_client_libfido2
         return 1
     fi
     return 0
@@ -322,7 +322,7 @@ _ssh_sk_email() {
     local email="${1:-}"
     [ -n "$email" ] || email=$(git config --get user.email 2>/dev/null)
     if [ -z "$email" ]; then
-        log_error "ssh-sk: brak e-maila (podaj jako argument albo ustaw git user.email)" >&2
+        log_error git_signing.ssh_sk_no_e_mail_pass >&2
         return 1
     fi
     echo "$email"
@@ -342,7 +342,7 @@ function ssh_sk_key_create() {
     app=$(_ssh_sk_application)
 
     if [ -e "$key_file" ]; then
-        log_error "ssh-sk: $key_file już istnieje — klucz jest utworzony (ssh_sk_git_setup go użyje)"
+        log_error git_signing.ssh_sk_already_exists_the_key "$key_file"
         return 1
     fi
 
@@ -351,14 +351,14 @@ function ssh_sk_key_create() {
 
     mkdir -p "$(dirname "$key_file")"
     chmod 700 "$(dirname "$key_file")"
-    log_info "ssh-sk: tworzenie klucza $app — podaj PIN klucza i potwierdź odciskiem/dotykiem"
+    log_info git_signing.ssh_sk_creating_key_enter_the "$app"
     # -N '' — stub nie zawiera sekretu (to tylko uchwyt do klucza w urządzeniu)
     if ! "$(_ssh_sk_keygen)" -t ed25519-sk "${opts[@]}" -C "git-signing $email" -N '' -f "$key_file"; then
-        log_error "ssh-sk: tworzenie klucza nie powiodło się (PIN ustawiony? fido2_set_pin)"
+        log_error git_signing.ssh_sk_key_creation_failed_pin
         return 1
     fi
-    log_info "ssh-sk: klucz utworzony → $key_file(.pub)"
-    log_info "ssh-sk: dalej: ssh_sk_git_setup, potem jednorazowo ssh_sk_github_upload"
+    log_info git_signing.ssh_sk_key_created_pub "$key_file"
+    log_info git_signing.ssh_sk_next_ssh_sk_git
 }
 
 ##
@@ -373,17 +373,17 @@ function ssh_sk_key_load() {
     app=$(_ssh_sk_application)
 
     if [ -s "$key_file" ] && [ -s "$key_file.pub" ]; then
-        log_info "ssh-sk: stub $key_file już jest"
+        log_info git_signing.ssh_sk_stub_already_exists "$key_file"
         return 0
     fi
 
     local tmp rc=0
     tmp=$(mktemp -d) || return 1
-    log_info "ssh-sk: pobieram resident keys z urządzenia — podaj PIN klucza gdy poprosi"
+    log_info git_signing.ssh_sk_fetching_resident_keys_from
     (cd "$tmp" && "$(_ssh_sk_keygen)" -K -N '') || rc=$?
     if [ "$rc" -ne 0 ]; then
         rm -rf "$tmp"
-        log_error "ssh-sk: ssh-keygen -K nie powiodło się (klucz wpięty? PIN poprawny?)"
+        log_error git_signing.ssh_sk_ssh_keygen_k_failed
         return 1
     fi
 
@@ -403,7 +403,7 @@ function ssh_sk_key_load() {
     done
     if [ -z "$found" ] || [ ! -f "$found.pub" ]; then
         rm -rf "$tmp"
-        log_error "ssh-sk: na urządzeniu nie ma klucza z aplikacją $app — utwórz go: ssh_sk_key_create"
+        log_error git_signing.ssh_sk_the_device_has_no "$app"
         return 1
     fi
 
@@ -414,7 +414,7 @@ function ssh_sk_key_load() {
     chmod 600 "$key_file"
     chmod 644 "$key_file.pub"
     rm -rf "$tmp"
-    log_info "ssh-sk: stub odtworzony → $key_file"
+    log_info git_signing.ssh_sk_stub_restored "$key_file"
 }
 
 ##
@@ -448,8 +448,8 @@ function ssh_sk_git_setup() {
     git config --global commit.gpgsign true
     git config --global tag.gpgSign true
 
-    log_info "ssh-sk: git podpisuje commity i tagi kluczem $key_file (~/.gitconfig)"
-    log_info "ssh-sk: sprawdź: ssh_sk_test (poprosi o odcisk/PIN)"
+    log_info git_signing.ssh_sk_git_signs_commits_and "$key_file"
+    log_info git_signing.ssh_sk_verify_ssh_sk_test
 }
 
 ##
@@ -463,12 +463,12 @@ function ssh_sk_git_setup() {
 function ssh_sk_use_existing() {
     local key_file="${1:-}"
     if [ -z "$key_file" ]; then
-        log_error "Usage: ssh_sk_use_existing <plik_klucza> [email]"
+        log_error git_signing.usage_ssh_sk_use_existing_key
         return 1
     fi
     key_file="${key_file%.pub}"
     if [ ! -s "$key_file" ] || [ ! -s "$key_file.pub" ]; then
-        log_error "ssh-sk: brak $key_file lub $key_file.pub"
+        log_error git_signing.ssh_sk_missing_or_pub "$key_file" "$key_file"
         return 1
     fi
     local type
@@ -476,17 +476,17 @@ function ssh_sk_use_existing() {
     case "$type" in
         sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) ;;
         *)
-            log_error "ssh-sk: $key_file to klucz '$type' — klucz prywatny leży na dysku, nie w urządzeniu FIDO2"
-            log_info  "ssh-sk: użyj klucza -sk albo utwórz nowy: ssh_sk_key_create"
+            log_error git_signing.ssh_sk_is_a_key_the "$key_file" "$type"
+            log_info git_signing.ssh_sk_use_an_sk_key
             return 1
             ;;
     esac
 
     SSH_SK_KEY_FILE="$key_file" ssh_sk_git_setup "${2:-}" || return 1
-    log_warn "ssh-sk: utrwal w ~/.senv, żeby pozostałe funkcje używały tego klucza:"
+    log_warn git_signing.ssh_sk_persist_in_senv_so
     log_man  "export SSH_SK_KEY_FILE=$key_file"
-    log_info "ssh-sk: na GitHubie dodaj ten sam klucz drugi raz jako signing key: ssh_sk_github_upload"
-    log_info "ssh-sk: na nowej maszynie klucz odtworzy się z urządzenia tylko jeśli jest resident"
+    log_info git_signing.ssh_sk_on_github_add_the
+    log_info git_signing.ssh_sk_on_a_new_machine
 }
 
 ##
@@ -499,7 +499,7 @@ function ssh_sk_git_disable() {
              gpg.ssh.program gpg.ssh.allowedSignersFile; do
         git config --global --unset "$k" 2>/dev/null || true
     done
-    log_info "ssh-sk: podpisywanie commitów wyłączone na tej maszynie"
+    log_info git_signing.ssh_sk_commit_signing_disabled_on
 }
 
 ##
@@ -513,19 +513,19 @@ function ssh_sk_test() {
     key_file=$(_ssh_sk_key_file)
     signers=$(_ssh_sk_allowed_signers)
     keygen=$(_ssh_sk_keygen)
-    [ -s "$key_file" ] || { log_error "ssh-sk: brak stuba $key_file — uruchom ssh_sk_git_setup"; return 1; }
+    [ -s "$key_file" ] || { log_error git_signing.ssh_sk_missing_stub_run_ssh "$key_file"; return 1; }
 
     tmp=$(mktemp -d) || return 1
     echo "ssh_sk_test $(date +%s)" > "$tmp/msg"
-    log_info "ssh-sk: próbny podpis — przyłóż palec/podaj PIN gdy poprosi"
+    log_info git_signing.ssh_sk_test_signature_touch_the
     if ! "$keygen" -Y sign -n git -f "$key_file" "$tmp/msg" >/dev/null; then
-        log_error "ssh-sk: podpis nie powiódł się"
+        log_error git_signing.ssh_sk_signature_failed
         rc=1
     elif ! "$keygen" -Y verify -n git -f "$signers" -I "$email" -s "$tmp/msg.sig" < "$tmp/msg" >/dev/null; then
-        log_error "ssh-sk: podpis powstał, ale weryfikacja przez $signers nie przeszła"
+        log_error git_signing.ssh_sk_signature_created_but_verification "$signers"
         rc=1
     else
-        log_info "ssh-sk: podpis działa"
+        log_info git_signing.ssh_sk_signature_works
     fi
     rm -rf "$tmp"
     return "$rc"
@@ -538,8 +538,8 @@ function ssh_sk_test() {
 function ssh_sk_github_upload() {
     local key_file
     key_file=$(_ssh_sk_key_file)
-    command -v gh &>/dev/null || { log_error "ssh-sk: brak gh (GitHub CLI)"; return 1; }
-    [ -s "$key_file.pub" ] || { log_error "ssh-sk: brak $key_file.pub — uruchom ssh_sk_git_setup"; return 1; }
+    command -v gh &>/dev/null || { log_error git_signing.ssh_sk_gh_github_cli_missing; return 1; }
+    [ -s "$key_file.pub" ] || { log_error git_signing.ssh_sk_missing_pub_run_ssh "$key_file"; return 1; }
     gh ssh-key add "$key_file.pub" --type signing --title "git-signing ($(_ssh_sk_application))"
 }
 
@@ -583,13 +583,13 @@ _gpg_sw_default_keyid() {
 # Usage: gpg_sw_git_setup [keyid]   (bez argumentu: keyid z gpg_sw_generate)
 ##
 function gpg_sw_git_setup() {
-    command -v gpg &>/dev/null || { log_error "gpg_sw: brak gpg"; return 1; }
-    command -v git &>/dev/null || { log_error "gpg_sw: brak git"; return 1; }
+    command -v gpg &>/dev/null || { log_error git_signing.gpg_sw_gpg_missing; return 1; }
+    command -v git &>/dev/null || { log_error git_signing.gpg_sw_git_missing; return 1; }
 
     local keyid="${1:-}"
     [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
     if [ -z "$keyid" ]; then
-        log_error "Usage: gpg_sw_git_setup <keyid> (albo uruchom najpierw gpg_sw_generate)"
+        log_error git_signing.usage_gpg_sw_git_setup_keyid
         return 1
     fi
 
@@ -599,8 +599,8 @@ function gpg_sw_git_setup() {
     git config --global commit.gpgsign true
     git config --global tag.gpgSign true
 
-    log_info "gpg_sw: git podpisuje commity i tagi kluczem $keyid (~/.gitconfig, softwarowy)"
-    log_info "gpg_sw: sprawdź podpis: gpg_sw_test (poprosi o passphrase)"
+    log_info git_signing.gpg_sw_git_signs_commits_and "$keyid"
+    log_info git_signing.gpg_sw_verify_the_signature_gpg
 }
 
 ##
@@ -611,7 +611,7 @@ function gpg_sw_git_disable() {
     for k in commit.gpgsign tag.gpgSign user.signingkey gpg.program gpg.format; do
         git config --global --unset "$k" 2>/dev/null || true
     done
-    log_info "gpg_sw: podpisywanie commitów softwarowym kluczem wyłączone na tej maszynie"
+    log_info git_signing.gpg_sw_commit_signing_with_the
 }
 
 ##
@@ -620,16 +620,16 @@ function gpg_sw_git_disable() {
 # Usage: gpg_sw_test [keyid]
 ##
 function gpg_sw_test() {
-    command -v gpg &>/dev/null || { log_error "gpg_sw: brak gpg"; return 1; }
+    command -v gpg &>/dev/null || { log_error git_signing.gpg_sw_gpg_missing; return 1; }
     local keyid="${1:-}"
     [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
-    [ -n "$keyid" ] || { log_error "gpg_sw: brak keyid (podaj albo uruchom gpg_sw_generate)"; return 1; }
+    [ -n "$keyid" ] || { log_error git_signing.gpg_sw_missing_keyid_pass_it; return 1; }
 
-    log_info "gpg_sw: próbny podpis kluczem $keyid — podaj passphrase gdy poprosi"
+    log_info git_signing.gpg_sw_test_signature_with_key "$keyid"
     if echo "gpg_sw_test $(date +%s)" | gpg --local-user "$keyid" --clearsign >/dev/null; then
-        log_info "gpg_sw: podpis działa"
+        log_info git_signing.gpg_sw_signature_works
     else
-        log_error "gpg_sw: podpis nie powiódł się"
+        log_error git_signing.gpg_sw_signature_failed
         return 1
     fi
 }

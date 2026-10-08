@@ -10,7 +10,7 @@ if ! command -v hub >/dev/null 2>&1; then
     if $SUDO yum install -y hub; then
         alias git='hub'
     else
-        log_warn "hub: instalacja przez yum nieudana — git działa bez aliasu"
+        log_warn hub.install_failed yum
     fi
     unmake_me_sudo
 fi

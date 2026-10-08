@@ -6,7 +6,7 @@ function prepare_key(){
   local generated_key
   generated_key=$(openssl rand -base64 32)
   if [ ! -f "$secret_file_template" ]; then
-    log_warn "$secret_file_template file not found"
+    log_warn nexus.secret_template_missing "$secret_file_template"
     return 1
   fi
 

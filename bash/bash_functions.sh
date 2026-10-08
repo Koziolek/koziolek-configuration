@@ -133,7 +133,7 @@ function __log_or_echo_error() {
 ##
 function source_if_exists() {
     if [ $# -lt 1 ]; then
-        log_man "Usage: source_if_exists FILE [DIRECTORY]"
+        log_man bash.source_if_exists_usage
         return 1
     fi
 
@@ -141,7 +141,7 @@ function source_if_exists() {
     local directory="${2:-$BASH_CONFIGURATION_DIR}"
 
     if [ -z "$directory" ]; then
-        log_warn "Neither directory parameter nor \$BASH_CONFIGURATION_DIR is set. Cannot source files reliably."
+        log_warn bash.no_source_dir
         return 1
     fi
 
@@ -150,7 +150,7 @@ function source_if_exists() {
         # shellcheck source=/dev/null
         . "$filepath"
     else
-        log_warn "File '${filename}.sh' does not exist in '${directory}'"
+        log_warn bash.source_file_missing "${filename}.sh" "$directory"
     fi
 }
 
@@ -194,9 +194,9 @@ function check_workspace() {
 
   for name in "${ENV_DIRS[@]}"; do
     if [ -z "${!name}" ]; then
-      log_warn "Var $name is not set"
+      log_warn bash.var_not_set "$name"
     elif [ ! -d "${!name}" ]; then
-      log_warn "Directory ${!name} doesn't exist"
+      log_warn bash.dir_missing "${!name}"
       mkdir -p "${!name}"
     fi
   done
@@ -205,7 +205,7 @@ function check_workspace() {
     if [ -z "${!name}" ] \
        && { command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1; }; then
       # Ostrzegaj tylko o realnym braku: silnik kontenerowy jest, a compose nie ustawione.
-      log_warn "Var $name is not set"
+      log_warn bash.var_not_set "$name"
     fi
   done
 
@@ -215,7 +215,7 @@ function update_asdf() {
     local asdf_bin="$HOME/.local/bin/asdf"
 
     if [ ! -x "$asdf_bin" ]; then
-        log_error "asdf nie jest zainstalowany w $HOME/.local/bin/asdf"
+        log_error bash.asdf_not_installed "$HOME/.local/bin/asdf"
         return 1
     fi
 
@@ -224,16 +224,16 @@ function update_asdf() {
     latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$latest_tag" ]; then
-        log_error "Nie udało się pobrać informacji o najnowszej wersji asdf"
+        log_error bash.asdf_latest_failed
         return 1
     fi
 
     if [ "$current_version" = "$latest_tag" ]; then
-        log_info "asdf jest aktualne ($current_version)"
+        log_info bash.asdf_up_to_date "$current_version"
         return 0
     fi
 
-    log_info "Aktualizacja asdf: $current_version → $latest_tag"
+    log_info bash.asdf_updating "$current_version" "$latest_tag"
     local _os _arch
     _os="$(uname -s | tr '[:upper:]' '[:lower:]')"
     _arch="$(uname -m)"
@@ -245,7 +245,7 @@ function update_asdf() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -L "$download_url" -o "$tmp_dir/$archive"; then
-        log_error "Nie udało się pobrać asdf $latest_tag"
+        log_error bash.asdf_download_failed "$latest_tag"
         rm -rf "$tmp_dir"
         return 1
     fi
@@ -255,7 +255,7 @@ function update_asdf() {
     chmod +x "$asdf_bin"
     rm -rf "$tmp_dir"
 
-    log_info "asdf zaktualizowany do $latest_tag"
+    log_info bash.asdf_updated "$latest_tag"
 }
 
 source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
@@ -265,13 +265,13 @@ source_directory "$BASH_CONFIGURATION_DIR/functions.d/"
 ##
 function reload_config() {
     if [ -z "$MAIN_CONFIGURATION_DIR" ]; then
-        log_error "MAIN_CONFIGURATION_DIR is not set — cannot reload"
+        log_error bash.reload_no_main_dir
         return 1
     fi
 
     local main_script="$MAIN_CONFIGURATION_DIR/main.sh"
     if [ ! -f "$main_script" ]; then
-        log_error "main.sh not found: $main_script"
+        log_error bash.reload_main_missing "$main_script"
         return 1
     fi
 
@@ -285,10 +285,10 @@ function reload_config() {
 
     # shellcheck source=/dev/null
     . "$main_script" || {
-        log_error "Błąd podczas ładowania $main_script"
+        log_error bash.reload_failed "$main_script"
         return 1
     }
-    log_info "Konfiguracja przeładowana z $main_script"
+    log_info bash.reload_ok "$main_script"
 }
 
 ##

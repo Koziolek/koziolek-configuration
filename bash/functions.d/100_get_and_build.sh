@@ -40,7 +40,7 @@ EOF
     local plugins_dir="$1"
 
     if [[ ! -d "$plugins_dir" ]]; then
-      log_error "Katalog pluginów nie istnieje: ${plugins_dir}"
+      log_error gab.plugins_dir_missing "$plugins_dir"
       return 1
     fi
 
@@ -56,7 +56,7 @@ EOF
       source "$plugin_file"
 
       if [[ -z "$PLUGIN_NAME" || -z "$PLUGIN_DETECT" || -z "$PLUGIN_CMD" ]]; then
-        log_warn "Plugin $(basename "$plugin_file") jest niekompletny, pomijam"
+        log_warn gab.plugin_incomplete "$(basename "$plugin_file")"
         continue
       fi
 
@@ -67,11 +67,11 @@ EOF
     done
 
     if [[ $count -eq 0 ]]; then
-      log_error "Nie znaleziono żadnych pluginów w ${plugins_dir}"
+      log_error gab.no_plugins "$plugins_dir"
       return 1
     fi
 
-    log_info "Załadowano ${count} plugin(ów)"
+    log_info gab.plugins_loaded "$count"
   }
 
   _gab_list_plugins() {
@@ -112,15 +112,15 @@ EOF
     local work_dir="$1"
 
     if [[ ! -d "${work_dir}/.git" ]]; then
-      log_error "Katalog ${work_dir} nie jest repozytorium Git"
+      log_error gab.not_git_repo "$work_dir"
       return 1
     fi
 
-    log_info "Wykonuję git pull w ${work_dir}..."
+    log_info gab.pulling "$work_dir"
     if git -C "$work_dir" pull; then
-      log_info "Git pull zakończony pomyślnie"
+      log_info gab.pull_ok
     else
-      log_error "Git pull nie powiódł się"
+      log_error gab.pull_failed
       return 1
     fi
   }
@@ -132,16 +132,16 @@ EOF
     local name="${_GAB_LOADED_NAMES[$idx]}"
     local cmd="${_GAB_LOADED_CMDS[$idx]}"
 
-    log_info "Wykryto system budowania: ${C_BOLD}${name}${C_NC}"
-    log_info "Uruchamiam: ${C_BOLD}${cmd}${C_NC}"
+    log_info gab.detected "${C_BOLD}${name}${C_NC}"
+    log_info gab.running "${C_BOLD}${cmd}${C_NC}"
     echo ""
 
     if (cd "$work_dir" && eval "$cmd"); then
       echo ""
-      log_info "Budowanie (${name}) zakończone pomyślnie ✓"
+      log_info gab.build_ok "$name"
     else
       echo ""
-      log_error "Budowanie (${name}) nie powiodło się ✗"
+      log_error gab.build_failed "$name"
       return 1
     fi
   }
@@ -182,7 +182,7 @@ EOF
       return 0
       ;;
     -*)
-      log_error "Nieznana opcja: $1"
+      log_error gab.unknown_option "$1"
       _gab_usage
       return 1
       ;;
@@ -207,7 +207,7 @@ EOF
 
   # 1. Git pull
   if $skip_pull; then
-    log_warn "Pomijam git pull (--skip-pull)"
+    log_warn gab.skip_pull
   else
     _gab_do_git_pull "$work_dir" || return 1
   fi
@@ -218,14 +218,14 @@ EOF
   local detected_idx
   if detected_idx=$(_gab_detect_build_system "$work_dir"); then
     if $dry_run; then
-      log_info "Wykryto: ${C_BOLD}${_GAB_LOADED_NAMES[$detected_idx]}${C_NC} (dry-run, nie buduję)"
+      log_info gab.detected_dry_run "${C_BOLD}${_GAB_LOADED_NAMES[$detected_idx]}${C_NC}"
       return 0
     fi
     # 3. Build
     _gab_do_build "$work_dir" "$detected_idx" || return 1
   else
-    log_error "Nie rozpoznano systemu budowania w ${work_dir}"
-    log_info "Dostępne systemy:"
+    log_error gab.not_recognized "$work_dir"
+    log_info gab.available_systems
     for i in "${!_GAB_LOADED_NAMES[@]}"; do
       echo "  - ${_GAB_LOADED_NAMES[$i]} (szuka: ${_GAB_LOADED_DETECTS[$i]})"
     done

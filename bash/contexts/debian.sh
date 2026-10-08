@@ -11,7 +11,7 @@ if ! command -v hub >/dev/null 2>&1; then
     if $SUDO apt-get update -qq && $SUDO apt-get install -qqy hub; then
         alias git='hub'
     else
-        log_warn "hub: instalacja przez apt nieudana — git działa bez aliasu"
+        log_warn hub.install_failed apt
     fi
     unmake_me_sudo
 fi

@@ -21,7 +21,7 @@ function yes_or_no(){
                 valid=true
                 ;;
             *)
-                log_man "Please answer with 'y' or 'n'"
+                log_man prompt.answer_yn
                 ;;
         esac
     done
@@ -50,7 +50,7 @@ function are_you_sure(){
                 valid=true
                 ;;
             *)
-                log_man "Please answer with 'y' or 'n'"
+                log_man prompt.answer_yn
                 ;;
         esac
     done

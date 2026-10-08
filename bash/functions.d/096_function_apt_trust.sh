@@ -16,7 +16,7 @@ function refresh_apt_gpg_keys() {
     local sudo_cmd=''
     (( EUID != 0 )) && sudo_cmd='sudo'
 
-    log_info "Sprawdzanie kluczy GPG repozytoriów apt..."
+    log_info apt_trust.checking
     $sudo_cmd mkdir -p "$KEYRING_DIR"
 
     # Remove expired imported keys so they can be re-fetched fresh
@@ -24,12 +24,12 @@ function refresh_apt_gpg_keys() {
     for keyfile in "$KEYRING_DIR"/imported-*.gpg; do
         [[ -f "$keyfile" ]] || continue
         if gpg --show-keys "$keyfile" 2>/dev/null | grep -q '\[expired\]'; then
-            log_warn "Usuwanie wygasłego klucza: $(basename "$keyfile")"
+            log_warn apt_trust.removing_expired "$(basename "$keyfile")"
             $sudo_cmd rm -f "$keyfile"
             (( removed++ )) || true
         fi
     done
-    (( removed > 0 )) && log_info "Usunięto $removed wygasłych kluczy"
+    (( removed > 0 )) && log_info apt_trust.removed_count "$removed"
 
     local update_output
     update_output=$($sudo_cmd apt-get update 2>&1 || true)
@@ -44,7 +44,7 @@ function refresh_apt_gpg_keys() {
     done < <(echo "$update_output" | grep -E '404|nie ma pliku Release|does not have a Release file' || true)
 
     if [ "${#dead_repos[@]}" -gt 0 ]; then
-        log_warn "Martwe repozytoria (wymagają ręcznego usunięcia z /etc/apt/sources.list.d/):"
+        log_warn apt_trust.dead_repos
         local r; for r in "${dead_repos[@]}"; do log_warn "  - $r"; done
     fi
 
@@ -58,34 +58,34 @@ function refresh_apt_gpg_keys() {
         | sort -u)
 
     if [[ -z "$pairs" ]]; then
-        log_info "Brak problemów z kluczami GPG"
+        log_info apt_trust.no_problems
         return 0
     fi
 
-    log_warn "Brakujące klucze GPG:"
+    log_warn apt_trust.missing_keys
     while read -r k u; do log_warn "  - $k ($u)"; done <<<"$pairs"
 
     local fixed=0 failed=0 unbound=0
     while read -r key repo_url; do
         [[ -z "$key" ]] && continue
 
-        log_info "Pobieranie klucza $key z $KEYSERVER..."
+        log_info apt_trust.fetching_key "$key" "$KEYSERVER"
         local tmp_keyring
         tmp_keyring=$(mktemp)
         if ! gpg --no-default-keyring --keyring "$tmp_keyring" --keyserver "$KEYSERVER" --recv-keys "$key" 2>/dev/null; then
-            log_error "Klucz $key: nie udało się pobrać z keyserver"
+            log_error apt_trust.fetch_failed "$key"
             rm -f "$tmp_keyring" "${tmp_keyring}~"
             (( failed++ )) || true
             continue
         fi
 
-        log_man "Fingerprint klucza $key (repo: $repo_url):"
+        log_man apt_trust.fingerprint "$key" "$repo_url"
         gpg --no-default-keyring --keyring "$tmp_keyring" --fingerprint
 
         local ans
         ans=$(are_you_sure 'n')
         if [[ "${ans,,}" != y* ]]; then
-            log_warn "Pominięto import klucza $key (odrzucone przez użytkownika)"
+            log_warn apt_trust.import_declined "$key"
             rm -f "$tmp_keyring" "${tmp_keyring}~"
             continue
         fi
@@ -112,14 +112,14 @@ function refresh_apt_gpg_keys() {
                 -e "t" \
                 -e "s#^(deb(-src)?)([[:space:]]+)(https?://)#\1\3[signed-by=${keyring_file}] \4#" \
                 "$src_file"
-            log_info "Klucz $key przypięty do $src_file (signed-by=${keyring_file})"
+            log_info apt_trust.key_bound "$key" "$src_file" "$keyring_file"
             bound=1
             break
         done
 
         if [[ $bound -eq 0 ]]; then
-            log_warn "Nie znaleziono pliku źródła dla $repo_url — klucz zapisany w $keyring_file,"
-            log_warn "ale NIE dowiązany do repo. Dowiąż ręcznie: dodaj [signed-by=${keyring_file}] do wpisu deb."
+            log_warn apt_trust.no_source_file "$repo_url" "$keyring_file"
+            log_warn apt_trust.bind_manually "$keyring_file"
             (( unbound++ )) || true
         fi
 
@@ -127,11 +127,11 @@ function refresh_apt_gpg_keys() {
     done <<<"$pairs"
 
     if (( fixed > 0 )); then
-        log_info "apt-get update po naprawie kluczy..."
+        log_info apt_trust.updating
         $sudo_cmd apt-get -qq update 2>&1 | grep -v '^Pobieranie\|^Stary\|^Zign\|^Hit' || true
     fi
 
-    (( unbound > 0 )) && log_warn "$unbound klucz(e) nie dowiązano automatycznie do repo — apt nadal będzie zgłaszał NO_PUBKEY."
+    (( unbound > 0 )) && log_warn apt_trust.unbound_warning "$unbound"
 
     (( failed == 0 ))
 }

@@ -49,7 +49,7 @@ EOF
 
   _gc_validate_git_repo() {
     if ! git rev-parse --git-dir &>/dev/null; then
-      log_error "Bieżący katalog nie jest repozytorium git"
+      log_error git_context.current_directory_is_not_a_git
       return 1
     fi
     return 0
@@ -77,7 +77,7 @@ EOF
     done <"$GC_CONFIG_FILE"
 
     if [[ ${#GC_CTX_ORDER[@]} -eq 0 ]]; then
-      log_error "Plik $GC_CONFIG_FILE nie zawiera żadnych kontekstów"
+      log_error git_context.file_contains_no_contexts "$GC_CONFIG_FILE"
       return 1
     fi
 
@@ -91,7 +91,7 @@ EOF
     current_email="$(git config user.email 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
     current_project="$(git config project.name 2>/dev/null || echo "${C_BOLD}(nie ustawiono)${C_NC}")"
 
-    log_man "\n${C_BOLD}Bieżąca konfiguracja git:${C_NC}"
+    log_man git_context.current_git_configuration "${C_BOLD}" "${C_NC}"
     log_info "user.name     = $current_name"
     log_info "user.email    = $current_email"
     log_info "project.name  = $current_project"
@@ -102,7 +102,7 @@ EOF
 
     _gc_display_current_config
 
-    log_man "\n${C_BOLD}Dostępne konteksty:${C_NC}"
+    log_man git_context.available_contexts "${C_BOLD}" "${C_NC}"
     for i in "${!GC_CTX_ORDER[@]}"; do
       local ctx="${GC_CTX_ORDER[$i]}"
       printf "  ${C_YELLOW}%2d)${C_NC} %-20s  %s <%s>\n" \
@@ -114,7 +114,7 @@ EOF
       read -rp "$(echo -e "${C_BOLD}Wybierz kontekst (0 wyjście) [1-${#GC_CTX_ORDER[@]}]:${C_NC} ")" choice
 
       if ((choice == 0)); then
-        log_info "Anulowanie"
+        log_info git_context.cancelled
         return 1
       fi
 
@@ -123,7 +123,7 @@ EOF
         return 0
       fi
 
-      log_warn "Nieprawidłowy wybór. Podaj liczbę od 1 do ${#GC_CTX_ORDER[@]} (0 aby wyjść)"
+      log_warn git_context.invalid_choice_enter_a_number_from "${#GC_CTX_ORDER[@]}"
     done
   }
 
@@ -131,12 +131,12 @@ EOF
     local ctx="$1"
 
     if [[ -z "${GC_CTX_NAME[$ctx]:-}" ]]; then
-      log_error "Kontekst '$ctx' nie ma zdefiniowanego 'name'"
+      log_error git_context.context_has_no_name_defined "$ctx"
       return 1
     fi
 
     if [[ -z "${GC_CTX_EMAIL[$ctx]:-}" ]]; then
-      log_error "Kontekst '$ctx' nie ma zdefiniowanego 'email'"
+      log_error git_context.context_has_no_email_defined "$ctx"
       return 1
     fi
 
@@ -148,8 +148,8 @@ EOF
     local name="$2"
     local email="$3"
 
-    log_man "\n${C_BOLD}Ustawiam konfigurację git:${C_NC}"
-    log_man "  Kontekst: ${C_YELLOW}${ctx}${C_NC}"
+    log_man git_context.setting_git_configuration "${C_BOLD}" "${C_NC}"
+    log_man git_context.context "${C_YELLOW}" "${ctx}" "${C_NC}"
 
     git config user.name "$name"
     git config user.email "$email"
@@ -162,7 +162,7 @@ EOF
     local default_project
     local project_name
 
-    log_man "\n${C_BOLD}Nazwa projektu:${C_NC}"
+    log_man git_context.project_name_header "${C_BOLD}" "${C_NC}"
 
     default_project="$(basename "$(git rev-parse --show-toplevel)")"
 
@@ -170,7 +170,7 @@ EOF
       read -rp "$(echo -e "${C_BOLD}Podaj nazwę projektu [${C_YELLOW}${default_project}${C_BOLD}]:${C_NC} ")" project_name
       project_name="${project_name:-$default_project}"
       [[ -n "${project_name// /}" ]] && break
-      log_error "Nazwa projektu nie może być pusta"
+      log_error git_context.project_name_cannot_be_empty
     done
 
     git config project.name "$project_name"
@@ -180,7 +180,7 @@ EOF
   _gc_display_summary() {
     local key value
 
-    log_man "\n${C_BOLD}Aktualna konfiguracja lokalna repozytorium:${C_NC}"
+    log_man git_context.current_local_repository_configuration "${C_BOLD}" "${C_NC}"
     echo
     git config --local --list | sort | while IFS='=' read -r key value; do
       printf "  ${C_CYAN}%-30s${C_NC} = %s\n" "$key" "$value"
@@ -193,28 +193,28 @@ EOF
 
     read -rp "$(echo -e "${C_BOLD}Plik $GC_CONFIG_FILE nie istnieje. Stworzyć? [t/N]:${C_NC} ")" answer
     if [[ "${answer,,}" != "t" ]]; then
-      log_info "Anulowanie"
+      log_info git_context.cancelled
       return 1
     fi
 
     mkdir -p "$(dirname "$GC_CONFIG_FILE")"
 
-    log_man "\n${C_BOLD}Dane dla profilu 'default':${C_NC}"
+    log_man git_context.default_profile_data "${C_BOLD}" "${C_NC}"
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name
       [[ -n "${name// /}" ]] && break
-      log_error "Pole nie może być puste"
+      log_error git_context.field_cannot_be_empty
     done
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Email (user.email):${C_NC} ")" email
       [[ -n "${email// /}" ]] && break
-      log_error "Pole nie może być puste"
+      log_error git_context.field_cannot_be_empty
     done
 
     printf "[default]\nname  = %s\nemail = %s\n" "$name" "$email" > "$GC_CONFIG_FILE"
-    log_info "Plik $GC_CONFIG_FILE utworzony z profilem 'default'"
+    log_info git_context.file_created_with_profile_default "$GC_CONFIG_FILE"
   }
 
   _gc_add_profile() {
@@ -223,30 +223,30 @@ EOF
     while true; do
       read -rp "$(echo -e "${C_BOLD}Nazwa nowego profilu:${C_NC} ")" ctx_name
       [[ -n "${ctx_name// /}" ]] && break
-      log_error "Nazwa profilu nie może być pusta"
+      log_error git_context.profile_name_cannot_be_empty
     done
 
     if grep -q "^\[${ctx_name}\]" "$GC_CONFIG_FILE" 2>/dev/null; then
-      log_error "Profil '$ctx_name' już istnieje w $GC_CONFIG_FILE"
+      log_error git_context.profile_already_exists_in "$ctx_name" "$GC_CONFIG_FILE"
       return 1
     fi
 
-    log_man "\n${C_BOLD}Dane dla profilu '$ctx_name':${C_NC}"
+    log_man git_context.profile_data "${C_BOLD}" "$ctx_name" "${C_NC}"
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Imię i nazwisko (user.name):${C_NC} ")" name
       [[ -n "${name// /}" ]] && break
-      log_error "Pole nie może być puste"
+      log_error git_context.field_cannot_be_empty
     done
 
     while true; do
       read -rp "$(echo -e "${C_BOLD}Email (user.email):${C_NC} ")" email
       [[ -n "${email// /}" ]] && break
-      log_error "Pole nie może być puste"
+      log_error git_context.field_cannot_be_empty
     done
 
     printf "\n[%s]\nname  = %s\nemail = %s\n" "$ctx_name" "$name" "$email" >> "$GC_CONFIG_FILE"
-    log_info "Profil '$ctx_name' dodany do $GC_CONFIG_FILE"
+    log_info git_context.profile_added_to "$ctx_name" "$GC_CONFIG_FILE"
   }
 
   # ── Main logic ─────────────────────────────────────────────────────────
@@ -270,12 +270,12 @@ EOF
       shift
       ;;
     -*)
-      log_error "Nieznana opcja: $1"
+      log_error git_context.unknown_option "$1"
       _gc_usage
       return 1
       ;;
     *)
-      log_error "Nieznany argument: $1"
+      log_error git_context.unknown_argument "$1"
       _gc_usage
       return 1
       ;;
@@ -286,8 +286,8 @@ EOF
 
   if ((GC_ADD_MODE)); then
     if [[ ! -f "$GC_CONFIG_FILE" ]]; then
-      log_error "Brak pliku konfiguracyjnego: $GC_CONFIG_FILE"
-      log_info "Uruchom git_context bez parametrów aby utworzyć plik konfiguracyjny"
+      log_error git_context.missing_configuration_file "$GC_CONFIG_FILE"
+      log_info git_context.run_git_context_without_parameters_to
       return 1
     fi
     _gc_add_profile

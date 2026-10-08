@@ -25,12 +25,12 @@ _hwinfo_check_deps() {
         command -v "$cmd" &>/dev/null || missing+=("$cmd")
     done
     if [ "${#missing[@]}" -gt 0 ]; then
-        log_error "hwinfo: brakujące zależności: ${missing[*]}"
-        log_info "hwinfo: zainstaluj: sudo apt install dmidecode pciutils   (albo: sudo yum install dmidecode pciutils)"
+        log_error diagnostic.hwinfo_missing_deps "${missing[*]}"
+        log_info diagnostic.hwinfo_install_hint
         return 1
     fi
     if [ "$EUID" -ne 0 ]; then
-        log_warn "hwinfo: dmidecode wymaga uprawnień root — uruchom przez sudo"
+        log_warn diagnostic.hwinfo_needs_root
         return 1
     fi
     return 0
@@ -148,7 +148,7 @@ hwinfo() {
 function run_diagnostic() {
     local script="$WORKSPACE_TOOLS/fix-comp/pre-analyze.sh"
     if [ ! -x "$script" ]; then
-        log_error "run_diagnostic: brak $script (fix-comp niesklonowany? sprawdź install_lib -p wyżej)"
+        log_error diagnostic.run_missing_script "$script"
         return 1
     fi
     bash "$script" "$@"

@@ -31,10 +31,7 @@ function unmake_me_sudo() {
 ##
 function exterminatus() {
   if [ $# -lt 1 ]; then
-    log_man \
-      "Usage
-pray to Emperor and then:
-  exterminatus PATTERN"
+    log_man process.exterminatus_usage
     return 1
   fi
 
@@ -55,7 +52,7 @@ pray to Emperor and then:
   local _pids
   _pids=$(pgrep -f "$pattern")
   if [ -n "$_pids" ]; then
-    log_info "Trafione procesy:"
+    log_info process.killed_header
     pgrep -af "$pattern" | while IFS= read -r _line; do log_info "  $_line"; done
     echo "$_pids" | $SUDO xargs kill -9
   fi
@@ -88,7 +85,7 @@ function _listening_socket_pairs() {
 ##
 function who_use_port() {
   if [ $# -lt 1 ]; then
-    log_man "Usage: who_use_port [--sudo] PORT"
+    log_man process.who_use_port_usage
     return 1
   fi
 
@@ -104,7 +101,7 @@ function who_use_port() {
   port="$1"
 
   if [ -z "$port" ]; then
-    log_man "Usage: who_use_port [--sudo] PORT"
+    log_man process.who_use_port_usage
     return 1
   fi
 
@@ -123,7 +120,7 @@ function who_use_port() {
   fi
 
   if [ -z "$pairs" ]; then
-    log_info "Brak nasłuchujących procesów"
+    log_info process.no_listeners
     return 0
   fi
 
@@ -139,7 +136,7 @@ function who_use_port() {
   done <<<"$pairs"
 
   if [ ${#exact[@]} -eq 0 ] && [ ${#partial[@]} -eq 0 ]; then
-    log_info "Brak procesów nasłuchujących na porcie pasującym do '${port}'"
+    log_info process.no_listener_on_port "$port"
     return 0
   fi
 

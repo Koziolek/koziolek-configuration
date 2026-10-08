@@ -27,7 +27,7 @@ function git_delete_merged_remote() {
   default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
   if [ -z "$default_branch" ]; then
     default_branch="master"
-    log_warn "Nie wykryto gałęzi domyślnej, używam: $default_branch"
+    log_warn git.default_branch_not_detected_using "$default_branch"
   fi
   for branch in $(git branch -r --merged "$default_branch" | grep -v "/$default_branch" | sed 's/origin\///g'); do
     git push -d origin "$branch"
@@ -49,7 +49,7 @@ function git_exterminatus() {
 # Git go home.
 function git_home() {
   local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
-  log_info "Git go home at ${home_branch_name}"
+  log_info git.go_home_at "${home_branch_name}"
   git co "${home_branch_name}" && git pull
 }
 
@@ -81,18 +81,18 @@ function git_init_multi_hooks() {
 
 # Initialize repository in current dir like git init, and then setup additional stuff
 function git_init() {
-  log_info "Initialisation of repository"
+  log_info git.initialisation_of_repository
 
   read -p "${C_LBLUE}Enter project name:${C_NC} " project_name
   if [ -z "$project_name" ]; then
-    log_warn "An empty project name may cause heretical behavior."
+    log_warn git.an_empty_project_name_may_cause
     local ars=$(are_you_sure 'n')
     if [ "$ars" == 'n' ]; then
       return 1
     fi
   fi
 
-  log_man "${C_LBLUE}Would you like to use multi-hooks?${C_NC} "
+  log_man git.would_you_like_to_use_multi "${C_LBLUE}" "${C_NC}"
   local use_hooks=$(yes_or_no 'y')
   git init .
   git config project.name "$project_name"
@@ -120,7 +120,7 @@ function git_new_branch() {
   branch_name=$(to_kebab_case "$branch_name")
 
   if [ -z "$branch_name" ]; then
-    log_error "Branch need a name"
+    log_error git.branch_need_a_name
     return 1
   fi
 
@@ -225,8 +225,8 @@ function __git_prepare_commit_file() {
     mv "$new" "$file"
   else
     # --- ścieżka bez parametrów ---
-    [ -f "$file" ] || { log_error "Brak $file i brak parametrów"; return 1; }
-    [ -n "$(tr -d '[:space:]' < "$file")" ] || { log_error "$file jest pusty"; return 1; }
+    [ -f "$file" ] || { log_error git.no_and_no_parameters "$file"; return 1; }
+    [ -n "$(tr -d '[:space:]' < "$file")" ] || { log_error git.is_empty "$file"; return 1; }
 
     # założenie 2: prefiks do pierwszej linii, jeśli brak
     local first
@@ -247,18 +247,18 @@ function __git_prepare_commit_file() {
     # założenie 6: podgląd + potwierdzenie
     if [ "$assume_yes" -ne 1 ]; then
       local l
-      log_info "Treść commita ($file):"
+      log_info git.commit_message "$file"
       log_info "----"
       while IFS= read -r l; do log_info "  $l"; done < "$file"
       log_info "----"
       if [ ! -t 0 ]; then
-        log_error "Tryb nieinteraktywny bez -y/--yes ani GIT_ASSUME_YES=1 — przerwano"
+        log_error git.non_interactive_mode_without_y_yes
         return 1
       fi
       local ans
       read -r -p "Kontynuować? [T/n] " ans
       case "$ans" in
-      n | N | nie | no) log_warn "Przerwano przez użytkownika"; return 1 ;;
+      n | N | nie | no) log_warn git.aborted_by_user; return 1 ;;
       esac
     fi
   fi
@@ -341,24 +341,24 @@ function git_armageddon() {
     m) commit_msg="$OPTARG" ;;
     t) push_tags=1 ;;
     y) assume_yes=1 ;;
-    *) log_error "Użycie: git_armageddon [-m msg] [-t] [-y]"; return 2 ;;
+    *) log_error git.usage_git_armageddon_m_msg_t; return 2 ;;
     esac
   done
 
-  git rev-parse --is-inside-work-tree &>/dev/null || { log_error "to nie jest repozytorium git"; return 1; }
+  git rev-parse --is-inside-work-tree &>/dev/null || { log_error git.not_a_git_repository; return 1; }
 
   local toplevel
   toplevel=$(git rev-parse --show-toplevel)
   cd "$toplevel" || return 1
 
-  git remote get-url "$remote" &>/dev/null || { log_error "brak zdalnego '$remote'"; return 1; }
+  git remote get-url "$remote" &>/dev/null || { log_error git.no_remote "$remote"; return 1; }
 
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD)
-  [ "$branch" != "HEAD" ] || { log_error "detached HEAD — przełącz się na gałąź"; return 1; }
+  [ "$branch" != "HEAD" ] || { log_error git.detached_head_switch_to_a_branch; return 1; }
 
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    log_error "working tree nie jest czysty — zacommituj lub odłóż zmiany (git stash)"
+    log_error git.working_tree_is_not_clean_commit
     return 1
   fi
 
@@ -368,14 +368,14 @@ function git_armageddon() {
   local untracked
   untracked=$(git status --porcelain --untracked-files=normal | grep -c '^??' || true)
   if [ "${untracked:-0}" -gt 0 ]; then
-    log_error "working tree ma pliki untracked — 'git add -A' zamiótłby je do nowej historii:"
+    log_error git.working_tree_has_untracked_files_git
     git status --porcelain --untracked-files=normal | grep '^??' | sed 's/^/  /' >&2
-    log_error "Dodaj je świadomie (git add), wyczyść (git clean -i) albo zignoruj (.gitignore), potem spróbuj ponownie."
+    log_error git.add_them_deliberately_git_add_clean
     return 1
   fi
 
   if git show-ref --verify --quiet "refs/heads/$backup_branch"; then
-    log_error "gałąź '$backup_branch' już istnieje — usuń ją (git branch -D $backup_branch) lub zmień nazwę"
+    log_error git.branch_already_exists_delete_it_git "$backup_branch" "$backup_branch"
     return 1
   fi
 
@@ -386,63 +386,63 @@ function git_armageddon() {
   local existing_tags
   existing_tags=$(git tag -l)
 
-  log_warn "Gałąź:            $branch"
-  log_warn "Zdalne:           $remote ($remote_url)"
-  log_warn "Commity teraz:    $old_commits  -> po operacji: 1"
-  log_warn "Komunikat:        $commit_msg"
+  log_warn git.branch "$branch"
+  log_warn git.remote "$remote" "$remote_url"
+  log_warn git.commits_now_after_1 "$old_commits"
+  log_warn git.message "$commit_msg"
   log_warn "Push tagów:       $([ "$push_tags" = 1 ] && echo tak || echo nie)"
-  log_warn "Backup lokalny:   $backup_branch (NIE wypychany do $remote)"
+  log_warn git.local_backup_not_pushed_to "$backup_branch" "$remote"
   if [ -n "$existing_tags" ]; then
-    log_warn "UWAGA: repo ma tagi ($(echo "$existing_tags" | tr '\n' ' ')) — commity pod nimi"
-    log_warn "NIE są wymazywane i zostają na $remote nawet po force-push gałęzi. Jeśli tagi"
-    log_warn "wskazują starą historię z sekretami — usuń je osobno (lokalnie i na $remote)."
+    log_warn git.warning_repo_has_tags_the_commits "$(echo "$existing_tags" | tr '\n' ' ')"
+    log_warn git.are_not_erased_and_remain_on "$remote"
+    log_warn git.point_to_old_history_containing_secrets "$remote"
     if [ "$push_tags" = 1 ]; then
-      log_warn "Z flagą -t force-push WYŚLE te tagi ponownie — jeśli wskazują stare commity,"
-      log_warn "to PONOWNIE UPLOADUJE historię, którą ta operacja miała wymazać."
+      log_warn git.with_t_the_force_push_will
+      log_warn git.it_will_upload_again_the_history
     fi
   fi
-  log_warn "Ta operacja jest NIEODWRACALNA po stronie $remote."
+  log_warn git.this_operation_is_irreversible_on_the "$remote"
 
   if [ "$assume_yes" -ne 1 ]; then
     if [ ! -t 0 ]; then
-      log_error "Tryb nieinteraktywny bez -y ani GIT_ASSUME_YES=1 — przerwano"
+      log_error git.non_interactive_mode_without_y_or
       return 1
     fi
     local answer
     read -r -p "Wpisz \"tak\" aby kontynuować: " answer
-    [ "$answer" = "tak" ] || { log_warn "Przerwano."; return 1; }
+    [ "$answer" = "tak" ] || { log_warn git.aborted; return 1; }
   fi
 
-  log_info "==> Backup starej historii: $backup_branch (lokalnie)"
+  log_info git.backup_of_the_old_history_local "$backup_branch"
   git branch "$backup_branch" || return 1
 
-  log_info "==> Orphan branch z obecnym stanem working tree"
+  log_info git.orphan_branch_with_the_current_working
   git checkout --orphan __armageddon__ || return 1
-  git add -A || { log_error "git add -A nie powiodło się — historia gałęzi '$branch' NIE zmieniona"; return 1; }
+  git add -A || { log_error git.add_a_failed_history_of "$branch"; return 1; }
   git commit -m "$commit_msg" || return 1
 
-  log_info "==> Podmiana '$branch' na nową historię"
+  log_info git.replacing_with_the_new_history "$branch"
   if ! git branch -M __armageddon__ "$branch"; then
-    log_error "przeniesienie __armageddon__ -> $branch nie powiodło się — PRZERWANO przed pushem,"
-    log_error "historia na $remote NIE ruszona. HEAD jest teraz na gałęzi __armageddon__ (1 commit)."
-    log_error "Napraw ręcznie: git branch -M __armageddon__ $branch   (lub) git checkout $branch && git branch -D __armageddon__"
+    log_error git.renaming_armageddon_failed_aborted_before_th "$branch"
+    log_error git.history_on_untouched_head_is_now "$remote"
+    log_error git.fix_manually_git_branch_m_armageddon "$branch" "$branch"
     return 1
   fi
 
-  log_info "==> Force push: $remote/$branch"
+  log_info git.force_push "$remote" "$branch"
   git push --force "$remote" "$branch" || return 1
 
   if [ "$push_tags" = 1 ]; then
-    log_info "==> Force push tagów"
+    log_info git.force_push_of_tags
     git push --force --tags "$remote"
   fi
 
-  log_info "Gotowe. $remote/$branch ma teraz 1 commit."
-  log_info "Stara historia: lokalna gałąź '$backup_branch' ($old_commits commitów)."
-  log_info "Wycofanie (dopóki backup istnieje):"
+  log_info git.done_now_has_1_commit "$remote" "$branch"
+  log_info git.old_history_local_branch_commits "$backup_branch" "$old_commits"
+  log_info git.rollback_as_long_as_the_backup
   log_info "  git branch -M $backup_branch $branch"
   log_info "  git push --force $remote $branch"
-  log_info "Gdy potwierdzisz, że wszystko OK: git branch -D $backup_branch"
+  log_info git.once_you_confirm_everything_is_ok "$backup_branch"
 }
 
 . ${GIT_CONFIGURATION_DIR}/hub_functions.sh
@@ -454,15 +454,14 @@ function git_armageddon() {
 ## nie gdy jest sourcowany (np. przez testy jednostkowe, które chcą tylko definicji funkcji).
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [ $# -eq 0 ]; then
-    log_error "git fun: brak nazwy funkcji"
+    log_error git.fun_missing_function_name
     exit 1
   fi
 
   if declare -f "$1" > /dev/null && [[ "$1" == git_* || "$1" == hub_* ]]; then
     "$@"
   else
-    log_error "Nieznana funkcja: '$1'
-      Dostępne funkcje: $(declare -F | awk '{print $3}' | grep -E '^(git|hub)_' | tr '\n' ' ')"
+    log_error git.unknown_function "$1" "$(declare -F | awk '{print $3}' | grep -E '^(git|hub)_' | tr '\n' ' ')"
     exit 1
   fi
 fi
