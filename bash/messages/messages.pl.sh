@@ -26,6 +26,9 @@ MSG_INFO[ssl.next_steps]="
      - https://koziolek.home/nexus
      - https://koziolek.home/pgadmin"
 MSG_INFO[certs.imported]="Certyfikat zaimportowany do %s"
+MSG_INFO[process.killed_header]="Trafione procesy:"
+MSG_INFO[process.no_listeners]="Brak nasłuchujących procesów"
+MSG_INFO[process.no_listener_on_port]="Brak procesów nasłuchujących na porcie pasującym do '%s'"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
@@ -60,3 +63,7 @@ MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
 MSG_MAN[prompt.answer_yn]="Odpowiedz 'y' lub 'n'"
 MSG_MAN[weather.usage]="Użycie: get_weather <city_name>"
+MSG_MAN[process.exterminatus_usage]="Użycie
+módl się do Imperatora, a następnie:
+  exterminatus WZORZEC"
+MSG_MAN[process.who_use_port_usage]="Użycie: who_use_port [--sudo] PORT"

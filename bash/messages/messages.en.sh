@@ -23,6 +23,9 @@ MSG_INFO[ssl.next_steps]="
      - https://koziolek.home/nexus
      - https://koziolek.home/pgadmin"
 MSG_INFO[certs.imported]="Certificate imported into %s"
+MSG_INFO[process.killed_header]="Matched processes:"
+MSG_INFO[process.no_listeners]="No listening processes"
+MSG_INFO[process.no_listener_on_port]="No process listening on a port matching '%s'"
 
 # --- MSG_WARN ---
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
@@ -57,3 +60,7 @@ MSG_ERROR[certs.import_failed]="Failed to import certificate into %s"
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
 MSG_MAN[prompt.answer_yn]="Please answer with 'y' or 'n'"
 MSG_MAN[weather.usage]="Usage: get_weather <city_name>"
+MSG_MAN[process.exterminatus_usage]="Usage
+pray to Emperor and then:
+  exterminatus PATTERN"
+MSG_MAN[process.who_use_port_usage]="Usage: who_use_port [--sudo] PORT"
