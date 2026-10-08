@@ -19,6 +19,7 @@ MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
 MSG_WARN[install_lib.no_access]="install_lib: brak dostępu do '%s' (repo prywatne/niedostępne z tej maszyny) — pomijam."
 MSG_WARN[misc.dir_exists]="Katalog '%s' już istnieje, pomijam..."
 MSG_WARN[diagnostic.hwinfo_needs_root]="hwinfo: dmidecode wymaga uprawnień root — uruchom przez sudo"
+MSG_WARN[hub.install_failed]="hub: instalacja przez %s nieudana — git działa bez aliasu"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."

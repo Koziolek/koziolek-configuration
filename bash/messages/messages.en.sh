@@ -16,6 +16,7 @@ MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
 MSG_WARN[install_lib.no_access]="install_lib: no access to '%s' (private repo / unreachable from this machine) — skipping."
 MSG_WARN[misc.dir_exists]="Directory '%s' already exists, skipping..."
 MSG_WARN[diagnostic.hwinfo_needs_root]="hwinfo: dmidecode requires root — run via sudo"
+MSG_WARN[hub.install_failed]="hub: installation via %s failed — git works without the alias"
 
 # --- MSG_ERROR ---
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
