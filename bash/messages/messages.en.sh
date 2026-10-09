@@ -5,6 +5,18 @@
 # --- MSG_DEBUG ---
 
 # --- MSG_INFO ---
+MSG_INFO[cron.already_exists]="Entry already exists: %s"
+MSG_INFO[cron.added]="Added entry: %s"
+MSG_INFO[cron.removed]="Removed entry: %s"
+MSG_INFO[cron.saved]="Crontab saved"
+MSG_INFO[cron.no_changes]="No changes to crontab"
+MSG_INFO[cron.list_own_header]="Your crontab (%s):"
+MSG_INFO[cron.list_own_empty]="Your crontab has no jobs"
+MSG_INFO[cron.list_others_header]="Jobs of other users and the system (read-only):"
+MSG_INFO[cron.list_source]="  [%s]"
+MSG_INFO[cron.list_periodic]="  [%s] %s"
+MSG_INFO[cron.list_no_others]="No readable jobs of other users"
+MSG_INFO[cron.list_unreadable]="Skipped sources without read access: %s"
 MSG_INFO[git.no_changes]="No changes"
 MSG_INFO[java.clear_mvn]="java_clear: mvn clean in %s"
 MSG_INFO[java.clear_gradle]="java_clear: gradle clean in %s"
@@ -148,6 +160,8 @@ MSG_INFO[maven_signing.gpg_sw_key_generated]="gpg_sw: key %s generated"
 MSG_INFO[maven_signing.gpg_sw_maven_configuration_skipped_run]="gpg_sw: Maven configuration skipped — run later: gpg_maven_setup %s"
 
 # --- MSG_WARN ---
+MSG_WARN[cron.no_daemon]="No running cron daemon detected — entries will not run (Vanilla OS/apx: use systemd --user timers)"
+MSG_WARN[cron.edit_retry]="Crontab contains errors. Edit again? [Y/n]"
 MSG_WARN[install_lib.unknown_option]="Unknown option: -%s"
 MSG_WARN[install_lib.no_access]="install_lib: no access to '%s' (private repo / unreachable from this machine) — skipping."
 MSG_WARN[misc.dir_exists]="Directory '%s' already exists, skipping..."
@@ -215,6 +229,18 @@ MSG_WARN[maven_signing.gpg_sw_the_following_keys_will]="gpg_sw: the following ke
 MSG_WARN[maven_signing.gpg_sw_not_all_keys_deleted]="gpg_sw: not all keys deleted — leaving gpg-sw.cfg and the gpg-sw-signing profile"
 
 # --- MSG_ERROR ---
+MSG_ERROR[cron.no_crontab]="The crontab command is not available"
+MSG_ERROR[cron.bad_schedule]="Unknown schedule: '%s'"
+MSG_ERROR[cron.bad_name]="Invalid name '%s' (allowed: letters, digits, . _ -)"
+MSG_ERROR[cron.invalid_line]="Line %s is invalid: %s"
+MSG_ERROR[cron.multiline_command]="The command must not contain newlines"
+MSG_ERROR[cron.no_such_entry]="Entry not found: '%s'"
+MSG_ERROR[cron.ambiguous]="Pattern '%s' matches %s entries — give a number:"
+MSG_ERROR[cron.install_failed]="Failed to install the crontab"
+MSG_ERROR[cron.editor_failed]="Editor '%s' exited with an error"
+MSG_ERROR[cron.edit_aborted]="Edit aborted — crontab unchanged"
+MSG_ERROR[cron.unknown_option]="Unknown option: %s"
+MSG_ERROR[cron.log_dir_failed]="Cannot create log directory: %s"
 MSG_ERROR[install_lib.repo_required]="Repository URL (-r) is required."
 MSG_ERROR[install_lib.clone_failed]="Failed to clone repository '%s'."
 MSG_ERROR[java.clear_no_fdfind]="java_clear: fdfind not found"
@@ -355,6 +381,8 @@ MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: failed to delete %s"
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: full name and email are required"
 
 # --- MSG_MAN ---
+MSG_MAN[cron.add_usage]="Usage: cron_add [-n name] [--no-log] <schedule> <command...>\n  schedule: '*/5 * * * *', @daily, 'every 5 min', 'daily at 03:00', 'on monday at 08:00'"
+MSG_MAN[cron.remove_usage]="Usage: cron_remove <number|pattern>   (numbers: cron_list)"
 MSG_MAN[install_lib.usage]="Usage: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
 MSG_MAN[prompt.answer_yn]="Please answer with 'y' or 'n'"
 MSG_MAN[weather.usage]="Usage: get_weather <city_name>"

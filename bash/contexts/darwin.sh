@@ -158,3 +158,11 @@ _gpg_pinentry_setup() {
 export -f _listening_socket_pairs detect_display_env reswap who_use_swap \
     turn_async_profiler_on turn_async_profiler_off start_x fake_poweroff netconf_diag refresh_apt_gpg_keys \
     _hwinfo_check_deps hwinfo_cpu hwinfo_motherboard hwinfo_ram hwinfo_gpu _gpg_pinentry_setup
+
+# --- cron (functions.d/160_cron.sh) -----------------------------------------
+# macOS: spool użytkowników w /usr/lib/cron/tabs (wymaga root), brak /etc/cron.d i skryptów okresowych;
+# cron uruchamia launchd na żądanie, więc brak procesu `cron` nie oznacza awarii.
+export CRON_SPOOL_DIRS="/usr/lib/cron/tabs"
+export CRON_SYSTEM_DIRS=""
+export CRON_PERIODIC_DIRS=""
+export CRON_DAEMON_CHECK=0
