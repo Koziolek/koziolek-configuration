@@ -8,6 +8,18 @@
 # --- MSG_DEBUG ---
 
 # --- MSG_INFO ---
+MSG_INFO[cron.already_exists]="Wpis już istnieje: %s"
+MSG_INFO[cron.added]="Dodano wpis: %s"
+MSG_INFO[cron.removed]="Usunięto wpis: %s"
+MSG_INFO[cron.saved]="Zapisano crontab"
+MSG_INFO[cron.no_changes]="Brak zmian w crontabie"
+MSG_INFO[cron.list_own_header]="Twój crontab (%s):"
+MSG_INFO[cron.list_own_empty]="Twój crontab nie ma żadnych zadań"
+MSG_INFO[cron.list_others_header]="Zadania innych użytkowników i systemu (tylko do odczytu):"
+MSG_INFO[cron.list_source]="  [%s]"
+MSG_INFO[cron.list_periodic]="  [%s] %s"
+MSG_INFO[cron.list_no_others]="Brak odczytywalnych zadań innych użytkowników"
+MSG_INFO[cron.list_unreadable]="Pominięto źródła bez dostępu do odczytu: %s"
 MSG_INFO[git.no_changes]="Brak zmian"
 MSG_INFO[java.clear_mvn]="java_clear: mvn clean w %s"
 MSG_INFO[java.clear_gradle]="java_clear: gradle clean w %s"
@@ -151,6 +163,8 @@ MSG_INFO[maven_signing.gpg_sw_key_generated]="gpg_sw: wygenerowano klucz %s"
 MSG_INFO[maven_signing.gpg_sw_maven_configuration_skipped_run]="gpg_sw: pominięto konfigurację Mavena — uruchom później: gpg_maven_setup %s"
 
 # --- MSG_WARN ---
+MSG_WARN[cron.no_daemon]="Nie wykryto działającego demona cron — wpisy nie będą wykonywane (Vanilla OS/apx: użyj timerów systemd --user)"
+MSG_WARN[cron.edit_retry]="Crontab zawiera błędy. Poprawić ponownie? [T/n]"
 MSG_WARN[install_lib.unknown_option]="Nieznana opcja: -%s"
 MSG_WARN[install_lib.no_access]="install_lib: brak dostępu do '%s' (repo prywatne/niedostępne z tej maszyny) — pomijam."
 MSG_WARN[misc.dir_exists]="Katalog '%s' już istnieje, pomijam..."
@@ -218,6 +232,18 @@ MSG_WARN[maven_signing.gpg_sw_the_following_keys_will]="gpg_sw: zostaną NIEODWR
 MSG_WARN[maven_signing.gpg_sw_not_all_keys_deleted]="gpg_sw: nie wszystkie klucze usunięte — zostawiam gpg-sw.cfg i profil gpg-sw-signing"
 
 # --- MSG_ERROR ---
+MSG_ERROR[cron.no_crontab]="Brak polecenia crontab"
+MSG_ERROR[cron.bad_schedule]="Nieznany harmonogram: '%s'"
+MSG_ERROR[cron.bad_name]="Niepoprawna nazwa '%s' (dozwolone: litery, cyfry, . _ -)"
+MSG_ERROR[cron.invalid_line]="Linia %s jest niepoprawna: %s"
+MSG_ERROR[cron.multiline_command]="Polecenie nie może zawierać nowych linii"
+MSG_ERROR[cron.no_such_entry]="Nie znaleziono wpisu: '%s'"
+MSG_ERROR[cron.ambiguous]="Wzorzec '%s' pasuje do %s wpisów — podaj numer:"
+MSG_ERROR[cron.install_failed]="Nie udało się zapisać crontaba"
+MSG_ERROR[cron.editor_failed]="Edytor '%s' zakończył się błędem"
+MSG_ERROR[cron.edit_aborted]="Przerwano edycję — crontab bez zmian"
+MSG_ERROR[cron.unknown_option]="Nieznana opcja: %s"
+MSG_ERROR[cron.log_dir_failed]="Nie można utworzyć katalogu logów: %s"
 MSG_ERROR[install_lib.repo_required]="Adres repozytorium (-r) jest obowiązkowy."
 MSG_ERROR[install_lib.clone_failed]="Nie udało się sklonować repozytorium '%s'."
 MSG_ERROR[java.clear_no_fdfind]="java_clear: fdfind nie znaleziony"
@@ -359,6 +385,8 @@ MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: nie udało się usuną
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: imię i nazwisko oraz email są wymagane"
 
 # --- MSG_MAN ---
+MSG_MAN[cron.add_usage]="Użycie: cron_add [-n nazwa] [--no-log] <harmonogram> <polecenie...>\n  harmonogram: '*/5 * * * *', @daily, 'co 5 min', 'codziennie o 03:00', 'w poniedziałek o 08:00'"
+MSG_MAN[cron.remove_usage]="Użycie: cron_remove <numer|wzorzec>   (numery: cron_list)"
 MSG_MAN[install_lib.usage]="Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]"
 MSG_MAN[prompt.answer_yn]="Odpowiedz 'y' lub 'n'"
 MSG_MAN[weather.usage]="Użycie: get_weather <city_name>"

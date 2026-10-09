@@ -227,6 +227,22 @@ Odpowiedzialność kluczowych plików funkcji:
   Test: `test/unit/test_maven_signing.sh` (mock `pkcs11-tool`/`jarsigner`/`keytool`/`jar`/`gpg`/
   `curl`; blok maven-settings testowany na realnych plikach — bez mocków, to czysta manipulacja
   tekstem).
+- `functions.d/160_cron.sh` — wygodna konfiguracja crontaba: `cron_list [-o]` (własne zadania z numerami
+  + **wszystkie zadania innych użytkowników i systemu, do których jest dostęp** — spoole, `/etc/crontab`,
+  `/etc/cron.d`, nazwy skryptów `cron.{hourly,daily,...}`; `-o` = tylko własne), `cron_add [-n nazwa]
+  [--no-log] <harmonogram> <polecenie…>`, `cron_remove <nr|wzorzec>`, `cron_edit` (`$VISUAL`/`$EDITOR` +
+  walidacja składni przed zapisem), `cron_schedule <opis>` (tłumaczy „co 5 min”, „codziennie o 03:00”,
+  „w poniedziałek o 08:00”, `hourly`, `at boot` … na składnię cron; gotowe 5 pól/`@makro` przechodzi po
+  walidacji zakresów). **Cudzych zadań wolno tylko czytać** — funkcje modyfikujące działają wyłącznie na
+  własnym crontabie (nigdy `crontab -u`; pilnuje tego `testNeverCallsCrontabWithUserFlag`). `cron_add`
+  dopisuje do oznaczonego bloku `# koziolek-cron:BEGIN/END` (ustawia w nim `SHELL`/`PATH`; reszta crontaba
+  nietknięta — ten sam styl co blok XML w 157), jest idempotentne, escapuje `%` i kieruje wyjście do
+  `${CRON_LOG_DIR:-~/.cache/cron}/<nazwa>.log`; pusty blok znika po `cron_remove`. Różnice per-system przez
+  zmienne (`CRON_SPOOL_DIRS`, `CRON_SYSTEM_FILES`, `CRON_SYSTEM_DIRS`, `CRON_PERIODIC_DIRS`,
+  `CRON_DAEMON_CHECK`, opcjonalnie `CRON_USE_SUDO=1` → `sudo -n cat` dla nieczytelnych spooli);
+  `contexts/darwin.sh` ustawia spool `/usr/lib/cron/tabs` i wyłącza sprawdzanie demona (launchd). Brak
+  działającego demona (subsystem `apx` Vanilla OS) = ostrzeżenie `cron.no_daemon`, nie błąd. Test:
+  `test/unit/test_cron.sh` (mock `crontab` na pliku).
 
 Funkcje w `functions.d/` trzymają **wersję Linux** (bez guardów `uname`). Rozbieżności per-system
 rozwiązuj tak, by **jak najwięcej zostało wspólne**:
