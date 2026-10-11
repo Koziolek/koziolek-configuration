@@ -277,6 +277,18 @@ update_claude() {
     fi
 }
 
+update_calibre() {
+    echo ""
+    echo "=== calibre ==="
+    info "Instalacja/aktualizacja calibre (oficjalny instalator uruchamiany ponownie)..."
+    if { [ -z "$SUDO" ] || $SUDO -v; } \
+        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin; then
+        ok "calibre zainstalowany/zaktualizowany"
+    else
+        warn "Instalacja/aktualizacja calibre zakończona błędem — sprawdź ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
+    fi
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -386,6 +398,7 @@ update_asdf
 update_difft
 update_sdkman
 update_claude
+update_calibre
 
 echo ""
 echo "======================================="

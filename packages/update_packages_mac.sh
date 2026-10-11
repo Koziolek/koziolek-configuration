@@ -222,6 +222,20 @@ update_claude() {
     fi
 }
 
+update_calibre() {
+    echo ""
+    echo "=== calibre ==="
+    # `brew upgrade --cask` na niezainstalowanym caskcu zawodzi — wtedy instalujemy.
+    local action=upgrade
+    brew list --cask calibre &>/dev/null || action=install
+    info "Instalacja/aktualizacja calibre (brew $action --cask)..."
+    if brew "$action" --cask calibre; then
+        ok "calibre zainstalowany/zaktualizowany"
+    else
+        warn "brew $action --cask calibre zakończone błędem — sprawdź ręcznie"
+    fi
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -343,6 +357,7 @@ update_asdf
 update_difft
 update_sdkman
 update_claude
+update_calibre
 
 echo ""
 echo "======================================="
