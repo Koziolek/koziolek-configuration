@@ -205,6 +205,17 @@ install_claude() {
     brew install --cask claude-code
 }
 
+install_calibre() {
+    if command -v calibre &>/dev/null || brew list --cask calibre &>/dev/null; then
+        echo "✓ calibre już zainstalowany"
+        return 0
+    fi
+    echo "Instalacja calibre..."
+    # Oficjalnie: DMG przeciągany do Aplikacji (calibre-ebook.com/pl/download_osx) —
+    # cask Homebrew robi to samo bez ręcznej pracy.
+    brew install --cask calibre
+}
+
 install_gh() {
     if command -v gh &>/dev/null; then
         echo "✓ gh już zainstalowany: $(gh --version | head -1)"
@@ -267,6 +278,7 @@ install_rust_and_difft
 install_sdkman
 install_gh
 install_claude
+install_calibre
 link_claude_skills
 install_docker
 prepare_bashrc

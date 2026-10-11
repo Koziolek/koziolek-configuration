@@ -222,6 +222,21 @@ update_claude() {
     fi
 }
 
+update_calibre() {
+    echo ""
+    echo "=== calibre ==="
+    if ! brew list --cask calibre &>/dev/null; then
+        warn "calibre nie zainstalowany — uruchom initial_packages_mac.sh aby zainstalować"
+        return 0
+    fi
+    info "Aktualizacja calibre..."
+    if brew upgrade --cask calibre; then
+        ok "calibre zaktualizowany"
+    else
+        warn "brew upgrade --cask calibre zakończone błędem — sprawdź ręcznie"
+    fi
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -343,6 +358,7 @@ update_asdf
 update_difft
 update_sdkman
 update_claude
+update_calibre
 
 echo ""
 echo "======================================="

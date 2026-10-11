@@ -337,6 +337,21 @@ install_claude() {
     }
 }
 
+install_calibre() {
+    if command -v calibre &>/dev/null; then
+        echo "✓ calibre już zainstalowany"
+        return 0
+    fi
+    echo "Instalacja calibre (oficjalny instalator binarny)..."
+    # Strona calibre odradza pakiety dystrybucji (często nieaktualne) — używamy instalatora
+    # z calibre-ebook.com. Brak oficjalnej sumy kontrolnej; błąd nie przerywa skryptu.
+    { [ -z "$SUDO" ] || $SUDO -v; } \
+        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin || {
+        echo "⚠️  calibre pominięty — zainstaluj ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
+        return 0
+    }
+}
+
 install_apps() {
     local DOWNLOAD_DIR="$HOME/Pobrane"
     mkdir -p "$DOWNLOAD_DIR"
@@ -527,6 +542,7 @@ install_sdkman
 install_apps
 install_gh
 install_claude
+install_calibre
 link_claude_skills
 install_kubectl
 install_podman_compose

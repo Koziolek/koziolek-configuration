@@ -277,6 +277,22 @@ update_claude() {
     fi
 }
 
+update_calibre() {
+    echo ""
+    echo "=== calibre ==="
+    if ! command -v calibre &>/dev/null; then
+        warn "calibre nie zainstalowany — uruchom initial_packages_redhat.sh aby zainstalować"
+        return 0
+    fi
+    info "Aktualizacja calibre (ponowne uruchomienie oficjalnego instalatora)..."
+    if { [ -z "$SUDO" ] || $SUDO -v; } \
+        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin; then
+        ok "calibre zaktualizowany"
+    else
+        warn "Aktualizacja calibre zakończona błędem — sprawdź ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
+    fi
+}
+
 update_asdf() {
     echo ""
     echo "=== asdf ==="
@@ -386,6 +402,7 @@ update_asdf
 update_difft
 update_sdkman
 update_claude
+update_calibre
 
 echo ""
 echo "======================================="

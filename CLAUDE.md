@@ -437,6 +437,13 @@ Claude Code: `install_claude` w każdym `initial_packages_*.sh` (po `install_gh`
 macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
 Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
+calibre: `install_calibre` w każdym `initial_packages_*.sh` (po `install_claude`) i `update_calibre` w
+`update_packages_*.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
+`wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin` (strona calibre
+odradza pakiety dystrybucji; aktualizacja = ponowne uruchomienie instalatora; bez sumy kontrolnej, błąd =
+ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --cask calibre` /
+`brew upgrade --cask calibre`. Instalacja idempotentna (`command -v calibre`).
+
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
 `initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
 `install_claude`) linkuje każdy `<klaudyna>/skills/<nazwa>/` do `~/.claude/skills/<nazwa>`, dzięki czemu
