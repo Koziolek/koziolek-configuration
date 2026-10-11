@@ -442,7 +442,8 @@ calibre: `install_calibre` w każdym `initial_packages_*.sh` (po `install_claude
 `wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin` (strona calibre
 odradza pakiety dystrybucji; aktualizacja = ponowne uruchomienie instalatora; bez sumy kontrolnej, błąd =
 ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --cask calibre` /
-`brew upgrade --cask calibre`. Instalacja idempotentna (`command -v calibre`).
+`brew upgrade --cask calibre` (w update, gdy cask nie jest zainstalowany, `brew install`). Instalacja
+idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności — instaluje, gdy brak.
 
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
 `initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
