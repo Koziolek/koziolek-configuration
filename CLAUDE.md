@@ -437,6 +437,12 @@ Claude Code: `install_claude` w każdym `initial_packages_*.sh` (po `install_gh`
 macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
 Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
+DKMS: `repair_broken_dkms_packages` (wspólne `packages/dkms_fix.sh`, sourcowane w `update_packages_{ubuntu,vanilla}.sh`,
+wołane przed i po `update_apt_packages`) naprawia pakiety `*-dkms` w stanie innym niż `ii` (np. `v4l2loopback-dkms`:
+`Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
+`dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu). Idempotentne, błąd = ostrzeżenie, nie przerywa;
+bez fałszywych alarmów w monitoringu. Test: `test/unit/test_dkms_fix.sh`.
+
 calibre: `install_calibre` w każdym `initial_packages_*.sh` (po `install_claude`) i `update_calibre` w
 `update_packages_*.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
 `wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin` (strona calibre
