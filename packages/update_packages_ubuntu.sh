@@ -56,6 +56,10 @@ declare -a REPOS_DEAD=()
 # shellcheck source=packages/gpg_fix.sh
 source "$SCRIPT_DIR/gpg_fix.sh"
 
+# repair_broken_dkms_packages — wspólna z update_packages_vanilla.sh (packages/dkms_fix.sh).
+# shellcheck source=packages/dkms_fix.sh
+source "$SCRIPT_DIR/dkms_fix.sh"
+
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
 # ---------------------------------------------------------------------------
@@ -427,7 +431,9 @@ echo "======================================="
 echo ""
 echo "=== Klucze GPG ==="
 refresh_apt_gpg_keys
+repair_broken_dkms_packages
 update_apt_packages
+repair_broken_dkms_packages
 update_gh
 update_docker
 update_kubectl

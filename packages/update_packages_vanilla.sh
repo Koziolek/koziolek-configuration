@@ -81,6 +81,10 @@ source "$SCRIPT_DIR/gpg_fix.sh"
 # shellcheck source=packages/sysusers_fix.sh
 source "$SCRIPT_DIR/sysusers_fix.sh"
 
+# repair_broken_dkms_packages — wspólna z update_packages_ubuntu.sh (packages/dkms_fix.sh).
+# shellcheck source=packages/dkms_fix.sh
+source "$SCRIPT_DIR/dkms_fix.sh"
+
 # Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
 # są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest
 # zainstalowany — na Vanilli używamy podmana.
@@ -496,7 +500,9 @@ echo ""
 echo "=== Klucze GPG ==="
 refresh_apt_gpg_keys
 cleanup_stale_sources
+repair_broken_dkms_packages
 update_apt_packages
+repair_broken_dkms_packages
 update_gh
 update_podman_compose
 update_kubectl
