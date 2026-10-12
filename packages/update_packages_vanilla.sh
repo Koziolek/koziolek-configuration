@@ -374,6 +374,10 @@ update_claude() {
     fi
 }
 
+# install_git_bug / update_git_bug — wspólne z initial_packages_*.sh (packages/git_bug.sh).
+# shellcheck source=packages/git_bug.sh
+source "$SCRIPT_DIR/git_bug.sh"
+
 update_calibre() {
     echo ""
     echo "=== calibre ==="
@@ -511,6 +515,7 @@ update_difft
 update_sdkman
 update_claude
 update_calibre
+update_git_bug
 
 echo ""
 echo "======================================="

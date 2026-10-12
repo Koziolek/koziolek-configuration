@@ -17,6 +17,7 @@ system_tools=(
   pinentry-mac
   openssh
   opensc
+  git-bug
 )
 
 shell_tools=(

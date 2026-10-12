@@ -451,6 +451,17 @@ ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --
 `brew upgrade --cask calibre` (w update, gdy cask nie jest zainstalowany, `brew install`). Instalacja
 idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności — instaluje, gdy brak.
 
+git-bug: `install_git_bug` w `initial_packages_{ubuntu,vanilla,redhat}.sh` (po `install_calibre`) i `update_git_bug` w
+`update_packages_{ubuntu,vanilla,redhat}.sh` (po `update_calibre`), wspólne `packages/git_bug.sh` (w initial sourcowane
+tym samym wzorcem lokalnie-albo-z-GitHuba co `link_claude_skills`). Brak repo apt/yum → tarball z GitHub Releases,
+**bez sudo**: binarka w `${GIT_BUG_INSTALL_DIR:-~/.local/bin}` (jak `claude`/`asdf`), więc aktualizacja działa z crona
+użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
+`git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
+podmiana. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy brak). Nieinteraktywne, zawsze
+`return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. Samodzielnie, pod cron: `packages/update_git_bug.sh`
+(np. `cron_add -n git-bug daily ~/.koziolek-configuration/packages/update_git_bug.sh`). macOS: `git-bug` w
+`brew_packages.sh` (install + upgrade robią istniejące pętle). Test: `test/unit/test_git_bug.sh`.
+
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
 `initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
 `install_claude`) linkuje każdy `<klaudyna>/skills/<nazwa>/` do `~/.claude/skills/<nazwa>`, dzięki czemu
