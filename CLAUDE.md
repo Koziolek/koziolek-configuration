@@ -460,7 +460,8 @@ użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i
 podmiana. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy brak). Nieinteraktywne, zawsze
 `return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. Samodzielnie, pod cron: `packages/update_git_bug.sh`
 (np. `cron_add -n git-bug daily ~/.koziolek-configuration/packages/update_git_bug.sh`). macOS: `git-bug` w
-`brew_packages.sh` (install + upgrade robią istniejące pętle). Test: `test/unit/test_git_bug.sh`.
+`brew_packages.sh` (install + upgrade robią istniejące pętle). Alias `gb='git bug'` w `bash/bash_aliases.sh` definiowany
+tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
 `initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
