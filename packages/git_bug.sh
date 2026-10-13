@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wspólna funkcja install_git_bug / update_git_bug dla initial_packages_{ubuntu,vanilla,redhat}.sh
-# i update_packages_{ubuntu,vanilla,redhat}.sh (+ samodzielny packages/update_git_bug.sh pod cron).
+# i update_packages_{ubuntu,vanilla,redhat}.sh.
 # Sourcowane, nie wykonywane. Na macOS git-bug idzie przez brew (packages/brew_packages.sh).
 #
 # git-bug nie ma repozytorium apt/yum, więc bierzemy tarball z GitHub Releases. BEZ sudo:

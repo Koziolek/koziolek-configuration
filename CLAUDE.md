@@ -458,8 +458,7 @@ tym samym wzorcem lokalnie-albo-z-GitHuba co `link_claude_skills`). Brak repo ap
 użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
 `git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
 podmiana. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy brak). Nieinteraktywne, zawsze
-`return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. Samodzielnie, pod cron: `packages/update_git_bug.sh`
-(np. `cron_add -n git-bug daily ~/.koziolek-configuration/packages/update_git_bug.sh`). macOS: `git-bug` w
+`return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. macOS: `git-bug` w
 `brew_packages.sh` (install + upgrade robią istniejące pętle). Alias `gb='git bug'` w `bash/bash_aliases.sh` definiowany
 tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 
