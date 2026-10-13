@@ -457,8 +457,12 @@ tym samym wzorcem lokalnie-albo-z-GitHuba co `link_claude_skills`). Brak repo ap
 **bez sudo**: binarka w `${GIT_BUG_INSTALL_DIR:-~/.local/bin}` (jak `claude`/`asdf`), więc aktualizacja działa z crona
 użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
 `git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
-podmiana. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy brak). Nieinteraktywne, zawsze
-`return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. macOS: `git-bug` w
+podmiana. Z tarballa idą też strony man (`man/*.1` → `$GIT_BUG_DATA_DIR/man/man1`) i bash completion
+(`completion/bash/git-bug` → `$GIT_BUG_DATA_DIR/bash-completion/completions/git-bug`), też bez sudo;
+`GIT_BUG_DATA_DIR` domyślnie `${XDG_DATA_HOME:-~/.local/share}`. „Aktualny" = wersja równa **i** man + completion na
+miejscu — inaczej tarball jest pobierany ponownie i dokumenty uzupełniane; brak `man/`/`completion/` w wydaniu =
+ostrzeżenie, binarka i tak się instaluje. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy
+brak). Nieinteraktywne, zawsze `return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. macOS: `git-bug` w
 `brew_packages.sh` (install + upgrade robią istniejące pętle). Alias `gb='git bug'` w `bash/bash_aliases.sh` definiowany
 tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 

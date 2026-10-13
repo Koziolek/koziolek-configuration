@@ -9,8 +9,15 @@
 #
 # Wersja: przekierowanie https://github.com/git-bug/git-bug/releases/latest -> .../tag/vX.Y.Z
 # (bez API, bez limitu zapytań, bez jq). Zainstalowana: drugie pole `git-bug version`.
-# Równa najnowszej -> brak pobierania. Brak/starsza -> pobranie tarballa, weryfikacja sha256
-# z checksums.txt tego samego wydania, instalacja. Jedna ścieżka dla instalacji i aktualizacji.
+# Równa najnowszej (i man + completion na miejscu) -> brak pobierania. Brak/starsza -> pobranie
+# tarballa, weryfikacja sha256 z checksums.txt tego samego wydania, instalacja. Jedna ścieżka dla
+# instalacji i aktualizacji.
+#
+# Poza binarką tarball niesie strony man (man/*.1) i completion (completion/bash/git-bug). Też BEZ
+# sudo, w ${GIT_BUG_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}}:
+#   man/man1/git-bug*.1                       (man znajduje je sam, gdy ~/.local/bin jest w PATH)
+#   bash-completion/completions/git-bug       (ładowane leniwie przez pakiet bash-completion)
+# Brak man/ lub completion w tarballu = ostrzeżenie, binarka i tak zostaje zainstalowana.
 #
 # Nieinteraktywne (bez read/TTY), zawsze `return 0` — błąd sieci/sumy to ostrzeżenie, nie awaria
 # (nie przerywa `set -e` ani crona). Wynik na stdout.
@@ -44,6 +51,43 @@ git_bug_arch() {
     esac
 }
 
+# Katalog danych użytkownika (man, completion).
+git_bug_data_dir() {
+    echo "${GIT_BUG_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}}"
+}
+
+# Kod 0, gdy strony man i completion są już zainstalowane (marker: główna strona + completion).
+git_bug_docs_installed() {
+    local data_dir
+    data_dir=$(git_bug_data_dir)
+    [ -f "$data_dir/man/man1/git-bug.1" ] && [ -f "$data_dir/bash-completion/completions/git-bug" ]
+}
+
+# Kopiuje man i completion z rozpakowanego wydania ($1) do katalogu danych. Brak źródeł = ostrzeżenie.
+_git_bug_install_docs() {
+    local src="$1" data_dir man_dir comp_dir f
+    data_dir=$(git_bug_data_dir)
+    man_dir="$data_dir/man/man1"
+    comp_dir="$data_dir/bash-completion/completions"
+
+    if compgen -G "$src/man/*.1" >/dev/null; then
+        mkdir -p "$man_dir"
+        for f in "$src"/man/*.1; do
+            install -m 644 "$f" "$man_dir/.${f##*/}.new" && mv -f "$man_dir/.${f##*/}.new" "$man_dir/${f##*/}"
+        done
+    else
+        echo "⚠️  git-bug: brak stron man w wydaniu — pomijam"
+    fi
+
+    if [ -f "$src/completion/bash/git-bug" ]; then
+        mkdir -p "$comp_dir"
+        install -m 644 "$src/completion/bash/git-bug" "$comp_dir/.git-bug.new" \
+            && mv -f "$comp_dir/.git-bug.new" "$comp_dir/git-bug"
+    else
+        echo "⚠️  git-bug: brak bash completion w wydaniu — pomijam"
+    fi
+}
+
 install_git_bug() {
     local install_dir="${GIT_BUG_INSTALL_DIR:-$HOME/.local/bin}"
     local latest installed arch
@@ -58,7 +102,7 @@ install_git_bug() {
     }
     installed=$(git_bug_installed_version "$install_dir/git-bug") || installed=""
 
-    if [ "$installed" = "$latest" ]; then
+    if [ "$installed" = "$latest" ] && git_bug_docs_installed; then
         echo "✓ git-bug aktualny: v$installed"
         return 0
     fi
@@ -68,7 +112,9 @@ install_git_bug() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
 
-    if [ -n "$installed" ]; then
+    if [ "$installed" = "$latest" ]; then
+        echo "Uzupełnianie man i completion git-bug v$latest..."
+    elif [ -n "$installed" ]; then
         echo "Aktualizacja git-bug: v$installed -> v$latest"
     else
         echo "Instalacja git-bug v$latest..."
@@ -80,13 +126,15 @@ install_git_bug() {
         echo "⚠️  git-bug: nie udało się pobrać checksums.txt dla v$latest — pomijam"
     elif ! (cd "$tmp_dir" && grep " ${archive}\$" checksums.txt | sha256sum -c - --status); then
         echo "⚠️  git-bug: suma sha256 $archive nie zgadza się z wydaniem — pomijam"
-    elif ! tar -xzf "$tmp_dir/$archive" -C "$tmp_dir" "git-bug_${latest}_linux_${arch}/git-bug"; then
+    elif ! tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"; then
         echo "⚠️  git-bug: nie udało się rozpakować $archive — pomijam"
     else
+        local src="$tmp_dir/git-bug_${latest}_linux_${arch}"
         mkdir -p "$install_dir"
         # `install` do pliku tymczasowego + mv: podmiana atomowa, działa też gdy stara binarka jest uruchomiona.
-        install -m 755 "$tmp_dir/git-bug_${latest}_linux_${arch}/git-bug" "$install_dir/.git-bug.new" \
+        install -m 755 "$src/git-bug" "$install_dir/.git-bug.new" \
             && mv -f "$install_dir/.git-bug.new" "$install_dir/git-bug"
+        _git_bug_install_docs "$src"
         echo "✓ git-bug v$latest zainstalowany w $install_dir (suma sha256 zweryfikowana)"
         case ":$PATH:" in
             *":$install_dir:"*) ;;
