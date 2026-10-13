@@ -20,55 +20,24 @@ minimal_tools=(
 )
 
 # Zainstaluj curl/wget NATYCHMIAST, zanim spróbujemy pobrać cokolwiek innego.
-# Ważne przy `curl ... | bash` — skoro skrypt w ogóle tu dotarł, curl już musi
-# istnieć, ale wget niekoniecznie, a obu potrzebujemy dalej (install_gh, install_apps).
+# Obu potrzebujemy dalej (install_gh, install_apps), a wget nie musi być zainstalowany.
 $SUDO apt-get -qq update
 for _pkg in "${minimal_tools[@]}"; do
     command -v "$_pkg" >/dev/null 2>&1 || $SUDO apt-get install -qqy "$_pkg"
 done
 unset _pkg
 
-# Lokalizacja wspólnej listy pakietów: jeśli skrypt leży na dysku (po `git
-# clone`), source'ujemy plik lokalnie względem ${BASH_SOURCE[0]}. Gdy skrypt
-# leci przez `curl ... | bash` (BASH_SOURCE puste — nie ma lokalnego pliku do
-# wskazania), source'owanie względem "$(dirname "${BASH_SOURCE[0]}")" wskazuje
-# donikąd (patrz code-review/CR.md, sekcja o tym buku) — wtedy pobieramy ten sam
-# plik z repo na GitHubie i source'ujemy z pliku tymczasowego.
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
+# Katalog skryptu: biblioteki (listy pakietów, helpery) leżą obok. Skrypt zawsze leci z klona
+# repo (install.sh -> initial_packages.sh), nie przez samodzielne `curl | bash`.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/apt_packages.sh" ]; then
-    # shellcheck source=packages/apt_packages.sh
-    source "$SCRIPT_DIR/apt_packages.sh"
-else
-    echo "Brak lokalnej kopii packages/apt_packages.sh — pobieram z repo..."
-    _packages_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/apt_packages.sh" \
-        -o "$_packages_tmp"
-    # shellcheck disable=SC1090
-    source "$_packages_tmp"
-    rm -f "$_packages_tmp"
-    unset _packages_tmp
-fi
+# shellcheck source=packages/apt_packages.sh
+source "$SCRIPT_DIR/apt_packages.sh"
 
 # verify_and_run_script — wspólna z initial_packages_mac.sh/initial_packages_vanilla.sh
-# (packages/verify_and_run_script.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/verify_and_run_script.sh" ]; then
-    # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/verify_and_run_script.sh"
-else
-    _vars_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
-        -o "$_vars_tmp"
-    # shellcheck disable=SC1090
-    source "$_vars_tmp"
-    rm -f "$_vars_tmp"
-    unset _vars_tmp
-fi
+# (packages/verify_and_run_script.sh).
+# shellcheck source=packages/verify_and_run_script.sh
+source "$SCRIPT_DIR/verify_and_run_script.sh"
 
 all_packages=(
   "${minimal_tools[@]}"
@@ -117,52 +86,19 @@ install_initial_packages() {
 }
 
 # prepare_workspace — wspólna z install.sh/initial_packages_mac.sh/initial_packages_vanilla.sh
-# (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/prepare_workspace.sh" ]; then
-    # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/prepare_workspace.sh"
-else
-    _pw_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/prepare_workspace.sh" \
-        -o "$_pw_tmp"
-    # shellcheck disable=SC1090
-    source "$_pw_tmp"
-    rm -f "$_pw_tmp"
-    unset _pw_tmp
-fi
+# (packages/prepare_workspace.sh).
+# shellcheck source=packages/prepare_workspace.sh
+source "$SCRIPT_DIR/prepare_workspace.sh"
 
 # link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
-# (packages/link_claude_skills.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/link_claude_skills.sh" ]; then
-    # shellcheck source=packages/link_claude_skills.sh
-    source "$SCRIPT_DIR/link_claude_skills.sh"
-else
-    _lcs_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/link_claude_skills.sh" \
-        -o "$_lcs_tmp"
-    # shellcheck disable=SC1090
-    source "$_lcs_tmp"
-    rm -f "$_lcs_tmp"
-    unset _lcs_tmp
-fi
+# (packages/link_claude_skills.sh).
+# shellcheck source=packages/link_claude_skills.sh
+source "$SCRIPT_DIR/link_claude_skills.sh"
 
 # install_git_bug — git-bug z GitHub Releases do ~/.local/bin, bez sudo
-# (packages/git_bug.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/git_bug.sh" ]; then
-    # shellcheck source=packages/git_bug.sh
-    source "$SCRIPT_DIR/git_bug.sh"
-else
-    _gb_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/git_bug.sh" \
-        -o "$_gb_tmp"
-    # shellcheck disable=SC1090
-    source "$_gb_tmp"
-    rm -f "$_gb_tmp"
-    unset _gb_tmp
-fi
+# (packages/git_bug.sh).
+# shellcheck source=packages/git_bug.sh
+source "$SCRIPT_DIR/git_bug.sh"
 
 install_asdf() {
     echo "Pobieranie informacji o najnowszej wersji asdf..."

@@ -386,30 +386,29 @@ Instalacja i aktualizacja narzędzi — osobny skrypt na system, wszystkie w `pa
 pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS),
 `packages/yum_packages.sh` (RedHat/CentOS/Fedora).
 
-**`install.sh`** (root repo) — dispatcher pod `curl … | bash`, dla maszyny bez klonu: `ensure_git` →
-wykrywa kontekst (pobiera `bash/contexts/detect.sh`, `detect_context`) → rozróżnia host vs subsystem
-Vanilla (markery `/run/.containerenv` + `/run/host/etc/os-release` z `ID=vanilla`; na immutable hoście
-przerywa) → klonuje repo (`packages/prepare_workspace.sh`) → `bash ~/.<projekt>/packages/initial_packages*.sh`.
-Zmienne: `KOZIOLEK_REF` (gałąź), `INSTALL_DISPATCH_DRY_RUN` (wypisz wybrany skrypt i wyjdź — testy),
-`CONTAINERENV_FILE`/`HOST_OS_RELEASE_FILE` (pośrednictwo dla testów). Test:
-`test/unit/test_install_dispatch.sh`. Musi działać w 100% offline pod `CONFIG_CONTEXT_FORCE` (testy) —
-dlatego trzyma własną, celowo zduplikowaną kopię mapowania kontekst→skrypt i rozróżnienia
-host/subsystem Vanilla zamiast fetchować je z `context_package_suffix`/`resolve_vanilla_subsystem`
-(patrz niżej): fetch samego pliku `detect.sh` już wymaga sieci, więc dalszy fetch byłby zbędnym
-narzutem na ścieżce, którą testy celowo omijają.
+**`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
+klon repo do `~/workspace/<projekt>` + symlink `~/.<projekt>` (inline, idempotentny, bez `pull`) →
+`bash ~/.<projekt>/initial_packages.sh`. Niczego poza `git clone` nie pobiera z sieci i nie ma własnej logiki wyboru
+systemu: wykrycie kontekstu, rozróżnienie host/subsystem Vanilla i mapowanie na skrypt robi dispatcher z klona
+(patrz niżej) — jedno miejsce, bez zduplikowanych kopii. Zmienne: `KOZIOLEK_REF` (gałąź/tag; `git clone --branch`,
+tylko świeży klon — istniejący zostaje nietknięty), `PROJECT_CLONE_URL` (adres klona; testy podstawiają lokalne
+repo). Test: `test/unit/test_install_dispatch.sh` (offline: lokalne repo w `mktemp`, podmieniony `HOME`; pilnuje
+też, że `install.sh` nie zawiera `raw.githubusercontent`/`curl -`/`wget` ani `detect_context` poza komentarzami).
 
 **`initial_packages.sh`** / **`update_packages.sh`** (root repo) — te same dispatchery co `install.sh`,
 ale dla repo już sklonowanego: sourcują lokalny `bash/contexts/detect.sh` (bez sieci) i wołają wprost
 `context_package_suffix()` + `resolve_vanilla_subsystem()` — tu nie ma powodu do duplikacji, bo lokalne
-sourcowanie nic nie kosztuje. Zmienna `PACKAGES_DISPATCH_DRY_RUN` (analog `INSTALL_DISPATCH_DRY_RUN`).
+sourcowanie nic nie kosztuje. Zmienna `PACKAGES_DISPATCH_DRY_RUN` (wypisz wybrany skrypt i wyjdź — testy).
 Test: `test/unit/test_packages_dispatch.sh`; same funkcje `detect.sh` mają testy w
 `test/unit/test_context_detect.sh`.
 
 `packages/prepare_workspace.sh` — wspólna, sourcowana funkcja `prepare_workspace()` (klon repo do
-`~/workspace/<projekt>` + symlink `~/.<projekt>`; idempotentna, bez `pull`). Reużywana przez `install.sh`
-i cztery `initial_packages*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `apt_packages.sh` — teraz
-sąsiadów w tym samym katalogu, więc sourcowanie idzie względem `${BASH_SOURCE[0]}` bez podkatalogu
-`packages/`.
+`~/workspace/<projekt>` + symlink `~/.<projekt>`; idempotentna, bez `pull`), używana przez cztery
+`initial_packages*.sh` (`install.sh` ma własny, minimalny klon inline — zob. wyżej).
+
+Skrypty `initial_packages_*.sh` zawsze lecą z klona repo (`install.sh` → `initial_packages.sh`), więc biblioteki
+z `packages/` sourcują zwykłym `source "$SCRIPT_DIR/<plik>.sh"` — **bez** fallbacku „pobierz z GitHuba". Samodzielne
+`curl … initial_packages_<x>.sh | bash`, z pominięciem `install.sh`, nie jest już wspierane.
 
 Wszystkie ścieżki niżej są względem `packages/`.
 
@@ -458,7 +457,7 @@ idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności �
 
 git-bug: `install_git_bug` w `initial_packages_{ubuntu,vanilla,redhat}.sh` (po `install_calibre`) i `update_git_bug` w
 `update_packages_{ubuntu,vanilla,redhat}.sh` (po `update_calibre`), wspólne `packages/git_bug.sh` (w initial sourcowane
-tym samym wzorcem lokalnie-albo-z-GitHuba co `link_claude_skills`). Brak repo apt/yum → tarball z GitHub Releases,
+względem `$SCRIPT_DIR`). Brak repo apt/yum → tarball z GitHub Releases,
 **bez sudo**: binarka w `${GIT_BUG_INSTALL_DIR:-~/.local/bin}` (jak `claude`/`asdf`), więc aktualizacja działa z crona
 użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
 `git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
@@ -472,7 +471,7 @@ brak). Nieinteraktywne, zawsze `return 0` (błąd = ostrzeżenie). Architektury 
 tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
-`initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
+`initial_packages_*.sh` względem `$SCRIPT_DIR`; wołane zaraz po
 `install_claude`) linkuje każdy `<klaudyna>/skills/<nazwa>/` do `~/.claude/skills/<nazwa>`, dzięki czemu
 skille są wspólne między maszynami. Repo `klaudyna` (`$KLAUDYNA_DIR`, domyślnie
 `~/workspace/tools/klaudyna` — to samo miejsce co `install_lib` w `bash_customs.sh`) klonowane bez promptu,
