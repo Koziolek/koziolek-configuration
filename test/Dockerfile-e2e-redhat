@@ -1,9 +1,12 @@
 FROM rockylinux:9
 
 # --allowerasing: obraz bazowy ma curl-minimal, konfliktuje z pełnym curl.
+# man-db + bash-completion: tylko do weryfikacji man/completion git-bug w entrypoint-test.sh.
 RUN yum install -y --allowerasing \
     curl \
     sudo \
+    man-db \
+    bash-completion \
     && yum clean all
 
 # Lokalny katalog packages/ (skrypt + wspólne listy) zamiast curl z GitHub —

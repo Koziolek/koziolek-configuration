@@ -148,6 +148,22 @@ else
     unset _lcs_tmp
 fi
 
+# install_git_bug — git-bug z GitHub Releases do ~/.local/bin, bez sudo
+# (packages/git_bug.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/git_bug.sh" ]; then
+    # shellcheck source=packages/git_bug.sh
+    source "$SCRIPT_DIR/git_bug.sh"
+else
+    _gb_tmp=$(mktemp)
+    curl -fsSL \
+        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/git_bug.sh" \
+        -o "$_gb_tmp"
+    # shellcheck disable=SC1090
+    source "$_gb_tmp"
+    rm -f "$_gb_tmp"
+    unset _gb_tmp
+fi
+
 install_asdf() {
     echo "Pobieranie informacji o najnowszej wersji asdf..."
 
@@ -520,6 +536,7 @@ install_apps
 install_gh
 install_claude
 install_calibre
+install_git_bug
 link_claude_skills
 install_kubectl
 install_docker

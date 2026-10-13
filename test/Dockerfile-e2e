@@ -3,10 +3,13 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Warsaw
 
+# man-db + bash-completion: tylko do weryfikacji man/completion git-bug w entrypoint-test.sh.
 RUN apt-get update && \
     apt-get install -y \
     curl \
     sudo \
+    man-db \
+    bash-completion \
     && rm -rf /var/lib/apt/lists/*
 
 # Lokalny katalog packages/ (skrypt + wspólne listy) zamiast curl z GitHub —

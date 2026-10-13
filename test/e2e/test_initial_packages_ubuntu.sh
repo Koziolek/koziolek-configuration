@@ -95,6 +95,29 @@ _assert_log_contains \
     ".bashrc zawiera referencję do koziolek-configuration" \
     "BASHRC_CONTAINS_CONFIG"
 
+# testGitBugInstalled (git-bug do ~/.local/bin, bez sudo)
+_assert_log_contains \
+    "git-bug zainstalowany w ~/.local/bin" \
+    "GIT_BUG_BINARY_OK"
+
+# testGitBugManPages (man -w znajduje strony w ~/.local/share/man bez MANPATH)
+_assert_log_contains \
+    "man git-bug znajdowany w ~/.local/share/man" \
+    "GIT_BUG_MAN_OK"
+_assert_log_contains \
+    "man git-bug-bug (podkomenda) znajdowany" \
+    "GIT_BUG_MAN_SUBCOMMAND_OK"
+
+# testGitBugCompletion (bash-completion ładuje completion z ~/.local/share leniwie)
+_assert_log_contains \
+    "bash completion git-bug ładowane przez bash-completion" \
+    "GIT_BUG_COMPLETION_OK"
+
+# testGitBugIdempotent (powtórne uruchomienie = "aktualny", bez pobierania)
+_assert_log_contains \
+    "powtórne install_git_bug jest no-opem" \
+    "GIT_BUG_IDEMPOTENT_OK"
+
 # testNoErrorLines (trap ERR z initial_packages_ubuntu.sh drukuje ❌)
 _assert_log_not_contains \
     "brak linii błędu z trap ERR (❌)" \

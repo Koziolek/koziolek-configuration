@@ -40,7 +40,12 @@ niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla wszystkich trzec
 `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant
 vanilla używa obrazu bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
 `Dockerfile-e2e-vanilla` — symuluje marker, którego `initial_packages_vanilla.sh` wymaga jako dowodu, że nie
-leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Nie testuje to realnego
+leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Wszystkie trzy warianty (ubuntu/redhat/vanilla) dodatkowo wołają w `entrypoint-test.sh` `install_git_bug` (sieć:
+GitHub Releases) i weryfikują markerami w logu: binarkę w `~/.local/bin`, `man -w git-bug`/`git-bug-bug` bez `MANPATH`
+(man-db sam dokłada `../share/man` dla katalogów z PATH), completion załadowane leniwie przez `bash-completion`
+(`_completion_loader git-bug` + `complete -p`) oraz no-op przy drugim wywołaniu. Obrazy `Dockerfile-e2e*` mają w tym
+celu `man-db` i `bash-completion` (tylko pod test; w minimalnym Ubuntu `man` to zaślepka — entrypoint woła `man.REAL`).
+Nie testuje to realnego
 Podmana/apx, tylko poprawność samego skryptu apt na debianowej bazie. Uruchamiane też w CI:
 `.github/workflows/test.yml` (unit+integration na push/PR do
 `master`; e2e pozostaje lokalne/manualne — wymaga Dockera i sieci).
@@ -450,6 +455,21 @@ odradza pakiety dystrybucji; aktualizacja = ponowne uruchomienie instalatora; be
 ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --cask calibre` /
 `brew upgrade --cask calibre` (w update, gdy cask nie jest zainstalowany, `brew install`). Instalacja
 idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności — instaluje, gdy brak.
+
+git-bug: `install_git_bug` w `initial_packages_{ubuntu,vanilla,redhat}.sh` (po `install_calibre`) i `update_git_bug` w
+`update_packages_{ubuntu,vanilla,redhat}.sh` (po `update_calibre`), wspólne `packages/git_bug.sh` (w initial sourcowane
+tym samym wzorcem lokalnie-albo-z-GitHuba co `link_claude_skills`). Brak repo apt/yum → tarball z GitHub Releases,
+**bez sudo**: binarka w `${GIT_BUG_INSTALL_DIR:-~/.local/bin}` (jak `claude`/`asdf`), więc aktualizacja działa z crona
+użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
+`git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
+podmiana. Z tarballa idą też strony man (`man/*.1` → `$GIT_BUG_DATA_DIR/man/man1`) i bash completion
+(`completion/bash/git-bug` → `$GIT_BUG_DATA_DIR/bash-completion/completions/git-bug`), też bez sudo;
+`GIT_BUG_DATA_DIR` domyślnie `${XDG_DATA_HOME:-~/.local/share}`. „Aktualny" = wersja równa **i** man + completion na
+miejscu — inaczej tarball jest pobierany ponownie i dokumenty uzupełniane; brak `man/`/`completion/` w wydaniu =
+ostrzeżenie, binarka i tak się instaluje. Jedna ścieżka dla instalacji i aktualizacji (`update_git_bug` instaluje, gdy
+brak). Nieinteraktywne, zawsze `return 0` (błąd = ostrzeżenie). Architektury amd64/arm64. macOS: `git-bug` w
+`brew_packages.sh` (install + upgrade robią istniejące pętle). Alias `gb='git bug'` w `bash/bash_aliases.sh` definiowany
+tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 
 Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
 `initial_packages_*.sh` tym samym wzorcem lokalnie-albo-z-GitHuba co `prepare_workspace`; wołane zaraz po
