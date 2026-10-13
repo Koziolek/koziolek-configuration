@@ -40,7 +40,12 @@ niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla wszystkich trzec
 `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant
 vanilla używa obrazu bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
 `Dockerfile-e2e-vanilla` — symuluje marker, którego `initial_packages_vanilla.sh` wymaga jako dowodu, że nie
-leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Nie testuje to realnego
+leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Wszystkie trzy warianty (ubuntu/redhat/vanilla) dodatkowo wołają w `entrypoint-test.sh` `install_git_bug` (sieć:
+GitHub Releases) i weryfikują markerami w logu: binarkę w `~/.local/bin`, `man -w git-bug`/`git-bug-bug` bez `MANPATH`
+(man-db sam dokłada `../share/man` dla katalogów z PATH), completion załadowane leniwie przez `bash-completion`
+(`_completion_loader git-bug` + `complete -p`) oraz no-op przy drugim wywołaniu. Obrazy `Dockerfile-e2e*` mają w tym
+celu `man-db` i `bash-completion` (tylko pod test; w minimalnym Ubuntu `man` to zaślepka — entrypoint woła `man.REAL`).
+Nie testuje to realnego
 Podmana/apx, tylko poprawność samego skryptu apt na debianowej bazie. Uruchamiane też w CI:
 `.github/workflows/test.yml` (unit+integration na push/PR do
 `master`; e2e pozostaje lokalne/manualne — wymaga Dockera i sieci).
