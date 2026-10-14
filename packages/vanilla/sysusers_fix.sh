@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wspólna funkcja fix_sysusers_version_skew dla initial_packages_vanilla.sh i
-# update_packages_vanilla.sh. Sourcowane, nie wykonywane.
+# Wspólna funkcja fix_sysusers_version_skew dla vanilla/install.sh i
+# vanilla/update.sh. Sourcowane, nie wykonywane.
 #
 # Wymaga od skryptu wołającego zdefiniowanej wcześniej (przed WYWOŁANIEM, nie przed
 # source'owaniem tego pliku) zmiennej $SUDO.

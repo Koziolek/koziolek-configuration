@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Testy jednostkowe: install_git_bug / update_git_bug (packages/git_bug.sh)
+# Testy jednostkowe: install_git_bug / update_git_bug (packages/commons/git_bug.sh)
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -57,7 +57,7 @@ setUp() {
     uname() { [ "$1" = "-m" ] && echo "$_UNAME_M" || command uname "$@"; }
 
     # shellcheck source=/dev/null
-    . "$PROJECT_ROOT/packages/git_bug.sh"
+    . "$PROJECT_ROOT/packages/commons/git_bug.sh"
 }
 
 tearDown() {
@@ -213,12 +213,12 @@ testBadChecksumInstallsNoDocs() {
 testDataDirDefaultsToXdg() {
     unset GIT_BUG_DATA_DIR
     assertEquals "/x/share" "$(XDG_DATA_HOME=/x/share git_bug_data_dir)"
-    assertEquals "$HOME/.local/share" "$(env -u XDG_DATA_HOME bash -c ". '$PROJECT_ROOT/packages/git_bug.sh'; git_bug_data_dir")"
+    assertEquals "$HOME/.local/share" "$(env -u XDG_DATA_HOME bash -c ". '$PROJECT_ROOT/packages/commons/git_bug.sh'; git_bug_data_dir")"
 }
 
 testNeverCallsSudo() {
-    assertNotContains "git_bug.sh nie używa sudo" "$(grep -v '^ *#' "$PROJECT_ROOT/packages/git_bug.sh" | grep -v 'echo ')" "sudo"
-    assertNotContains "git_bug.sh nie używa \$SUDO" "$(cat "$PROJECT_ROOT/packages/git_bug.sh")" '$SUDO'
+    assertNotContains "git_bug.sh nie używa sudo" "$(grep -v '^ *#' "$PROJECT_ROOT/packages/commons/git_bug.sh" | grep -v 'echo ')" "sudo"
+    assertNotContains "git_bug.sh nie używa \$SUDO" "$(cat "$PROJECT_ROOT/packages/commons/git_bug.sh")" '$SUDO'
 }
 
 # ---------------------------------------------------------------------------

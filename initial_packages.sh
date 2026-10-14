@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Dispatcher: wykrywa system i uruchamia właściwy packages/initial_packages_<ctx>.sh.
+# Dispatcher: wykrywa system i uruchamia właściwy packages/<system>/install.sh.
 # Do użycia w już sklonowanym repo (`./initial_packages.sh`). Dla świeżej maszyny
 # bez klonu — jednoplikowy bootstrap `install.sh` (curl | bash): klonuje repo i woła
 # właśnie ten skrypt z klona.
@@ -36,16 +36,16 @@ if ! suffix="$(context_package_suffix "$ctx")"; then
     exit 1
 fi
 
-target="$SCRIPT_DIR/packages/initial_packages_${suffix}.sh"
+target="$SCRIPT_DIR/packages/${suffix}/install.sh"
 if [ ! -f "$target" ]; then
     echo "❌ Brak $target." >&2
     exit 1
 fi
 
-echo "▶ System: $ctx  →  packages/initial_packages_${suffix}.sh"
+echo "▶ System: $ctx  →  packages/${suffix}/install.sh"
 
 if [ -n "${PACKAGES_DISPATCH_DRY_RUN:-}" ]; then
-    echo "packages/initial_packages_${suffix}.sh"
+    echo "packages/${suffix}/install.sh"
     exit 0
 fi
 

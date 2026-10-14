@@ -72,7 +72,7 @@ fi
 
 # testFunctionsLoaded
 _assert_log_contains \
-    "funkcje z initial_packages_ubuntu.sh załadowane" \
+    "funkcje z ubuntu/install.sh załadowane" \
     "FUNCTIONS_LOADED"
 
 # testInstallPackagesDone

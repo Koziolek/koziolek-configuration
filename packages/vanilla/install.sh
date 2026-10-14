@@ -8,11 +8,11 @@
 # obraz debianowy). Ten skrypt musi więc lecieć WEWNĄTRZ subsystemu:
 #
 #     vso shell            # albo:  apx enter
-#     bash initial_packages_vanilla.sh
+#     bash packages/vanilla/install.sh
 #
 # W subsystemie `sudo` działa (rootless podman, użytkownik ma sudo w kontenerze).
 #
-# ── Czym różni się od initial_packages_ubuntu.sh ────────────────────────────
+# ── Czym różni się od ubuntu/install.sh ────────────────────────────
 #   • baza to Debian sid, NIE Ubuntu → brak `add-apt-repository universe`
 #     (wszystko jest w `main`);
 #   • silnik kontenerów: `podman` + `podman-compose` zamiast Dockera
@@ -23,7 +23,7 @@
 #   • Steam pominięty (rootless kontener bez przekazania GPU / i386 — bez sensu;
 #     na Vanilli to zadanie dla flatpaka na hoście: `com.valvesoftware.Steam`).
 #
-# Wspólna lista pakietów apt: packages/apt_packages.sh (ta sama co Ubuntu —
+# Wspólna lista pakietów apt: packages/commons/apt_packages.sh (ta sama co Ubuntu —
 # kontener jest debianowy).
 
 set -Eeuo pipefail
@@ -66,14 +66,15 @@ unset _pkg
 # Katalog skryptu: biblioteki (listy pakietów, helpery) leżą obok. Skrypt zawsze leci z klona
 # repo (install.sh -> initial_packages.sh), nie przez samodzielne `curl | bash`.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMONS_DIR="$SCRIPT_DIR/../commons"
 
-# shellcheck source=packages/apt_packages.sh
-source "$SCRIPT_DIR/apt_packages.sh"
+# shellcheck source=packages/commons/apt_packages.sh
+source "$COMMONS_DIR/apt_packages.sh"
 
-# verify_and_run_script — wspólna z initial_packages_ubuntu.sh/initial_packages_mac.sh
-# (packages/verify_and_run_script.sh).
-# shellcheck source=packages/verify_and_run_script.sh
-source "$SCRIPT_DIR/verify_and_run_script.sh"
+# verify_and_run_script — wspólna z ubuntu/install.sh/mac/install.sh
+# (packages/commons/verify_and_run_script.sh).
+# shellcheck source=packages/commons/verify_and_run_script.sh
+source "$COMMONS_DIR/verify_and_run_script.sh"
 
 all_packages=(
   "${minimal_tools[@]}"
@@ -111,9 +112,9 @@ safe_apt_install() {
   fi
 }
 
-# fix_sysusers_version_skew — wspólna z update_packages_vanilla.sh
-# (packages/sysusers_fix.sh).
-# shellcheck source=packages/sysusers_fix.sh
+# fix_sysusers_version_skew — wspólna z vanilla/update.sh
+# (packages/vanilla/sysusers_fix.sh).
+# shellcheck source=packages/vanilla/sysusers_fix.sh
 source "$SCRIPT_DIR/sysusers_fix.sh"
 
 # Debian sid to rolling release: pakiet zbudowany na nowszej bibliotece potrafi
@@ -137,20 +138,20 @@ install_initial_packages() {
     safe_apt_install "${all_packages[@]}"
 }
 
-# prepare_workspace — wspólna z install.sh/initial_packages_ubuntu.sh/initial_packages_mac.sh
-# (packages/prepare_workspace.sh).
-# shellcheck source=packages/prepare_workspace.sh
-source "$SCRIPT_DIR/prepare_workspace.sh"
+# prepare_workspace — wspólna z install.sh/ubuntu/install.sh/mac/install.sh
+# (packages/commons/prepare_workspace.sh).
+# shellcheck source=packages/commons/prepare_workspace.sh
+source "$COMMONS_DIR/prepare_workspace.sh"
 
 # link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
-# (packages/link_claude_skills.sh).
-# shellcheck source=packages/link_claude_skills.sh
-source "$SCRIPT_DIR/link_claude_skills.sh"
+# (packages/commons/link_claude_skills.sh).
+# shellcheck source=packages/commons/link_claude_skills.sh
+source "$COMMONS_DIR/link_claude_skills.sh"
 
 # install_git_bug — git-bug z GitHub Releases do ~/.local/bin, bez sudo
-# (packages/git_bug.sh).
-# shellcheck source=packages/git_bug.sh
-source "$SCRIPT_DIR/git_bug.sh"
+# (packages/commons/git_bug.sh).
+# shellcheck source=packages/commons/git_bug.sh
+source "$COMMONS_DIR/git_bug.sh"
 
 # Model include ~/.gitconfig (stub -> ~/.gitconfig.generated) nie migruje się sam.
 # Maszyna zainicjowana pod starym modelem ma martwy symlink ~/.gitconfig, który

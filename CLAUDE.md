@@ -20,10 +20,10 @@ Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**,
 ```bash
 ./test/run.sh               # testy unit + integration (Docker na Linux, wymagane --native na macOS)
 ./test/run.sh --native      # uruchom bezpośrednio na hoście, bez Dockera (macOS)
-./test/run.sh --e2e         # dodatkowo e2e: initial_packages_ubuntu.sh w Ubuntu 24.04 (wolne)
+./test/run.sh --e2e         # dodatkowo e2e: ubuntu/install.sh w Ubuntu 24.04 (wolne)
 ./test/run.sh --e2e-local   # e2e z lokalnym projektem podpiętym jako volume
-./test/run.sh --e2e-redhat  # e2e: initial_packages_redhat.sh w rockylinux:9 (wolne)
-./test/run.sh --e2e-vanilla # e2e: initial_packages_vanilla.sh w debian:sid (wolne)
+./test/run.sh --e2e-redhat  # e2e: redhat/install.sh w rockylinux:9 (wolne)
+./test/run.sh --e2e-vanilla # e2e: vanilla/install.sh w debian:sid (wolne)
 ./test/run.sh --e2e-certs   # e2e: prawdziwy JDK+openssl - prepare_cert + update_sdkman_jdk_certs (wolne)
 ./test/run.sh --all         # unit + integration + wszystkie e2e
 ./test/run.sh --filter <wzorzec>  # tylko pliki testowe pasujące do wzorca
@@ -33,13 +33,13 @@ Runner (`test/run.sh`) sprawdza/przygotowuje środowisko Docker (obrazy, sieć),
 `test/Dockerfile-unit` i `test/Dockerfile-e2e`/`test/Dockerfile-e2e-redhat`/`test/Dockerfile-e2e-vanilla`/
 `test/Dockerfile-e2e-certs`, i deleguje do `test/run-inside.sh`, który odpala pliki `test_*.sh` z `test/unit/`,
 `test/integration/` (oraz warianty `linux/`/`darwin/` zależnie od `uname -s`) przez `shunit2`. Wyniki lądują w
-`test/results/`. Testy e2e (`test/e2e/`) budują obraz z lokalnym `initial_packages_ubuntu.sh`/
-`initial_packages_redhat.sh`/`initial_packages_vanilla.sh` (`COPY`, nie curl z GitHuba) — testują bieżące,
+`test/results/`. Testy e2e (`test/e2e/`) budują obraz z lokalnym `ubuntu/install.sh`/
+`redhat/install.sh`/`vanilla/install.sh` (`COPY`, nie curl z GitHuba) — testują bieżące,
 niezacommitowane zmiany; `entrypoint-test.sh` jest wspólny dla wszystkich trzech (skrypt docelowy przez
 `INIT_SCRIPT`), zawężony do bezpiecznych funkcji (`install_initial_packages`, `prepare_workspace`,
 `prepare_bashrc` — bez `install_docker`/`install_gh`/`install_kubectl`, zależnych od `systemctl`/sieci). Wariant
 vanilla używa obrazu bazowego `debian:sid` (ta sama baza co realny subsystem `apx`) z `ENV container=oci` w
-`Dockerfile-e2e-vanilla` — symuluje marker, którego `initial_packages_vanilla.sh` wymaga jako dowodu, że nie
+`Dockerfile-e2e-vanilla` — symuluje marker, którego `vanilla/install.sh` wymaga jako dowodu, że nie
 leci na immutable hoście (Docker, w przeciwieństwie do Podmana, nie ustawia go sam). Wszystkie trzy warianty (ubuntu/redhat/vanilla) dodatkowo wołają w `entrypoint-test.sh` `install_git_bug` (sieć:
 GitHub Releases) i weryfikują markerami w logu: binarkę w `~/.local/bin`, `man -w git-bug`/`git-bug-bug` bez `MANPATH`
 (man-db sam dokłada `../share/man` dla katalogów z PATH), completion załadowane leniwie przez `bash-completion`
@@ -279,7 +279,7 @@ Vanilla OS / WSL / RedHat. `bash/contexts/detect.sh` dokłada warstwę:
 - **`context_is <name>`** — czy `<name>` jest w łańcuchu (`context_is debian` jest prawdą i dla
   `ubuntu`, i dla `vanilla`).
 - **`context_package_suffix [ctx]`** — mapuje kontekst na sufiks
-  `packages/{initial,update}_packages_<sufiks>.sh` (`darwin→mac`, `vanilla→vanilla`, `redhat→redhat`,
+  `packages/<sufiks>/{install,update}.sh` (`darwin→mac`, `vanilla→vanilla`, `redhat→redhat`,
   `ubuntu|debian|wsl→ubuntu`; kod 1 dla nieobsługiwanego). Jedyne źródło prawdy tego mapowania —
   konsumują je root-owe `initial_packages.sh`/`update_packages.sh` (patrz „Bootstrap pakietów”).
 - **`resolve_vanilla_subsystem <ctx>`** — rozróżnia immutable host Vanilla OS od subsystemu `apx`
@@ -382,9 +382,12 @@ nie commituj tu danych uwierzytelniających. Plik `.senv.template` pokazuje ocze
 
 ## Bootstrap pakietów (per system)
 
-Instalacja i aktualizacja narzędzi — osobny skrypt na system, wszystkie w `packages/`. Wspólne listy
-pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla), `packages/brew_packages.sh` (macOS),
-`packages/yum_packages.sh` (RedHat/CentOS/Fedora).
+Instalacja i aktualizacja narzędzi — osobny katalog na system w `packages/` (`ubuntu/`, `vanilla/`, `redhat/`,
+`mac/`), każdy z `install.sh` i `update.sh`, plus `packages/commons/` na rzeczy współdzielone. Zasada: plik używany
+przez jeden system leży w jego katalogu (`redhat/yum_packages.sh`, `mac/brew_packages.sh`,
+`vanilla/sysusers_fix.sh`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
+`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh` oraz fixy `gpg_fix.sh`,
+`dkms_fix.sh`). Fix dotyczący jednego systemu idzie do katalogu tego systemu, współdzielony do `commons/`.
 
 **`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
 klon repo do `~/workspace/<projekt>` + symlink `~/.<projekt>` (inline, idempotentny, bez `pull`) →
@@ -402,62 +405,63 @@ sourcowanie nic nie kosztuje. Zmienna `PACKAGES_DISPATCH_DRY_RUN` (wypisz wybran
 Test: `test/unit/test_packages_dispatch.sh`; same funkcje `detect.sh` mają testy w
 `test/unit/test_context_detect.sh`.
 
-`packages/prepare_workspace.sh` — wspólna, sourcowana funkcja `prepare_workspace()` (klon repo do
+`packages/commons/prepare_workspace.sh` — wspólna, sourcowana funkcja `prepare_workspace()` (klon repo do
 `~/workspace/<projekt>` + symlink `~/.<projekt>`; idempotentna, bez `pull`), używana przez cztery
-`initial_packages*.sh` (`install.sh` ma własny, minimalny klon inline — zob. wyżej).
+`*/install.sh` (`install.sh` ma własny, minimalny klon inline — zob. wyżej).
 
-Skrypty `initial_packages_*.sh` zawsze lecą z klona repo (`install.sh` → `initial_packages.sh`), więc biblioteki
-z `packages/` sourcują zwykłym `source "$SCRIPT_DIR/<plik>.sh"` — **bez** fallbacku „pobierz z GitHuba". Samodzielne
-`curl … initial_packages_<x>.sh | bash`, z pominięciem `install.sh`, nie jest już wspierane.
+Skrypty `*/install.sh` zawsze lecą z klona repo (`install.sh` → `initial_packages.sh`), więc biblioteki
+sourcują zwykłym `source "$COMMONS_DIR/<plik>.sh"` (`COMMONS_DIR="$SCRIPT_DIR/../commons"`; pliki własne systemu —
+`$SCRIPT_DIR/<plik>.sh`) — **bez** fallbacku „pobierz z GitHuba". Samodzielne
+`curl … packages/<system>/install.sh | bash`, z pominięciem `install.sh`, nie jest już wspierane.
 
-Wszystkie ścieżki niżej są względem `packages/`.
+Ścieżki w tabeli są względem `packages/`.
 
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
-| Ubuntu / Debian | `initial_packages_ubuntu.sh` | `update_packages_ubuntu.sh` | apt + Docker |
-| macOS | `initial_packages_mac.sh` | `update_packages_mac.sh` | Homebrew |
-| Vanilla OS 2 | `initial_packages_vanilla.sh` | `update_packages_vanilla.sh` | apt (subsystem `apx`) + podman |
-| RedHat / CentOS / Fedora | `initial_packages_redhat.sh` | `update_packages_redhat.sh` | yum + Docker |
+| Ubuntu / Debian | `ubuntu/install.sh` | `ubuntu/update.sh` | apt + Docker |
+| macOS | `mac/install.sh` | `mac/update.sh` | Homebrew |
+| Vanilla OS 2 | `vanilla/install.sh` | `vanilla/update.sh` | apt (subsystem `apx`) + podman |
+| RedHat / CentOS / Fedora | `redhat/install.sh` | `redhat/update.sh` | yum + Docker |
 
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
-`apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
+`commons/apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
 `add-apt-repository universe` (baza = Debian sid), po `git clone` woła `git/migrate_gitconfig.sh`,
-`update_packages_vanilla.sh` sprząta martwe źródła apt (`docker.list`). Oba robią `apt-get full-upgrade`
+`vanilla/update.sh` sprząta martwe źródła apt (`docker.list`). Oba robią `apt-get full-upgrade`
 (install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
-`fix_sysusers_version_skew` ze wspólnego `packages/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
+`fix_sysusers_version_skew` ze wspólnego `packages/vanilla/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
 `dpkg -i`, zanim postinst pcscd padnie na `u!`) — sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
 (htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
 
-We wszystkich czterech `initial_packages_*.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
+We wszystkich czterech `*/install.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
 `sdk i …` — wewnętrzny `sdkman-install.sh` sięga po niepodane `$2` (`$2: unbound variable` pod `set -Eeuo
 pipefail`), `set -u` wraca dopiero po ostatnim `sdk`; na Vanilli dodatkowo czyszczone są zmienne proxy przed
 SDKMAN; (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` — gdy
 `~/.bashrc` jest symlinkiem na szablon, `>` obcinało cel przez symlink i kasowało szablon (nie `cp
 --remove-destination`: GNU-only, nie działa na macOS).
 
-Claude Code: `install_claude` w każdym `initial_packages_*.sh` (po `install_gh`) i `update_claude` w
-`update_packages_*.sh` (po SDKMAN). Linux: `curl -fsSL https://claude.ai/install.sh | bash` przez
+Claude Code: `install_claude` w każdym `*/install.sh` (po `install_gh`) i `update_claude` w
+`*/update.sh` (po SDKMAN). Linux: `curl -fsSL https://claude.ai/install.sh | bash` przez
 `verify_and_run_script` (brak sumy → zawsze pyta; odmowa = ostrzeżenie, `return 0`, nie przerywa `set -e`);
 macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
 Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
-DKMS: `repair_broken_dkms_packages` (wspólne `packages/dkms_fix.sh`, sourcowane w `update_packages_{ubuntu,vanilla}.sh`,
+DKMS: `repair_broken_dkms_packages` (wspólne `packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`,
 wołane przed i po `update_apt_packages`) naprawia pakiety `*-dkms` w stanie innym niż `ii` (np. `v4l2loopback-dkms`:
 `Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
 `dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu). Idempotentne, błąd = ostrzeżenie, nie przerywa;
 bez fałszywych alarmów w monitoringu. Test: `test/unit/test_dkms_fix.sh`.
 
-calibre: `install_calibre` w każdym `initial_packages_*.sh` (po `install_claude`) i `update_calibre` w
-`update_packages_*.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
+calibre: `install_calibre` w każdym `*/install.sh` (po `install_claude`) i `update_calibre` w
+`*/update.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
 `wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin` (strona calibre
 odradza pakiety dystrybucji; aktualizacja = ponowne uruchomienie instalatora; bez sumy kontrolnej, błąd =
 ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --cask calibre` /
 `brew upgrade --cask calibre` (w update, gdy cask nie jest zainstalowany, `brew install`). Instalacja
 idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności — instaluje, gdy brak.
 
-git-bug: `install_git_bug` w `initial_packages_{ubuntu,vanilla,redhat}.sh` (po `install_calibre`) i `update_git_bug` w
-`update_packages_{ubuntu,vanilla,redhat}.sh` (po `update_calibre`), wspólne `packages/git_bug.sh` (w initial sourcowane
-względem `$SCRIPT_DIR`). Brak repo apt/yum → tarball z GitHub Releases,
+git-bug: `install_git_bug` w `{ubuntu,vanilla,redhat}/install.sh` (po `install_calibre`) i `update_git_bug` w
+`{ubuntu,vanilla,redhat}/update.sh` (po `update_calibre`), wspólne `packages/commons/git_bug.sh` (w install sourcowane
+przez `$COMMONS_DIR`). Brak repo apt/yum → tarball z GitHub Releases,
 **bez sudo**: binarka w `${GIT_BUG_INSTALL_DIR:-~/.local/bin}` (jak `claude`/`asdf`), więc aktualizacja działa z crona
 użytkownika. Najnowsza wersja z przekierowania `…/releases/latest` (bez API i limitu), zainstalowana z drugiego pola
 `git-bug version`; równe = brak pobierania, brak/starsza = pobranie + weryfikacja sha256 z `checksums.txt` + atomowa
@@ -470,8 +474,8 @@ brak). Nieinteraktywne, zawsze `return 0` (błąd = ostrzeżenie). Architektury 
 `brew_packages.sh` (install + upgrade robią istniejące pętle). Alias `gb='git bug'` w `bash/bash_aliases.sh` definiowany
 tylko gdy `git-bug` jest w PATH i `gb` nie jest już innym poleceniem (nic nie cieniuje). Test: `test/unit/test_git_bug.sh`.
 
-Skille Claude Code: `link_claude_skills` (wspólne `packages/link_claude_skills.sh`, sourcowane w czterech
-`initial_packages_*.sh` względem `$SCRIPT_DIR`; wołane zaraz po
+Skille Claude Code: `link_claude_skills` (wspólne `packages/commons/link_claude_skills.sh`, sourcowane w czterech
+`*/install.sh` przez `$COMMONS_DIR`; wołane zaraz po
 `install_claude`) linkuje każdy `<klaudyna>/skills/<nazwa>/` do `~/.claude/skills/<nazwa>`, dzięki czemu
 skille są wspólne między maszynami. Repo `klaudyna` (`$KLAUDYNA_DIR`, domyślnie
 `~/workspace/tools/klaudyna` — to samo miejsce co `install_lib` w `bash_customs.sh`) klonowane bez promptu,

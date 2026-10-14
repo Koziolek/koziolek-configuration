@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Dispatcher: wykrywa system i uruchamia właściwy packages/update_packages_<ctx>.sh.
+# Dispatcher: wykrywa system i uruchamia właściwy packages/<system>/update.sh.
 # Do użycia w już sklonowanym repo (`./update_packages.sh`).
 #
 # Mapowanie kontekst → sufiks: context_package_suffix() w bash/contexts/detect.sh
@@ -34,16 +34,16 @@ if ! suffix="$(context_package_suffix "$ctx")"; then
     exit 1
 fi
 
-target="$SCRIPT_DIR/packages/update_packages_${suffix}.sh"
+target="$SCRIPT_DIR/packages/${suffix}/update.sh"
 if [ ! -f "$target" ]; then
     echo "❌ Brak $target." >&2
     exit 1
 fi
 
-echo "▶ System: $ctx  →  packages/update_packages_${suffix}.sh"
+echo "▶ System: $ctx  →  packages/${suffix}/update.sh"
 
 if [ -n "${PACKAGES_DISPATCH_DRY_RUN:-}" ]; then
-    echo "packages/update_packages_${suffix}.sh"
+    echo "packages/${suffix}/update.sh"
     exit 0
 fi
 

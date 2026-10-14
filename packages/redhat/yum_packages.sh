@@ -1,9 +1,9 @@
-# Wspólna lista pakietów yum dla initial_packages_redhat.sh i update_packages_redhat.sh.
-# Sourcowane, nie wykonywane — tylko deklaracje tablic. Mirror packages/apt_packages.sh
+# Wspólna lista pakietów yum dla redhat/install.sh i redhat/update.sh.
+# Sourcowane, nie wykonywane — tylko deklaracje tablic. Mirror packages/commons/apt_packages.sh
 # (te same nazwy tablic, nazwy pakietów przemapowane na Fedora/RHEL/CentOS).
 #
 # Część pakietów (np. neofetch, thefuck, nvme-cli) wymaga EPEL na RHEL/CentOS —
-# obsługuje to `install_initial_packages` w initial_packages_redhat.sh
+# obsługuje to `install_initial_packages` w redhat/install.sh
 # (best-effort `yum install -y epel-release`, brakujące pakiety pomijane przez
 # `safe_yum_install`). Celowo NIE ma tu curl/wget — jak w apt_packages.sh, to
 # minimalny bootstrap instalowany osobno w każdym skrypcie (`minimal_tools`).

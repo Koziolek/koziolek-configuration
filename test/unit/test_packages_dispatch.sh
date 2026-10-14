@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: initial_packages.sh / update_packages.sh (root) — dispatcher
-# lokalny (już sklonowane repo), wybór packages/<initial|update>_packages_<ctx>.sh.
+# lokalny (już sklonowane repo), wybór packages/<ctx>/<install|update>.sh.
 # Mirror test_install_dispatch.sh, ale bez sieci w ogóle (żadnego fetchowania —
 # oba skrypty sourcują lokalny bash/contexts/detect.sh).
 # Używa PACKAGES_DISPATCH_DRY_RUN=1 i CONFIG_CONTEXT_FORCE.
@@ -24,23 +24,23 @@ _dispatch() {
 # --- initial_packages.sh ---------------------------------------------------
 
 testInitialDarwinPicksMacScript() {
-    assertEquals 'packages/initial_packages_mac.sh' "$(_dispatch "$INITIAL_SH" darwin)"
+    assertEquals 'packages/mac/install.sh' "$(_dispatch "$INITIAL_SH" darwin)"
 }
 
 testInitialUbuntuPicksUbuntuScript() {
-    assertEquals 'packages/initial_packages_ubuntu.sh' "$(_dispatch "$INITIAL_SH" ubuntu)"
+    assertEquals 'packages/ubuntu/install.sh' "$(_dispatch "$INITIAL_SH" ubuntu)"
 }
 
 testInitialDebianPicksUbuntuScript() {
-    assertEquals 'packages/initial_packages_ubuntu.sh' "$(_dispatch "$INITIAL_SH" debian)"
+    assertEquals 'packages/ubuntu/install.sh' "$(_dispatch "$INITIAL_SH" debian)"
 }
 
 testInitialWslPicksUbuntuScript() {
-    assertEquals 'packages/initial_packages_ubuntu.sh' "$(_dispatch "$INITIAL_SH" wsl)"
+    assertEquals 'packages/ubuntu/install.sh' "$(_dispatch "$INITIAL_SH" wsl)"
 }
 
 testInitialRedhatPicksRedhatScript() {
-    assertEquals 'packages/initial_packages_redhat.sh' "$(_dispatch "$INITIAL_SH" redhat)"
+    assertEquals 'packages/redhat/install.sh' "$(_dispatch "$INITIAL_SH" redhat)"
 }
 
 testInitialVanillaSubsystemPicksVanillaScript() {
@@ -51,7 +51,7 @@ testInitialVanillaSubsystemPicksVanillaScript() {
     out=$(env PACKAGES_DISPATCH_DRY_RUN=1 CONFIG_CONTEXT_FORCE=debian \
         CONTAINERENV_FILE="$containerenv" HOST_OS_RELEASE_FILE="$host_os" \
         bash "$INITIAL_SH" 2>/dev/null | tail -1)
-    assertEquals 'packages/initial_packages_vanilla.sh' "$out"
+    assertEquals 'packages/vanilla/install.sh' "$out"
 }
 
 testInitialVanillaHostAborts() {
@@ -73,15 +73,15 @@ testInitialUnsupportedSystemAborts() {
 # --- update_packages.sh -----------------------------------------------------
 
 testUpdateUbuntuPicksUbuntuScript() {
-    assertEquals 'packages/update_packages_ubuntu.sh' "$(_dispatch "$UPDATE_SH" ubuntu)"
+    assertEquals 'packages/ubuntu/update.sh' "$(_dispatch "$UPDATE_SH" ubuntu)"
 }
 
 testUpdateRedhatPicksRedhatScript() {
-    assertEquals 'packages/update_packages_redhat.sh' "$(_dispatch "$UPDATE_SH" redhat)"
+    assertEquals 'packages/redhat/update.sh' "$(_dispatch "$UPDATE_SH" redhat)"
 }
 
 testUpdateDarwinPicksMacScript() {
-    assertEquals 'packages/update_packages_mac.sh' "$(_dispatch "$UPDATE_SH" darwin)"
+    assertEquals 'packages/mac/update.sh' "$(_dispatch "$UPDATE_SH" darwin)"
 }
 
 testUpdateVanillaHostAborts() {

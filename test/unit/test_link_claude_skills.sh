@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Testy jednostkowe: link_claude_skills (packages/link_claude_skills.sh)
+# Testy jednostkowe: link_claude_skills (packages/commons/link_claude_skills.sh)
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -12,7 +12,7 @@ setUp() {
     : > "$_GIT_LOG"
     unset _LS_REMOTE_RC
     # shellcheck source=/dev/null
-    . "$PROJECT_ROOT/packages/link_claude_skills.sh"
+    . "$PROJECT_ROOT/packages/commons/link_claude_skills.sh"
 
     git() {
         echo "GIT $*" >> "$_GIT_LOG"

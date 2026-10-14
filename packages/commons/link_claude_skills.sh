@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspólna funkcja link_claude_skills dla initial_packages_{ubuntu,mac,redhat,vanilla}.sh.
+# Wspólna funkcja link_claude_skills dla {ubuntu,mac,redhat,vanilla}/install.sh.
 # Sourcowane, nie wykonywane — tylko definicja funkcji.
 #
 # Podlinkowuje każdy katalog z <klaudyna>/skills/ do ~/.claude/skills/<nazwa>, dzięki

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wspólna funkcja verify_and_run_script dla initial_packages_ubuntu.sh, initial_packages_mac.sh
-# i initial_packages_vanilla.sh. Sourcowane, nie wykonywane.
+# Wspólna funkcja verify_and_run_script dla ubuntu/install.sh, mac/install.sh
+# i vanilla/install.sh. Sourcowane, nie wykonywane.
 #
 # Pobiera zdalny skrypt instalacyjny do pliku tymczasowego i próbuje zweryfikować
 # go przez sumę kontrolną (git blob sha1 zgodny z tym, co zgłasza GitHub API dla

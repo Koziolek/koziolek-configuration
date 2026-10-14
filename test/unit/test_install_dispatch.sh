@@ -91,7 +91,7 @@ testInstallShDoesNotDuplicateSystemDetection() {
     local code
     code=$(grep -v '^ *#' "$INSTALL_SH")
     assertNotContains "wykrywanie systemu tylko w initial_packages.sh" "$code" "detect_context"
-    assertNotContains "bez własnego mapowania skryptów" "$code" "initial_packages_ubuntu"
+    assertNotContains "bez własnego mapowania skryptów" "$code" "ubuntu/install.sh"
 }
 
 # shellcheck source=/dev/null

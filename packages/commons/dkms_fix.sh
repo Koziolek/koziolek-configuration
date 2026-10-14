@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wspólna funkcja repair_broken_dkms_packages dla update_packages_ubuntu.sh i
-# update_packages_vanilla.sh. Sourcowane, nie wykonywane.
+# Wspólna funkcja repair_broken_dkms_packages dla ubuntu/update.sh i
+# vanilla/update.sh. Sourcowane, nie wykonywane.
 #
 # Wymaga od skryptu wołającego zdefiniowanych: $SUDO oraz helperów ok/warn/info.
 

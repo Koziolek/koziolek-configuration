@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E testy dla initial_packages_ubuntu.sh.
+# E2E testy dla ubuntu/install.sh.
 # Uruchamiany przez test/run.sh --e2e z katalogu głównego projektu.
 # NIE używa shunit2 — orkiestruje Docker i analizuje log wyjściowy.
 
@@ -31,7 +31,7 @@ _assert_log_not_contains() {
 }
 
 echo "======================================="
-echo "  E2E: initial_packages_ubuntu.sh"
+echo "  E2E: ubuntu/install.sh"
 echo "======================================="
 
 # --- Budowanie obrazu ---
@@ -72,7 +72,7 @@ fi
 
 # testFunctionsLoaded
 _assert_log_contains \
-    "funkcje z initial_packages_ubuntu.sh zostały załadowane" \
+    "funkcje z ubuntu/install.sh zostały załadowane" \
     "FUNCTIONS_LOADED"
 
 # testInstallInitialPackagesRan
@@ -118,7 +118,7 @@ _assert_log_contains \
     "powtórne install_git_bug jest no-opem" \
     "GIT_BUG_IDEMPOTENT_OK"
 
-# testNoErrorLines (trap ERR z initial_packages_ubuntu.sh drukuje ❌)
+# testNoErrorLines (trap ERR z ubuntu/install.sh drukuje ❌)
 _assert_log_not_contains \
     "brak linii błędu z trap ERR (❌)" \
     "❌"

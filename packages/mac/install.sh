@@ -8,11 +8,12 @@ PROJECT_NAME='koziolek-configuration'
 # Katalog skryptu: biblioteki (listy pakietów, helpery) leżą obok. Skrypt zawsze leci z klona
 # repo (install.sh -> initial_packages.sh), nie przez samodzielne `curl | bash`.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMONS_DIR="$SCRIPT_DIR/../commons"
 
-# verify_and_run_script — wspólna z initial_packages_ubuntu.sh/initial_packages_vanilla.sh
-# (packages/verify_and_run_script.sh).
-# shellcheck source=packages/verify_and_run_script.sh
-source "$SCRIPT_DIR/verify_and_run_script.sh"
+# verify_and_run_script — wspólna z ubuntu/install.sh/vanilla/install.sh
+# (packages/commons/verify_and_run_script.sh).
+# shellcheck source=packages/commons/verify_and_run_script.sh
+source "$COMMONS_DIR/verify_and_run_script.sh"
 
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -34,14 +35,14 @@ minimal_tools=(
 install_homebrew || exit 1
 
 # macOS ma curl wbudowany, ale nie wget — dociągamy oba przez brew od razu,
-# analogicznie do apt w initial_packages_ubuntu.sh (Linux).
+# analogicznie do apt w ubuntu/install.sh (Linux).
 for _pkg in "${minimal_tools[@]}"; do
     command -v "$_pkg" >/dev/null 2>&1 || brew install "$_pkg"
 done
 unset _pkg
 
 # Wspólna lista pakietów: $SCRIPT_DIR już wyliczone na górze pliku (verify_and_run_script).
-# shellcheck source=packages/brew_packages.sh
+# shellcheck source=packages/mac/brew_packages.sh
 source "$SCRIPT_DIR/brew_packages.sh"
 
 install_brew_packages() {
@@ -56,15 +57,15 @@ install_brew_packages() {
     done
 }
 
-# prepare_workspace — wspólna z install.sh/initial_packages_ubuntu.sh/initial_packages_vanilla.sh
-# (packages/prepare_workspace.sh).
-# shellcheck source=packages/prepare_workspace.sh
-source "$SCRIPT_DIR/prepare_workspace.sh"
+# prepare_workspace — wspólna z install.sh/ubuntu/install.sh/vanilla/install.sh
+# (packages/commons/prepare_workspace.sh).
+# shellcheck source=packages/commons/prepare_workspace.sh
+source "$COMMONS_DIR/prepare_workspace.sh"
 
 # link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
-# (packages/link_claude_skills.sh).
-# shellcheck source=packages/link_claude_skills.sh
-source "$SCRIPT_DIR/link_claude_skills.sh"
+# (packages/commons/link_claude_skills.sh).
+# shellcheck source=packages/commons/link_claude_skills.sh
+source "$COMMONS_DIR/link_claude_skills.sh"
 
 install_asdf() {
     if command -v asdf &>/dev/null; then
@@ -196,7 +197,7 @@ prepare_bashrc() {
         # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
         # wskazującym na ten sam plik szablonu, samo `>` najpierw obcina CEL
         # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
-        # bezpowrotnie prawdziwy szablon (patrz initial_packages_vanilla.sh).
+        # bezpowrotnie prawdziwy szablon (patrz vanilla/install.sh).
         # `rm -f` usuwa wpis `~/.bashrc` PRZED zapisem, więc `cp` nigdy nie
         # pisze przez symlink do własnego źródła. (Nie `cp --remove-destination`
         # — to flaga GNU coreutils, BSD `cp` z macOS jej nie ma.)
