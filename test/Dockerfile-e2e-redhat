@@ -12,7 +12,7 @@ RUN yum install -y --allowerasing \
 # Lokalny katalog packages/ (skrypt + wspólne listy) zamiast curl z GitHub —
 # testujemy bieżące zmiany.
 COPY packages /packages
-RUN chmod +x /packages/initial_packages_redhat.sh
+RUN chmod +x /packages/redhat/install.sh
 
 # Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
-CMD ["/packages/initial_packages_redhat.sh"]
+CMD ["/packages/redhat/install.sh"]

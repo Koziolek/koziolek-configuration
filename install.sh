@@ -9,7 +9,7 @@
 #   1. instaluje git (jeśli brak),
 #   2. klonuje repo do ~/workspace/koziolek-configuration (+ symlink ~/.koziolek-configuration),
 #   3. uruchamia initial_packages.sh Z KLONA — to on wykrywa system (bash/contexts/detect.sh),
-#      rozróżnia host od subsystemu Vanilla OS i wybiera packages/initial_packages_<system>.sh.
+#      rozróżnia host od subsystemu Vanilla OS i wybiera packages/<system>/install.sh.
 #
 # Cała logika wyboru systemu żyje w jednym miejscu (klon), nie ma jej kopii tutaj. Dla repo już
 # sklonowanego ten sam krok 3 robi ręcznie:  ./initial_packages.sh   /   ./update_packages.sh

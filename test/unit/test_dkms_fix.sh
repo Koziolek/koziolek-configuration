@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Testy jednostkowe: repair_broken_dkms_packages (packages/dkms_fix.sh)
+# Testy jednostkowe: repair_broken_dkms_packages (packages/commons/dkms_fix.sh)
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -33,7 +33,7 @@ setUp() {
     dkms() { echo "DKMS $*" >> "$_LOG"; }
 
     # shellcheck source=/dev/null
-    . "$PROJECT_ROOT/packages/dkms_fix.sh"
+    . "$PROJECT_ROOT/packages/commons/dkms_fix.sh"
 }
 
 tearDown() {

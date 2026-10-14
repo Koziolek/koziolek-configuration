@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2E testy dla initial_packages_redhat.sh (mirror test_initial_packages.sh — Ubuntu).
+# E2E testy dla redhat/install.sh (mirror test_initial_packages.sh — Ubuntu).
 # Uruchamiany przez test/run.sh --e2e-redhat z katalogu głównego projektu.
 # NIE używa shunit2 — orkiestruje Docker i analizuje log wyjściowy.
 
@@ -31,7 +31,7 @@ _assert_log_not_contains() {
 }
 
 echo "======================================="
-echo "  E2E: initial_packages_redhat.sh (rockylinux:9)"
+echo "  E2E: redhat/install.sh (rockylinux:9)"
 echo "======================================="
 
 # --- Budowanie obrazu ---
@@ -54,7 +54,7 @@ echo "▶ Uruchamianie kontenera (może potrwać kilka minut)..."
 docker run --rm \
     --name "KOZIOLEK_CONFIGURATION_e2e-redhat_${TIMESTAMP}" \
     --network="${DOCKER_NETWORK:-koziolek-test-net}" \
-    -e INIT_SCRIPT=/packages/initial_packages_redhat.sh \
+    -e INIT_SCRIPT=/packages/redhat/install.sh \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-test.sh:/entrypoint-test.sh:ro" \
     "$E2E_REDHAT_IMAGE" \
     bash /entrypoint-test.sh >> "$LOG" 2>&1
@@ -73,7 +73,7 @@ fi
 
 # testFunctionsLoaded
 _assert_log_contains \
-    "funkcje z initial_packages_redhat.sh zostały załadowane" \
+    "funkcje z redhat/install.sh zostały załadowane" \
     "FUNCTIONS_LOADED"
 
 # testInstallInitialPackagesRan
@@ -119,7 +119,7 @@ _assert_log_contains \
     "powtórne install_git_bug jest no-opem" \
     "GIT_BUG_IDEMPOTENT_OK"
 
-# testNoErrorLines (trap ERR z initial_packages_redhat.sh drukuje ❌)
+# testNoErrorLines (trap ERR z redhat/install.sh drukuje ❌)
 _assert_log_not_contains \
     "brak linii błędu z trap ERR (❌)" \
     "❌"

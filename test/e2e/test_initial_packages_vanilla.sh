@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# E2E testy dla initial_packages_vanilla.sh (mirror test_initial_packages_redhat.sh).
+# E2E testy dla vanilla/install.sh (mirror test_initial_packages_redhat.sh).
 # Uruchamiany przez test/run.sh --e2e-vanilla z katalogu głównego projektu.
 # NIE używa shunit2 — orkiestruje Docker i analizuje log wyjściowy.
 #
 # Obraz bazowy debian:sid symuluje kontener subsystemu apx (baza Vanilla OS —
-# patrz nagłówek initial_packages_vanilla.sh). Nie testujemy tu realnego
+# patrz nagłówek vanilla/install.sh). Nie testujemy tu realnego
 # Podmana/apx ani immutable hosta — tylko czy skrypt apt-owy poprawnie
 # odpala się na debianowej bazie z ustawionym markerem $container
 # (patrz Dockerfile-e2e-vanilla).
@@ -37,7 +37,7 @@ _assert_log_not_contains() {
 }
 
 echo "======================================="
-echo "  E2E: initial_packages_vanilla.sh (debian:sid, symulacja apx)"
+echo "  E2E: vanilla/install.sh (debian:sid, symulacja apx)"
 echo "======================================="
 
 # --- Budowanie obrazu ---
@@ -60,7 +60,7 @@ echo "▶ Uruchamianie kontenera (może potrwać kilka minut)..."
 docker run --rm \
     --name "KOZIOLEK_CONFIGURATION_e2e-vanilla_${TIMESTAMP}" \
     --network="${DOCKER_NETWORK:-koziolek-test-net}" \
-    -e INIT_SCRIPT=/packages/initial_packages_vanilla.sh \
+    -e INIT_SCRIPT=/packages/vanilla/install.sh \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-test.sh:/entrypoint-test.sh:ro" \
     "$E2E_VANILLA_IMAGE" \
     bash /entrypoint-test.sh >> "$LOG" 2>&1
@@ -79,7 +79,7 @@ fi
 
 # testFunctionsLoaded
 _assert_log_contains \
-    "funkcje z initial_packages_vanilla.sh zostały załadowane" \
+    "funkcje z vanilla/install.sh zostały załadowane" \
     "FUNCTIONS_LOADED"
 
 # testSubsystemGuardPassed (guard "musi lecieć WEWNĄTRZ subsystemu apx" nie odpalił się)
@@ -136,7 +136,7 @@ _assert_log_not_contains \
     "brak odwołań do repozytorium universe (to Ubuntu, nie Debian)" \
     "add-apt-repository universe"
 
-# testNoErrorLines (trap ERR z initial_packages_vanilla.sh drukuje ❌)
+# testNoErrorLines (trap ERR z vanilla/install.sh drukuje ❌)
 _assert_log_not_contains \
     "brak linii błędu z trap ERR (❌)" \
     "❌"

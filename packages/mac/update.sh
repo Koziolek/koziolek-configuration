@@ -4,7 +4,7 @@ set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 # ---------------------------------------------------------------------------
-# Package lists — wspólne z initial_packages_mac.sh przez packages/brew_packages.sh
+# Package lists — wspólne z mac/install.sh przez packages/mac/brew_packages.sh
 # ---------------------------------------------------------------------------
 
 minimal_tools=(
@@ -12,7 +12,7 @@ minimal_tools=(
 )
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=packages/brew_packages.sh
+# shellcheck source=packages/mac/brew_packages.sh
 source "$SCRIPT_DIR/brew_packages.sh"
 
 all_brew_packages=(
@@ -203,7 +203,7 @@ update_docker() {
         brew upgrade --cask docker 2>/dev/null || true
         ok "Docker zaktualizowany: $(docker --version)"
     else
-        warn "Docker nie zainstalowany — uruchom initial_packages_mac.sh aby zainstalować"
+        warn "Docker nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
     fi
 }
 
@@ -211,7 +211,7 @@ update_claude() {
     echo ""
     echo "=== Claude Code ==="
     if ! command -v claude &>/dev/null; then
-        warn "Claude Code nie zainstalowany — uruchom initial_packages_mac.sh aby zainstalować"
+        warn "Claude Code nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
     info "Aktualizacja Claude Code..."
@@ -241,7 +241,7 @@ update_asdf() {
     echo "=== asdf ==="
     local asdf_bin="$HOME/.local/bin/asdf"
     if [ ! -x "$asdf_bin" ]; then
-        warn "asdf nie zainstalowany — uruchom initial_packages_mac.sh aby zainstalować"
+        warn "asdf nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
 
@@ -298,7 +298,7 @@ update_sdkman() {
     echo ""
     echo "=== SDKMAN ==="
     if [ ! -d "$HOME/.sdkman" ]; then
-        warn "SDKMAN nie zainstalowany — uruchom initial_packages_mac.sh aby zainstalować"
+        warn "SDKMAN nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
     info "Aktualizacja SDKMAN..."

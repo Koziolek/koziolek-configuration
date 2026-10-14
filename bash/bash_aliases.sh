@@ -11,7 +11,7 @@ fi
 
 alias gst='git status'
 
-# git-bug (packages/git_bug.sh instaluje do ~/.local/bin): alias tylko gdy narzędzie jest
+# git-bug (packages/commons/git_bug.sh instaluje do ~/.local/bin): alias tylko gdy narzędzie jest
 # dostępne i `gb` nie jest już innym poleceniem (np. narzędziem `gb` z Go) — nic nie cieniujemy.
 if command -v git-bug >/dev/null 2>&1 && ! command -v gb >/dev/null 2>&1; then
     alias gb='git bug'

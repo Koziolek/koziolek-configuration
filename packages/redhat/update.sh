@@ -1,30 +1,11 @@
 #!/usr/bin/env bash
 #
-# Aktualizacja pakietów dla Vanilla OS 2 — leci WEWNĄTRZ subsystemu `apx`
-# (kontener podman, baza debianowa). Na immutable hoście `apt` nie działa.
-#
-#     vso shell            # albo:  apx enter
-#     bash update_packages_vanilla.sh
-#
-# Różnice wobec update_packages_ubuntu.sh (Ubuntu):
-#   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
-#   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
-#     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany;
-#   • pakiety apt: `apt-get full-upgrade` zamiast `install --only-upgrade <lista>`
-#     (sid jest rolling — częściowy upgrade zostawia rozjechane biblioteki);
-#   • reszta (asdf, difft, sdkman, gh, kubectl, klucze GPG) — jak w wersji Ubuntu,
-#     bo kontener jest debianowy.
+# Raport stanu + aktualizacja dla rodziny RedHat (RHEL/CentOS/Fedora/Rocky/Alma).
+# Mirror ubuntu/update.sh — yum zamiast apt. Sekcja "Klucze GPG"
+# (refresh_apt_gpg_keys/gpg_fix.sh) pominięta — nie dotyczy modelu kluczy rpm.
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
-
-export DEBIAN_FRONTEND=noninteractive
-
-if [ ! -f /run/.containerenv ] && [ -z "${container:-}" ]; then
-    echo "❌ Ten skrypt musi lecieć WEWNĄTRZ subsystemu apx, nie na immutable hoście Vanilla OS."
-    echo "   Wejdź:   vso shell     (albo:  apx enter)"
-    exit 1
-fi
 
 SUDO=''
 if (( EUID != 0 )); then
@@ -32,7 +13,7 @@ if (( EUID != 0 )); then
 fi
 
 # ---------------------------------------------------------------------------
-# Package lists — wspólne z initial_packages_vanilla.sh przez packages/apt_packages.sh
+# Package lists — wspólne z redhat/install.sh przez packages/redhat/yum_packages.sh
 # ---------------------------------------------------------------------------
 
 minimal_tools=(
@@ -40,10 +21,11 @@ minimal_tools=(
 )
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=packages/apt_packages.sh
-source "$SCRIPT_DIR/apt_packages.sh"
+COMMONS_DIR="$SCRIPT_DIR/../commons"
+# shellcheck source=packages/redhat/yum_packages.sh
+source "$SCRIPT_DIR/yum_packages.sh"
 
-all_apt_packages=(
+all_yum_packages=(
     "${minimal_tools[@]}"
     "${system_tools[@]}"
     "${security_tools[@]}"
@@ -51,6 +33,7 @@ all_apt_packages=(
     "${gui_libs[@]}"
     "${image_tools[@]}"
     "${diag_tools[@]}"
+    "${boxes_vm[@]}"
 )
 
 # ---------------------------------------------------------------------------
@@ -67,70 +50,29 @@ missing() { printf "${C_RED}✗${C_NC} %s\n" "$*"; }
 warn()    { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
 info()    { printf "  %s\n" "$*"; }
 
-apt_installed() {
-    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -qc "ok installed"
-}
-
-declare -a REPOS_DEAD=()
-
-# refresh_apt_gpg_keys — wspólna z update_packages_ubuntu.sh (packages/gpg_fix.sh).
-# shellcheck source=packages/gpg_fix.sh
-source "$SCRIPT_DIR/gpg_fix.sh"
-
-# fix_sysusers_version_skew — wspólna z initial_packages_vanilla.sh (packages/sysusers_fix.sh).
-# shellcheck source=packages/sysusers_fix.sh
-source "$SCRIPT_DIR/sysusers_fix.sh"
-
-# repair_broken_dkms_packages — wspólna z update_packages_ubuntu.sh (packages/dkms_fix.sh).
-# shellcheck source=packages/dkms_fix.sh
-source "$SCRIPT_DIR/dkms_fix.sh"
-
-# Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
-# są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest
-# zainstalowany — na Vanilli używamy podmana.
-cleanup_stale_sources() {
-    echo ""
-    echo "=== Martwe źródła apt ==="
-    local removed=0
-
-    if [ -f /etc/apt/sources.list.d/docker.list ] && ! command -v docker >/dev/null 2>&1; then
-        warn "docker.list obecny, ale Docker niezainstalowany (Vanilla używa podmana)."
-        local reply=n
-        read -r -p "Usunąć /etc/apt/sources.list.d/docker.list (+ keyring)? [y/N]: " -n 1 -r reply || reply=n
-        echo
-        if [[ "$reply" =~ ^[YyTt]$ ]]; then
-            $SUDO rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
-            ok "docker.list usunięty"
-            (( removed++ )) || true
-        fi
-    fi
-
-    if (( removed > 0 )); then
-        $SUDO apt-get -qq update || true
-    else
-        ok "Brak martwych źródeł do wyczyszczenia"
-    fi
+yum_installed() {
+    rpm -q "$1" >/dev/null 2>&1
 }
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
 # ---------------------------------------------------------------------------
 
-declare -a APT_MISSING=()
-declare -a APT_INSTALLED=()
+declare -a YUM_MISSING=()
+declare -a YUM_INSTALLED=()
 declare -a PACKAGES_UNAVAILABLE=()
 
-check_apt_packages() {
+check_yum_packages() {
     echo ""
-    echo "=== Pakiety apt ==="
+    echo "=== Pakiety yum ==="
     local pkg
-    for pkg in "${all_apt_packages[@]}"; do
-        if apt_installed "$pkg"; then
+    for pkg in "${all_yum_packages[@]}"; do
+        if yum_installed "$pkg"; then
             ok "$pkg"
-            APT_INSTALLED+=("$pkg")
+            YUM_INSTALLED+=("$pkg")
         else
             missing "$pkg"
-            APT_MISSING+=("$pkg")
+            YUM_MISSING+=("$pkg")
         fi
     done
 }
@@ -145,18 +87,13 @@ check_gh() {
     fi
 }
 
-check_podman() {
+check_docker() {
     echo ""
-    echo "=== podman / podman-compose ==="
-    if command -v podman &>/dev/null; then
-        ok "podman: $(podman --version)"
+    echo "=== Docker ==="
+    if command -v docker &>/dev/null; then
+        ok "docker: $(docker --version)"
     else
-        missing "podman: nie zainstalowany"
-    fi
-    if command -v podman-compose &>/dev/null; then
-        ok "podman-compose: $(podman-compose --version 2>&1 | head -1)"
-    else
-        missing "podman-compose: nie zainstalowany"
+        missing "docker: nie zainstalowany"
     fi
     if command -v ctop &>/dev/null; then
         ok "ctop: $(ctop -v 2>&1 | head -1)"
@@ -208,63 +145,38 @@ check_sdkman() {
     fi
 }
 
-check_apps() {
-    echo ""
-    echo "=== Aplikacje ==="
-    if command -v spotify &>/dev/null || apt_installed spotify-client; then
-        ok "spotify"
-    else
-        missing "spotify: nie zainstalowany"
-    fi
-    if apt_installed 1password; then
-        ok "1password"
-    else
-        missing "1password: nie zainstalowany"
-    fi
-}
-
 # ---------------------------------------------------------------------------
 # Phase 2: Update / install
 # ---------------------------------------------------------------------------
 
-safe_apt_install() {
+safe_yum_install() {
     local pkg
     for pkg in "$@"; do
-        if ! apt-cache show "$pkg" >/dev/null 2>&1; then
+        if ! yum list "$pkg" >/dev/null 2>&1; then
             warn "Pakiet '$pkg' niedostępny w repozytoriach, pomijam"
             PACKAGES_UNAVAILABLE+=("$pkg")
             continue
         fi
-        if ! $SUDO apt-get install -qqy "$pkg" 2>/dev/null; then
-            warn "Instalacja '$pkg' nieudana (błąd zależności lub architektury)"
+        if ! $SUDO yum install -y "$pkg" 2>/dev/null; then
+            warn "Instalacja '$pkg' nieudana (błąd zależności)"
             PACKAGES_UNAVAILABLE+=("$pkg")
         fi
     done
 }
 
-update_apt_packages() {
+update_yum_packages() {
     echo ""
-    echo "=== Aktualizacja pakietów apt ==="
+    echo "=== Aktualizacja pakietów yum ==="
 
-    # Debian sid (rolling): `install --only-upgrade <lista>` podnosi tylko wymienione
-    # pakiety, a zależności — wyłącznie gdy wymusza to `Depends:`. Przy zbyt luźnej
-    # deklaracji zostaje stara biblioteka (np. htop vs libunwind8 → "undefined
-    # symbol: _Ux86_64_get_elf_filename"). Pełny upgrade całego systemu daje
-    # spójny stan i obejmuje też wszystko z APT_INSTALLED.
-    # Najpierw nowszy sysusers — inaczej full-upgrade może ugrząźć na postinst
-    # pcscd ("Unknown modifier 'u!'"), patrz packages/sysusers_fix.sh.
-    # (apt-get update zrobił już refresh_apt_gpg_keys.)
-    fix_sysusers_version_skew
-    info "Pełna aktualizacja systemu (apt-get full-upgrade)..."
-    if $SUDO apt-get -qqy full-upgrade; then
-        ok "System zaktualizowany"
-    else
-        warn "apt-get full-upgrade zakończony błędem — sprawdź: sudo apt-get full-upgrade"
+    if [ "${#YUM_INSTALLED[@]}" -gt 0 ]; then
+        info "Aktualizacja zainstalowanych..."
+        $SUDO yum update -y "${YUM_INSTALLED[@]}" 2>/dev/null || true
+        ok "Zainstalowane zaktualizowane"
     fi
 
-    if [ "${#APT_MISSING[@]}" -gt 0 ]; then
-        info "Instalacja brakujących: ${APT_MISSING[*]}"
-        safe_apt_install "${APT_MISSING[@]}"
+    if [ "${#YUM_MISSING[@]}" -gt 0 ]; then
+        info "Instalacja brakujących: ${YUM_MISSING[*]}"
+        safe_yum_install "${YUM_MISSING[@]}"
     fi
 }
 
@@ -273,35 +185,27 @@ update_gh() {
     echo "=== GitHub CLI ==="
     if command -v gh &>/dev/null; then
         info "Aktualizacja gh..."
-        $SUDO apt-get install -qqy --only-upgrade gh 2>/dev/null || true
+        $SUDO yum update -y gh 2>/dev/null || true
         ok "gh zaktualizowany: $(gh --version | head -1)"
     else
         info "Instalacja gh..."
-        $SUDO mkdir -p -m 755 /etc/apt/keyrings
-        local keyring=/etc/apt/keyrings/githubcli-archive-keyring.gpg
-        local tmpkey
-        tmpkey="$(mktemp)"
-        wget -nv -O "$tmpkey" https://cli.github.com/packages/githubcli-archive-keyring.gpg
-        $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
-        rm -f "$tmpkey"
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
-            | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-        $SUDO apt-get -qq update
-        safe_apt_install gh
+        $SUDO yum install -y yum-utils
+        $SUDO yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+        safe_yum_install gh
         ok "gh zainstalowany: $(gh --version | head -1)"
     fi
 }
 
-update_podman_compose() {
+update_docker() {
     echo ""
-    echo "=== podman / podman-compose ==="
-    if command -v podman &>/dev/null; then
-        info "Aktualizacja podman + podman-compose..."
-        $SUDO apt-get install -qqy --only-upgrade podman podman-compose 2>/dev/null || true
-        ok "podman: $(podman --version)"
+    echo "=== Docker ==="
+    if command -v docker &>/dev/null; then
+        info "Aktualizacja Docker Engine..."
+        $SUDO yum update -y \
+            docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null || true
+        ok "Docker zaktualizowany: $(docker --version)"
     else
-        info "Instalacja podman + podman-compose..."
-        safe_apt_install podman podman-compose
+        warn "Docker nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
     fi
 
     info "Aktualizacja ctop..."
@@ -363,7 +267,7 @@ update_claude() {
     echo ""
     echo "=== Claude Code ==="
     if ! command -v claude &>/dev/null; then
-        warn "Claude Code nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
+        warn "Claude Code nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
     info "Aktualizacja Claude Code..."
@@ -374,9 +278,9 @@ update_claude() {
     fi
 }
 
-# install_git_bug / update_git_bug — wspólne z initial_packages_*.sh (packages/git_bug.sh).
-# shellcheck source=packages/git_bug.sh
-source "$SCRIPT_DIR/git_bug.sh"
+# install_git_bug / update_git_bug — wspólne z */install.sh (packages/commons/git_bug.sh).
+# shellcheck source=packages/commons/git_bug.sh
+source "$COMMONS_DIR/git_bug.sh"
 
 update_calibre() {
     echo ""
@@ -395,7 +299,7 @@ update_asdf() {
     echo "=== asdf ==="
     local asdf_bin="$HOME/.local/bin/asdf"
     if [ ! -x "$asdf_bin" ]; then
-        warn "asdf nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
+        warn "asdf nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
 
@@ -438,8 +342,7 @@ update_difft() {
     fi
     info "Aktualizacja difftastic..."
     # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
-    # zależności semver, a te (np. tree-sitter-language) wymuszają nowszego rustc
-    # niż daje asdf → "rustc X is not supported by the following packages".
+    # zależności semver, a te wymuszają nowszego rustc niż daje asdf.
     "$asdf_bin" exec cargo install --locked difftastic
     ok "difftastic zaktualizowany: $(difft --version)"
 }
@@ -448,17 +351,11 @@ update_sdkman() {
     echo ""
     echo "=== SDKMAN ==="
     if [ ! -d "$HOME/.sdkman" ]; then
-        warn "SDKMAN nie zainstalowany — uruchom initial_packages_vanilla.sh aby zainstalować"
+        warn "SDKMAN nie zainstalowany — uruchom initial_packages.sh aby zainstalować"
         return 0
     fi
-    # Patrz install_sdkman w initial_packages_vanilla.sh: subsystem apx potrafi
-    # mieć w środowisku http_proxy/https_proxy odziedziczone z hosta/podmana,
-    # przez które SDKMAN/curl próbują łączyć się przez proxy, którego subsystem
-    # faktycznie nie potrzebuje/nie ma — pobieranie pada (patrz #125). Czyścimy
-    # tylko wewnątrz tych subshelli, nie w reszcie skryptu.
     info "Aktualizacja SDKMAN..."
     (
-        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
         set +eu
         # shellcheck source=/dev/null
         source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -467,7 +364,6 @@ update_sdkman() {
 
     info "Aktualizacja SDK (java, maven, mvnd)..."
     (
-        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
         set +eu
         # shellcheck source=/dev/null
         source "$HOME/.sdkman/bin/sdkman-init.sh"
@@ -483,32 +379,25 @@ update_sdkman() {
 # ---------------------------------------------------------------------------
 
 echo "======================================="
-echo "  update_packages_vanilla — raport stanu"
+echo "  update_packages_redhat — raport stanu"
 echo "======================================="
 
-check_apt_packages
+check_yum_packages
 check_gh
-check_podman
+check_docker
 check_kubectl
 check_asdf
 check_difft
 check_sdkman
-check_apps
 
 echo ""
 echo "======================================="
 echo "  Aktualizacja"
 echo "======================================="
 
-echo ""
-echo "=== Klucze GPG ==="
-refresh_apt_gpg_keys
-cleanup_stale_sources
-repair_broken_dkms_packages
-update_apt_packages
-repair_broken_dkms_packages
+update_yum_packages
 update_gh
-update_podman_compose
+update_docker
 update_kubectl
 update_asdf
 update_difft
@@ -524,13 +413,6 @@ if [ "${#PACKAGES_UNAVAILABLE[@]}" -gt 0 ]; then
     warn "Pakiety niedostępne w repozytoriach (wymagają ręcznej interwencji):"
     for pkg in "${PACKAGES_UNAVAILABLE[@]}"; do
         warn "  - $pkg"
-    done
-fi
-if [ "${#REPOS_DEAD[@]}" -gt 0 ]; then
-    echo ""
-    warn "Martwe repozytoria (404 / brak Release) — usuń ręcznie z /etc/apt/sources.list.d/:"
-    for repo in "${REPOS_DEAD[@]}"; do
-        warn "  - $repo"
     done
 fi
 echo ""

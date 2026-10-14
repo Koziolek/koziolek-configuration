@@ -6,10 +6,10 @@
 #
 # Opcje:
 #   --all               Uruchom wszystkie testy (unit + e2e + e2e-local + e2e-redhat + e2e-vanilla + e2e-certs)
-#   --e2e               Uruchom testy e2e (initial_packages_ubuntu.sh + GitHub clone, wolne)
+#   --e2e               Uruchom testy e2e (ubuntu/install.sh + GitHub clone, wolne)
 #   --e2e-local         Uruchom testy e2e z lokalnym projektem podpiętym jako volume
-#   --e2e-redhat        Uruchom testy e2e dla initial_packages_redhat.sh (rockylinux:9, wolne)
-#   --e2e-vanilla       Uruchom testy e2e dla initial_packages_vanilla.sh (debian:sid, wolne)
+#   --e2e-redhat        Uruchom testy e2e dla redhat/install.sh (rockylinux:9, wolne)
+#   --e2e-vanilla       Uruchom testy e2e dla vanilla/install.sh (debian:sid, wolne)
 #   --e2e-certs         Uruchom testy TLS/cacerts (prawdziwy JDK+openssl, prepare_cert + update_sdkman_jdk_certs)
 #   --native            Uruchom testy bezpośrednio na hoście (bez Docker) — wymagane na macOS
 #   --filter <wzorzec>  Uruchom tylko pliki pasujące do wzorca (unit/integration)

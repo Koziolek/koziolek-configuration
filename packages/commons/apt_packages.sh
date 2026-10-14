@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspólna lista pakietów apt dla initial_packages_ubuntu.sh i update_packages_ubuntu.sh.
+# Wspólna lista pakietów apt dla ubuntu/install.sh i ubuntu/update.sh.
 # Sourcowane, nie wykonywane — tylko deklaracje tablic.
 #
 # Celowo NIE ma tu curl/wget: to minimalny bootstrap, który musi zostać
@@ -25,7 +25,7 @@ graphics_libs=(
 # (był bezużyteczny, tylko "not found, skipping" w każdym logu). libgdk-pixbuf2.0-0
 # zostaje mimo że na Debian sid akurat nie ma kandydata (trwająca transformacja
 # nazwy pakietu) — na Ubuntu wciąż jest realny; safe_apt_install (patrz
-# initial_packages_ubuntu.sh/initial_packages_vanilla.sh) poprawnie go pomija
+# ubuntu/install.sh/vanilla/install.sh) poprawnie go pomija
 # z ostrzeżeniem zamiast wywalać całą instalację, patrz #124.
 gui_libs=(
   libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0

@@ -3,7 +3,7 @@ FROM debian:sid
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Warsaw
 
-# initial_packages_vanilla.sh odmawia startu na "immutable hoście" Vanilla OS —
+# vanilla/install.sh odmawia startu na "immutable hoście" Vanilla OS —
 # wymaga markera subsystemu apx: /run/.containerenv (Podman) albo $container
 # (LXC/systemd-nspawn/Podman ustawiają to same). Docker nie ustawia żadnego z
 # nich, więc symulujemy ręcznie przez ENV — to jedyny sposób, by e2e w ogóle
@@ -22,7 +22,7 @@ RUN apt-get update && \
 # Lokalny katalog packages/ (skrypt + wspólne listy) zamiast curl z GitHub —
 # testujemy bieżące zmiany.
 COPY packages /packages
-RUN chmod +x /packages/initial_packages_vanilla.sh
+RUN chmod +x /packages/vanilla/install.sh
 
 # Domyślny CMD uruchamia pełny skrypt (jak oryginalne Dockerfile-test)
-CMD ["/packages/initial_packages_vanilla.sh"]
+CMD ["/packages/vanilla/install.sh"]

@@ -16,7 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/Koziolek/koziolek-configuration/mas
 
 `install.sh` instaluje git, klonuje repo do `~/workspace/koziolek-configuration` (symlink
 `~/.koziolek-configuration`) i uruchamia z klona `initial_packages.sh`, który wykrywa system
-(`bash/contexts/detect.sh`) i woła właściwy `packages/initial_packages_<system>.sh` — ten instaluje
+(`bash/contexts/detect.sh`) i woła właściwy `packages/<system>/install.sh` — ten instaluje
 pakiety i stawia `~/.bashrc` z szablonu. Gałąź do sklonowania: zmienna `KOZIOLEK_REF` (domyślnie
 domyślna gałąź repo; dotyczy tylko świeżego klona).
 
@@ -52,18 +52,18 @@ uprawnieniami 400. Wzorzec zmiennych: `.senv.template`.
 ### Bootstrap pakietów (per system)
 
 Instalacja narzędzi i aktualizacje mają osobny skrypt na każdy system (`install.sh` sam wybiera właściwy),
-wszystkie w `packages/`. Wspólne listy pakietów: `packages/apt_packages.sh` (Debian/Ubuntu/Vanilla),
-`packages/brew_packages.sh` (macOS) i `packages/yum_packages.sh` (RedHat/CentOS/Fedora). Klon repo +
-symlink: wspólny `packages/prepare_workspace.sh`.
+każdy w katalogu `packages/<system>/` (`install.sh`, `update.sh`). Rzeczy współdzielone leżą w
+`packages/commons/` (m.in. lista `apt_packages.sh` dla Debian/Ubuntu/Vanilla, klon repo + symlink:
+`prepare_workspace.sh`); listy `yum_packages.sh` i `brew_packages.sh` są w katalogach `redhat/` i `mac/`.
 
 Ścieżki niżej są względem `packages/`.
 
 | System | Instalacja | Aktualizacja | Menedżer |
 |---|---|---|---|
-| Ubuntu / Debian | `initial_packages_ubuntu.sh` | `update_packages_ubuntu.sh` | apt + Docker |
-| macOS | `initial_packages_mac.sh` | `update_packages_mac.sh` | Homebrew |
-| **Vanilla OS 2** | **`initial_packages_vanilla.sh`** | **`update_packages_vanilla.sh`** | apt (w subsystemie `apx`) + podman |
-| RedHat / CentOS / Fedora | `initial_packages_redhat.sh` | `update_packages_redhat.sh` | yum + Docker |
+| Ubuntu / Debian | `ubuntu/install.sh` | `ubuntu/update.sh` | apt + Docker |
+| macOS | `mac/install.sh` | `mac/update.sh` | Homebrew |
+| **Vanilla OS 2** | **`vanilla/install.sh`** | **`vanilla/update.sh`** | apt (w subsystemie `apx`) + podman |
+| RedHat / CentOS / Fedora | `redhat/install.sh` | `redhat/update.sh` | yum + Docker |
 
 Wersja Vanilla musi lecieć **wewnątrz subsystemu** (`vso shell` / `apx enter`) — host jest immutable.
 Używa `podman` + `podman-compose` zamiast Dockera, pomija `add-apt-repository universe` (baza to Debian
@@ -72,19 +72,18 @@ sid) i po `git clone` uruchamia `git/migrate_gitconfig.sh`.
 Vanilla (Debian sid) to **rolling release**, stąd dwie rzeczy, których nie ma w wariantach stabilnych:
 
 - **`apt-get full-upgrade` zamiast częściowego upgrade'u.** Instalator robi pełny upgrade systemu przed
-  instalacją listy pakietów, a `update_packages_vanilla.sh` używa go zamiast
+  instalacją listy pakietów, a `vanilla/update.sh` używa go zamiast
   `install --only-upgrade <lista>`. Pakiet zbudowany na nowszej bibliotece potrafi zadeklarować w `Depends:`
   zbyt luźną wersję, a częściowy upgrade zostawia wtedy starą bibliotekę przy nowej binarce (np. `htop` vs
   `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
-- **`fix_sysusers_version_skew`** (`packages/sysusers_fix.sh`, wspólny dla obu skryptów, sourcowany lokalnie
-  albo pobierany z GitHuba tym samym wzorcem co `apt_packages.sh`). Kontener `apx` ma tylko
+- **`fix_sysusers_version_skew`** (`packages/vanilla/sysusers_fix.sh`, wspólny dla obu skryptów vanilli, sourcowany z katalogu systemu). Kontener `apx` ma tylko
   `systemd-standalone-sysusers`, a nowsze pakiety (np. `pcscd` ≥ 2.5.2) używają składni `sysusers.d`
   (`u!`, systemd 257), której starsza binarka nie zna → postinst pada na `Unknown modifier 'u!'` i wywala
   całą transakcję dpkg. Funkcja pobiera `apt-get download` pakiet z `systemd-sysusers` i instaluje go
   gołym `dpkg -i` (apt przy każdym wywołaniu najpierw próbuje domknąć „half-configured” `pcscd`, więc
   `--only-upgrade` nie wystarcza). Woła się ją po `apt-get update`, przed `full-upgrade`.
 
-**Wspólne dla wszystkich `initial_packages_*.sh`:**
+**Wspólne dla wszystkich `*/install.sh`:**
 
 - **SDKMAN i `set -u`.** SDKMAN nie jest pisany pod `set -u` (wewnętrzny `sdkman-install.sh` sięga po niepodane
   argumenty → `$2: unbound variable` przy pierwszej instalacji kandydata), więc `set +u` obejmuje teraz
@@ -94,8 +93,8 @@ Vanilla (Debian sid) to **rolling release**, stąd dwie rzeczy, których nie ma 
   `>` obcinałoby cel przez symlink i `cat` czytałby już pustą treść — kasując szablon. `rm -f` usuwa wpis
   przed zapisem, a `cp` (nie GNU-owe `--remove-destination`) działa też na BSD/macOS.
 
-**Claude Code (`claude`)** jest instalowany we wszystkich czterech `initial_packages_*.sh` (`install_claude`, zaraz po
-`install_gh`) i aktualizowany w `update_packages_*.sh` (`update_claude`, ostatni krok po SDKMAN):
+**Claude Code (`claude`)** jest instalowany we wszystkich czterech `*/install.sh` (`install_claude`, zaraz po
+`install_gh`) i aktualizowany w `*/update.sh` (`update_claude`, ostatni krok po SDKMAN):
 
 | System | Instalacja | Aktualizacja |
 |---|---|---|
@@ -670,7 +669,7 @@ Projekt zawiera skrypty diagnostyczne, raporty i narzędzia do analizy stanu sta
 ```bash
 ./test/run.sh              # testy unit + integration (Docker na Linux)
 ./test/run.sh --native     # bezpośrednio na hoście, bez Dockera (wymagane na macOS)
-./test/run.sh --e2e        # dodatkowo e2e: initial_packages_ubuntu.sh w Ubuntu 24.04
+./test/run.sh --e2e        # dodatkowo e2e: ubuntu/install.sh w Ubuntu 24.04
 ./test/run.sh --all        # wszystko
 ```
 
