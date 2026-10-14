@@ -444,6 +444,17 @@ Claude Code: `install_claude` w każdym `*/install.sh` (po `install_gh`) i `upda
 macOS: `brew install --cask claude-code`. Aktualizacja wszędzie `claude update`; brak `claude` → tylko `warn`.
 Instalacja idempotentna (`command -v claude` / `$HOME/.local/bin/claude` / `brew list --cask`).
 
+Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d/` (1 fix = 1 plik `NNN_nazwa.sh`, kontrakt w
+`fixes.d/README.md`; fix jednego systemu — `packages/<system>/fixes.d/`, dodatkowe katalogi przez `FIXES_DIRS`) i runner
+`packages/commons/fixes_runner.sh` (`run_fixes <faza|all> [--check] [--only id,…] [--format text|tsv|json] [--allow-high]
+[--strict]`). Każda funkcja fixa (`fix_detect` tylko odczyt, `fix_apply`, opcjonalnie `fix_verify`) leci w osobnym procesie
+`bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
+detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
+bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
+Na razie nic nie jest podpięte — istniejące `gpg_fix`/`sysusers_fix`/`dkms_fix` przechodzą na rejestr w kolejnych krokach. Testy:
+`test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
+`fix_detect` bez sudo/sieci/zapisu).
+
 DKMS: `repair_broken_dkms_packages` (wspólne `packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`,
 wołane przed i po `update_apt_packages`) naprawia pakiety `*-dkms` w stanie innym niż `ii` (np. `v4l2loopback-dkms`:
 `Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
