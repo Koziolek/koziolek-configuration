@@ -344,7 +344,7 @@ Aby dodać nowy system budowania, wrzuć numerowany plik `.sh` do `gab_plugins/`
 - `git/templates/git_config.template` — szablon globalnej konfiguracji git. Renderowany do
   `~/.gitconfig.generated` (swobodnie nadpisywany); `~/.gitconfig` to stały stub z `[include]`
   wskazującym na ten plik, tworzony tylko raz — ręczne `git config --global ...` przeżywają
-  aktualizacje repo. Migracja ze starego (jednoplikowego) modelu: `git/migrate_gitconfig.sh`.
+  aktualizacje repo.
 - `git/git_functions.sh` — funkcje wywoływane przez aliasy wzorcem `git fun <nazwa_funkcji>` (wczytywane z
   `SUPPRESS_SOURCING=1`, aby uniknąć ponownego ładowania konfiguracji bash)
 - `git/hub_functions.sh` — funkcje integracji z GitHub/hub
@@ -425,7 +425,7 @@ sourcują zwykłym `source "$COMMONS_DIR/<plik>.sh"` (`COMMONS_DIR="$SCRIPT_DIR/
 
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
 `commons/apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
-`add-apt-repository universe` (baza = Debian sid), po `git clone` woła `git/migrate_gitconfig.sh`,
+`add-apt-repository universe` (baza = Debian sid),
 `vanilla/update.sh` sprząta martwe źródła apt (`docker.list`). Oba robią `apt-get full-upgrade`
 (install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
 `fix_sysusers_version_skew` ze wspólnego `packages/vanilla/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
@@ -435,9 +435,8 @@ Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`
 We wszystkich czterech `*/install.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
 `sdk i …` — wewnętrzny `sdkman-install.sh` sięga po niepodane `$2` (`$2: unbound variable` pod `set -Eeuo
 pipefail`), `set -u` wraca dopiero po ostatnim `sdk`; na Vanilli dodatkowo czyszczone są zmienne proxy przed
-SDKMAN; (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` — gdy
-`~/.bashrc` jest symlinkiem na szablon, `>` obcinało cel przez symlink i kasowało szablon (nie `cp
---remove-destination`: GNU-only, nie działa na macOS).
+SDKMAN; (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` (symlink na szablon
+byłby obcięty przez `>`).
 
 Claude Code: `install_claude` w każdym `*/install.sh` (po `install_gh`) i `update_claude` w
 `*/update.sh` (po SDKMAN). Linux: `curl -fsSL https://claude.ai/install.sh | bash` przez

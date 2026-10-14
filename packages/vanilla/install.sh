@@ -18,8 +18,6 @@
 #   • silnik kontenerów: `podman` + `podman-compose` zamiast Dockera
 #     (natywne dla Vanilli, rootless, bez grupy `docker`, bez systemd w kontenerze);
 #   • brak `systemctl start/enable`, brak `usermod -aG docker`, brak `reboot`;
-#   • po `git clone` uruchamiamy `git/migrate_gitconfig.sh` — model include
-#     `~/.gitconfig` nie migruje się sam, a stary symlink psuł `git config`;
 #   • Steam pominięty (rootless kontener bez przekazania GPU / i386 — bez sensu;
 #     na Vanilli to zadanie dla flatpaka na hoście: `com.valvesoftware.Steam`).
 #
@@ -152,18 +150,6 @@ source "$COMMONS_DIR/link_claude_skills.sh"
 # (packages/commons/git_bug.sh).
 # shellcheck source=packages/commons/git_bug.sh
 source "$COMMONS_DIR/git_bug.sh"
-
-# Model include ~/.gitconfig (stub -> ~/.gitconfig.generated) nie migruje się sam.
-# Maszyna zainicjowana pod starym modelem ma martwy symlink ~/.gitconfig, który
-# psuje `git config` przy każdym starcie powłoki. migrate_gitconfig.sh jest
-# bezpieczne do wielokrotnego uruchomienia.
-migrate_gitconfig() {
-    local mig="$HOME/.${PROJECT_NAME}/git/migrate_gitconfig.sh"
-    if [ -f "$mig" ]; then
-        echo "Migracja ~/.gitconfig na model include..."
-        bash "$mig" || echo "⚠️ migrate_gitconfig.sh zakończone błędem — sprawdź ~/.gitconfig ręcznie"
-    fi
-}
 
 install_asdf() {
     echo "Pobieranie informacji o najnowszej wersji asdf..."
@@ -453,12 +439,7 @@ install_podman_compose() {
 
 prepare_bashrc() {
     cd "$HOME/" || return
-    # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
-    # WSKAZUJĄCYM na ten sam plik szablonu (np. po ręcznej migracji na wzór
-    # modelu include z git_config.template), samo `>` najpierw obcina CEL
-    # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
-    # bezpowrotnie prawdziwy szablon. `rm -f` usuwa wpis `~/.bashrc` PRZED
-    # zapisem, więc `cp` nigdy nie pisze przez symlink do własnego źródła.
+    # `rm` przed `cp`: gdy `~/.bashrc` jest symlinkiem na szablon, `>` obcinałoby cel przez symlink.
     rm -f "$HOME/.bashrc"
     cp "$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template" "$HOME/.bashrc"
 }
@@ -482,7 +463,6 @@ cd "$HOME/" || exit 1
 
 install_initial_packages
 prepare_workspace
-migrate_gitconfig
 install_asdf
 install_rust_and_difft
 install_sdkman
