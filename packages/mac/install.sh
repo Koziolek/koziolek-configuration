@@ -194,13 +194,7 @@ install_docker() {
 prepare_bashrc() {
     local template="$HOME/.${PROJECT_NAME}/bash/templates/bashrc.template"
     if [ -f "$template" ]; then
-        # `rm` + `cp` (nie `cat ... >`): jeśli `~/.bashrc` jest już symlinkiem
-        # wskazującym na ten sam plik szablonu, samo `>` najpierw obcina CEL
-        # przez symlink (O_TRUNC), a `cat` czyta już pustą treść — kasując
-        # bezpowrotnie prawdziwy szablon (patrz vanilla/install.sh).
-        # `rm -f` usuwa wpis `~/.bashrc` PRZED zapisem, więc `cp` nigdy nie
-        # pisze przez symlink do własnego źródła. (Nie `cp --remove-destination`
-        # — to flaga GNU coreutils, BSD `cp` z macOS jej nie ma.)
+        # `rm` przed `cp`: gdy `~/.bashrc` jest symlinkiem na szablon, `>` obcinałoby cel przez symlink.
         rm -f "$HOME/.bashrc"
         cp "$template" "$HOME/.bashrc"
     fi

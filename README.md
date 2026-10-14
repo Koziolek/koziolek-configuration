@@ -67,7 +67,7 @@ każdy w katalogu `packages/<system>/` (`install.sh`, `update.sh`). Rzeczy wspó
 
 Wersja Vanilla musi lecieć **wewnątrz subsystemu** (`vso shell` / `apx enter`) — host jest immutable.
 Używa `podman` + `podman-compose` zamiast Dockera, pomija `add-apt-repository universe` (baza to Debian
-sid) i po `git clone` uruchamia `git/migrate_gitconfig.sh`.
+sid).
 
 Vanilla (Debian sid) to **rolling release**, stąd dwie rzeczy, których nie ma w wariantach stabilnych:
 
@@ -89,9 +89,7 @@ Vanilla (Debian sid) to **rolling release**, stąd dwie rzeczy, których nie ma 
   argumenty → `$2: unbound variable` przy pierwszej instalacji kandydata), więc `set +u` obejmuje teraz
   `source sdkman-init.sh` **oraz** wszystkie `sdk i java|maven|mvnd`, a `set -u` wraca dopiero po nich.
   Na Vanilli instalator dodatkowo czyści zmienne proxy (`http_proxy` itd.) przed SDKMAN.
-- **`prepare_bashrc`: `rm -f` + `cp` zamiast `cat … >`.** Gdy `~/.bashrc` jest symlinkiem na plik szablonu,
-  `>` obcinałoby cel przez symlink i `cat` czytałby już pustą treść — kasując szablon. `rm -f` usuwa wpis
-  przed zapisem, a `cp` (nie GNU-owe `--remove-destination`) działa też na BSD/macOS.
+- **`prepare_bashrc`: `rm -f` + `cp` zamiast `cat … >`** — symlink na szablon byłby obcięty przez `>`.
 
 **Claude Code (`claude`)** jest instalowany we wszystkich czterech `*/install.sh` (`install_claude`, zaraz po
 `install_gh`) i aktualizowany w `*/update.sh` (`update_claude`, ostatni krok po SDKMAN):
@@ -637,9 +635,7 @@ Szablon globalnej konfiguracji git. Model include: szablon jest renderowany do `
 (nadpisywany swobodnie, gdy szablon jest nowszy — nigdy nie edytuj go ręcznie), a `~/.gitconfig` to
 stały "stub" z jednym wpisem `[include] path = ~/.gitconfig.generated`, tworzony tylko raz. Dzięki temu
 ręczne `git config --global ...` lądują w stubie i przeżywają aktualizacje repo, zamiast być cicho
-nadpisywane. Maszyny ze starym modelem (jeden w pełni generowany plik) migrują przez
-`bash git/migrate_gitconfig.sh` — bezpieczne do wielokrotnego uruchomienia, robi kopię zapasową
-i przenosi ręczne zmiany do nowego stuba.
+nadpisywane.
 
 ## Podsystem serwisów (`services/`)
 
