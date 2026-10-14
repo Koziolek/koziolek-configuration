@@ -5,30 +5,14 @@ trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 PROJECT_NAME='koziolek-configuration'
 
-# Lokalizacja skryptu: potrzebna już tu (przed install_homebrew, które woła
-# verify_and_run_script) — nie tylko przy okazji brew_packages.sh niżej. Jeśli skrypt
-# leży na dysku (po `git clone`), source'ujemy pliki lokalnie względem ${BASH_SOURCE[0]}.
-# Gdy leci przez `curl ... | bash` (BASH_SOURCE puste), pobieramy je z repo na GitHubie.
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
+# Katalog skryptu: biblioteki (listy pakietów, helpery) leżą obok. Skrypt zawsze leci z klona
+# repo (install.sh -> initial_packages.sh), nie przez samodzielne `curl | bash`.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # verify_and_run_script — wspólna z initial_packages_ubuntu.sh/initial_packages_vanilla.sh
 # (packages/verify_and_run_script.sh).
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/verify_and_run_script.sh" ]; then
-    # shellcheck source=packages/verify_and_run_script.sh
-    source "$SCRIPT_DIR/verify_and_run_script.sh"
-else
-    _vars_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/verify_and_run_script.sh" \
-        -o "$_vars_tmp"
-    # shellcheck disable=SC1090
-    source "$_vars_tmp"
-    rm -f "$_vars_tmp"
-    unset _vars_tmp
-fi
+# shellcheck source=packages/verify_and_run_script.sh
+source "$SCRIPT_DIR/verify_and_run_script.sh"
 
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -57,20 +41,8 @@ done
 unset _pkg
 
 # Wspólna lista pakietów: $SCRIPT_DIR już wyliczone na górze pliku (verify_and_run_script).
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/brew_packages.sh" ]; then
-    # shellcheck source=packages/brew_packages.sh
-    source "$SCRIPT_DIR/brew_packages.sh"
-else
-    echo "Brak lokalnej kopii packages/brew_packages.sh — pobieram z repo..."
-    _packages_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/brew_packages.sh" \
-        -o "$_packages_tmp"
-    # shellcheck disable=SC1090
-    source "$_packages_tmp"
-    rm -f "$_packages_tmp"
-    unset _packages_tmp
-fi
+# shellcheck source=packages/brew_packages.sh
+source "$SCRIPT_DIR/brew_packages.sh"
 
 install_brew_packages() {
     local pkg
@@ -85,36 +57,14 @@ install_brew_packages() {
 }
 
 # prepare_workspace — wspólna z install.sh/initial_packages_ubuntu.sh/initial_packages_vanilla.sh
-# (packages/prepare_workspace.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/prepare_workspace.sh" ]; then
-    # shellcheck source=packages/prepare_workspace.sh
-    source "$SCRIPT_DIR/prepare_workspace.sh"
-else
-    _pw_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/prepare_workspace.sh" \
-        -o "$_pw_tmp"
-    # shellcheck disable=SC1090
-    source "$_pw_tmp"
-    rm -f "$_pw_tmp"
-    unset _pw_tmp
-fi
+# (packages/prepare_workspace.sh).
+# shellcheck source=packages/prepare_workspace.sh
+source "$SCRIPT_DIR/prepare_workspace.sh"
 
 # link_claude_skills — podlinkowanie skilli z repo klaudyna do ~/.claude/skills
-# (packages/link_claude_skills.sh), ten sam wzorzec lokalnie-albo-z-GitHuba co wyżej.
-if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/link_claude_skills.sh" ]; then
-    # shellcheck source=packages/link_claude_skills.sh
-    source "$SCRIPT_DIR/link_claude_skills.sh"
-else
-    _lcs_tmp=$(mktemp)
-    curl -fsSL \
-        "https://raw.githubusercontent.com/Koziolek/${PROJECT_NAME}/refs/heads/master/packages/link_claude_skills.sh" \
-        -o "$_lcs_tmp"
-    # shellcheck disable=SC1090
-    source "$_lcs_tmp"
-    rm -f "$_lcs_tmp"
-    unset _lcs_tmp
-fi
+# (packages/link_claude_skills.sh).
+# shellcheck source=packages/link_claude_skills.sh
+source "$SCRIPT_DIR/link_claude_skills.sh"
 
 install_asdf() {
     if command -v asdf &>/dev/null; then

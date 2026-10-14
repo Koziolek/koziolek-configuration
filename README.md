@@ -14,15 +14,16 @@ curl -fsSL https://raw.githubusercontent.com/Koziolek/koziolek-configuration/mas
 # albo:  wget -qO- https://raw.githubusercontent.com/Koziolek/koziolek-configuration/master/install.sh | bash
 ```
 
-`install.sh` wykrywa system (`bash/contexts/detect.sh`), klonuje repo do
-`~/workspace/koziolek-configuration` (symlink `~/.koziolek-configuration`) i uruchamia właściwy
-`packages/initial_packages*.sh` — ten instaluje pakiety i stawia `~/.bashrc` z szablonu.
-Gałąź do pobrania: zmienna `KOZIOLEK_REF` (domyślnie `master`).
+`install.sh` instaluje git, klonuje repo do `~/workspace/koziolek-configuration` (symlink
+`~/.koziolek-configuration`) i uruchamia z klona `initial_packages.sh`, który wykrywa system
+(`bash/contexts/detect.sh`) i woła właściwy `packages/initial_packages_<system>.sh` — ten instaluje
+pakiety i stawia `~/.bashrc` z szablonu. Gałąź do sklonowania: zmienna `KOZIOLEK_REF` (domyślnie
+domyślna gałąź repo; dotyczy tylko świeżego klona).
 
 Na **Vanilla OS 2** uruchom ten sam one-liner **wewnątrz subsystemu** (`vso shell` / `apx enter`) —
-na immutable hoście `install.sh` przerwie z instrukcją.
+na immutable hoście instalacja przerwie z instrukcją.
 
-W repo już sklonowanym ten sam wybór właściwego skryptu (bez sieci, bez klonowania) robią
+W repo już sklonowanym ten sam krok (bez sieci, bez klonowania) robią
 `./initial_packages.sh` i `./update_packages.sh` w katalogu głównym.
 
 ### Ręcznie

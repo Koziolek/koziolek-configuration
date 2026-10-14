@@ -2,11 +2,11 @@
 #
 # Dispatcher: wykrywa system i uruchamia właściwy packages/initial_packages_<ctx>.sh.
 # Do użycia w już sklonowanym repo (`./initial_packages.sh`). Dla świeżej maszyny
-# bez klonu — jednoplikowy bootstrap `install.sh` (curl | bash).
+# bez klonu — jednoplikowy bootstrap `install.sh` (curl | bash): klonuje repo i woła
+# właśnie ten skrypt z klona.
 #
 # Mapowanie kontekst → sufiks: context_package_suffix() w bash/contexts/detect.sh
-# (jedyne źródło prawdy — install.sh trzyma własną, celowo zduplikowaną kopię, bo
-# musi działać w 100% offline pod `curl | bash`, bez lokalnego repo do sourcowania).
+# — jedyne źródło prawdy (install.sh nie ma własnej kopii).
 #
 # PACKAGES_DISPATCH_DRY_RUN — jeśli ustawione: wypisz wybrany skrypt i wyjdź (testy).
 
