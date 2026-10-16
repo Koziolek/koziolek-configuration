@@ -9,7 +9,8 @@
 # Różnice wobec ubuntu/update.sh (Ubuntu):
 #   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
 #   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
-#     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany;
+#     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany
+#     (fix `stale-sources` z rejestru, FIX_RISK=high — po zgodzie użytkownika);
 #   • pakiety apt: `apt-get full-upgrade` zamiast `install --only-upgrade <lista>`
 #     (sid jest rolling — częściowy upgrade zostawia rozjechane biblioteki);
 #   • reszta (asdf, difft, sdkman, gh, kubectl, klucze GPG) — jak w wersji Ubuntu,
@@ -86,32 +87,13 @@ source "$SCRIPT_DIR/sysusers_fix.sh"
 # shellcheck source=packages/commons/dkms_fix.sh
 source "$COMMONS_DIR/dkms_fix.sh"
 
-# Vanilla-specyficzne: usuń martwe źródła apt, jeśli nie da się ich naprawić i nie
-# są potrzebne. Konkretnie docker.list (suite `orchid` -> 404) gdy Docker nie jest
-# zainstalowany — na Vanilli używamy podmana.
-cleanup_stale_sources() {
-    echo ""
-    echo "=== Martwe źródła apt ==="
-    local removed=0
+# Rejestr napraw: wspólne (commons/fixes.d) + własne Vanilli (vanilla/fixes.d, np. stale-sources).
+FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"
 
-    if [ -f /etc/apt/sources.list.d/docker.list ] && ! command -v docker >/dev/null 2>&1; then
-        warn "docker.list obecny, ale Docker niezainstalowany (Vanilla używa podmana)."
-        local reply=n
-        read -r -p "Usunąć /etc/apt/sources.list.d/docker.list (+ keyring)? [y/N]: " -n 1 -r reply || reply=n
-        echo
-        if [[ "$reply" =~ ^[YyTt]$ ]]; then
-            $SUDO rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
-            ok "docker.list usunięty"
-            (( removed++ )) || true
-        fi
-    fi
-
-    if (( removed > 0 )); then
-        $SUDO apt-get -qq update || true
-    else
-        ok "Brak martwych źródeł do wyczyszczenia"
-    fi
-}
+# cleanup_stale_sources — martwe źródła apt (docker.list bez Dockera); fix stale-sources
+# (packages/vanilla/fixes.d/005_stale_sources.sh), zgoda użytkownika w wrapperze.
+# shellcheck source=packages/vanilla/stale_sources_fix.sh
+source "$SCRIPT_DIR/stale_sources_fix.sh"
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report

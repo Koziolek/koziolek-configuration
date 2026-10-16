@@ -426,7 +426,11 @@ sourcują zwykłym `source "$COMMONS_DIR/<plik>.sh"` (`COMMONS_DIR="$SCRIPT_DIR/
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
 `commons/apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
 `add-apt-repository universe` (baza = Debian sid),
-`vanilla/update.sh` sprząta martwe źródła apt (`docker.list`). Oba robią `apt-get full-upgrade`
+`vanilla/update.sh` sprząta martwe źródła apt (`docker.list`): `cleanup_stale_sources` (wrapper w `vanilla/stale_sources_fix.sh`) to fix
+`stale-sources` z rejestru (tylko Vanilla → `packages/vanilla/fixes.d/`, `FIX_CONTEXTS=vanilla`, `FIX_RISK=high`). `fix_detect` (tylko odczyt):
+`docker.list` istnieje i brak `docker`; `fix_apply`: `rm` listy + keyringu, `apt-get update`. Fix nie pyta o nic (stdin z `/dev/null`), więc
+zgodę daje wrapper: `run_fixes --check` → pytanie `[y/N]` (domyślnie nie) → `run_fixes --allow-high`; `FIX_RISK=high` nigdy z crona.
+`vanilla/update.sh` ustawia `FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"`. Test: `test/unit/test_stale_sources_fix.sh`. Oba robią `apt-get full-upgrade`
 (install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
 `fix_sysusers_version_skew` ze wspólnego `packages/vanilla/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
 `dpkg -i`, zanim postinst pcscd padnie na `u!`) — sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
@@ -451,7 +455,7 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
-Przeniesiony jest fix `dkms` (`fixes.d/010_dkms.sh`, krok 2); `gpg_fix`/`sysusers_fix` i inline `cleanup_stale_sources` przechodzą na rejestr w kolejnych krokach. Testy:
+Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3); `gpg_fix`/`sysusers_fix` przechodzą na rejestr w kolejnych krokach. Testy:
 `test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
 `fix_detect` bez sudo/sieci/zapisu).
 
