@@ -240,15 +240,18 @@ _fixes_run_impl() {
             else
                 if [ "$M_ROOT" = 1 ]; then sudo_apply="$root_prefix"; else sudo_apply=fix_denied; fi
                 : > "$tmp/detail"
+                local fail_msg=''
                 if _fixes_call "$f" fix_apply "$sudo_apply"; then
-                    state=fixed; detail=''
+                    state=fixed
                     if [ "$M_VERIFY" = 1 ] && ! _fixes_call "$f" fix_verify "$sudo_apply"; then
-                        state=failed; detail="fix_verify nie potwierdził naprawy"
+                        state=failed; fail_msg="fix_verify nie potwierdził naprawy"
                     fi
                 else
-                    state=failed; detail="fix_apply zakończył się błędem"
+                    state=failed; fail_msg="fix_apply zakończył się błędem"
                 fi
-                [ -n "$detail" ] || detail="$(head -n1 "$tmp/detail" 2>/dev/null)"
+                # Szczegół zgłoszony przez sam fix (fix_detail) ma pierwszeństwo przed ogólnym komunikatem.
+                detail="$(head -n1 "$tmp/detail" 2>/dev/null)"
+                [ "$state" = failed ] && [ -z "$detail" ] && detail="$fail_msg"
             fi
         fi
         _fixes_emit "$format" "$M_ID" "$state" "$phase" "$M_RISK" "$M_DESC" "$detail"

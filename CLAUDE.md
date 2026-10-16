@@ -458,7 +458,7 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
-Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3) i `sysusers` (`packages/vanilla/fixes.d/010_sysusers.sh`, krok 4); `gpg_fix` przechodzi na rejestr w kolejnych krokach. Testy:
+Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3), `sysusers` (`packages/vanilla/fixes.d/010_sysusers.sh`, krok 4) i `apt-gpg` (`fixes.d/020_apt_gpg.sh`, krok 5); podmiana wywołań w `update_*` na `run_fixes <faza>` w kroku 6. Testy:
 `test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
 `fix_detect` bez sudo/sieci/zapisu).
 
@@ -470,6 +470,17 @@ root). `fix_detect` (tylko odczyt) wskazuje pakiety `*-dkms` ze statusem `iF/iH/
 `repair_broken_dkms_packages` (`packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`, wołane przed i po
 `update_apt_packages`) to cienki wrapper: `run_fixes all --only dkms` z prefiksem roota z `$SUDO` skryptu (`FIXES_SUDO`), zawsze
 `return 0`. Bez fałszywych alarmów w monitoringu (`--check` bez roota). Test: `test/unit/test_dkms_fix.sh` (mocki poleceń w PATH).
+
+Klucze GPG apt: fix `apt-gpg` (`packages/commons/fixes.d/020_apt_gpg.sh`, `FIX_PHASE=pre-apt`, `FIX_CONTEXTS=debian`, root) naprawia
+brakujące (`NO_PUBKEY`) i wygasłe klucze repo apt; klucz pobiera z keyservera do izolowanego keyringu i przypina `signed-by=` do pliku
+źródła — nigdy `trusted.gpg.d`. `fix_detect` **nie woła `apt-get update`**: dowodem jest log ostatniego update'u
+(`FIX_APT_UPDATE_LOG`, domyślnie `~/.cache/koziolek-configuration/apt-update.log`, ważny 7 dni) oraz wygasłe `imported-*.gpg` (offline,
+`gpg --with-colons`); bez logu i bez wygasłych kluczy stan to `unknown`, nie `ok`. Martwe repo (404) idzie przez `fix_note_dead_repo`
+(`#dead_repo` w raporcie), nie zmienia stanu. `refresh_apt_gpg_keys` (`packages/commons/gpg_fix.sh`, wołane w `{ubuntu,vanilla}/update.sh`)
+to wrapper: jeden `apt-get update` do logu → `run_fixes pre-apt --only apt-gpg` (`FIXES_TIMEOUT=900`, prefiks roota z `$SUDO`) →
+tłumaczy raport na `ok/warn` i uzupełnia `REPOS_DEAD`; zawsze `return 0`. Dwie implementacje zostają (decyzja z #144): powłokowa
+`096_function_apt_trust.sh` (interaktywna, `are_you_sure`, i18n) i ta bootstrapowa (bez pytań) — różnią się UX i zależnościami; zmiana
+algorytmu wymaga poprawki w obu. Test: `test/unit/test_gpg_fix.sh`.
 
 calibre: `install_calibre` w każdym `*/install.sh` (po `install_claude`) i `update_calibre` w
 `*/update.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
