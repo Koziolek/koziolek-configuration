@@ -432,8 +432,11 @@ Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`
 zgodę daje wrapper: `run_fixes --check` → pytanie `[y/N]` (domyślnie nie) → `run_fixes --allow-high`; `FIX_RISK=high` nigdy z crona.
 `vanilla/update.sh` ustawia `FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"`. Test: `test/unit/test_stale_sources_fix.sh`. Oba robią `apt-get full-upgrade`
 (install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
-`fix_sysusers_version_skew` ze wspólnego `packages/vanilla/sysusers_fix.sh` (nowszy `systemd-sysusers` przez
-`dpkg -i`, zanim postinst pcscd padnie na `u!`) — sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
+`fix_sysusers_version_skew` (wrapper w `packages/vanilla/sysusers_fix.sh` → fix `sysusers` z `vanilla/fixes.d/010_sysusers.sh`,
+`FIX_PHASE=post-update`, `FIX_CONTEXTS=vanilla`): nowszy `systemd-sysusers` przez `apt-get download` + `dpkg -i`, zanim postinst pcscd
+padnie na `u!`. `fix_detect` (tylko odczyt, bez sieci) zgłasza `detected` wyłącznie z dodatniego dowodu: `systemd-sysusers --version` < 257
+**i** któryś plik `sysusers.d` ma modyfikator `!`; sam nowszy sysusers w repo to nie awaria (brak fałszywych alarmów). Wrapper zawsze
+`return 0`, a nieudany download/`dpkg -i` jest teraz `failed` w raporcie (wcześniej cichy). Test: `test/unit/test_sysusers_fix.sh`. Sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
 (htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
 
 We wszystkich czterech `*/install.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
@@ -455,7 +458,7 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
-Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3); `gpg_fix`/`sysusers_fix` przechodzą na rejestr w kolejnych krokach. Testy:
+Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3) i `sysusers` (`packages/vanilla/fixes.d/010_sysusers.sh`, krok 4); `gpg_fix` przechodzi na rejestr w kolejnych krokach. Testy:
 `test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
 `fix_detect` bez sudo/sieci/zapisu).
 
