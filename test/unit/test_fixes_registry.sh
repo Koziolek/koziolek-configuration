@@ -27,8 +27,9 @@ FIX
 }
 
 testRealRegistriesPassLint() {
-    local dirs=("$PROJECT_ROOT/packages/commons/fixes.d") d
+    local dirs=() d
     for d in "$PROJECT_ROOT"/packages/*/fixes.d; do [ -d "$d" ] && dirs+=("$d"); done
+    assertTrue "rejestr commons w lincie" "[ -d '$PROJECT_ROOT/packages/commons/fixes.d' ]"
     local out rc=0
     out="$(_lint "${dirs[@]}")" || rc=$?
     assertEquals "lint rejestrów repo: $out" "0" "$rc"

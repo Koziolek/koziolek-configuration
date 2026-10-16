@@ -451,15 +451,18 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
-Na razie nic nie jest podpięte — istniejące `gpg_fix`/`sysusers_fix`/`dkms_fix` przechodzą na rejestr w kolejnych krokach. Testy:
+Przeniesiony jest fix `dkms` (`fixes.d/010_dkms.sh`, krok 2); `gpg_fix`/`sysusers_fix` i inline `cleanup_stale_sources` przechodzą na rejestr w kolejnych krokach. Testy:
 `test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
 `fix_detect` bez sudo/sieci/zapisu).
 
-DKMS: `repair_broken_dkms_packages` (wspólne `packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`,
-wołane przed i po `update_apt_packages`) naprawia pakiety `*-dkms` w stanie innym niż `ii` (np. `v4l2loopback-dkms`:
+DKMS: fix `dkms` w rejestrze (`packages/commons/fixes.d/010_dkms.sh`, `FIX_PHASE="pre-apt post-apt"`, `FIX_CONTEXTS=debian`,
+root). `fix_detect` (tylko odczyt) wskazuje pakiety `*-dkms` ze statusem `iF/iH/iU/iW/iT` w `dpkg-query` — dodatni dowód;
+`rc`/`un` nie są uszkodzeniem i nie są ruszane; brak `dkms` = `na`. `fix_apply` naprawia pakiety `*-dkms` (np. `v4l2loopback-dkms`:
 `Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
-`dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu). Idempotentne, błąd = ostrzeżenie, nie przerywa;
-bez fałszywych alarmów w monitoringu. Test: `test/unit/test_dkms_fix.sh`.
+`dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu); `fix_verify` sprawdza, że nic nie zostało w `iF`.
+`repair_broken_dkms_packages` (`packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`, wołane przed i po
+`update_apt_packages`) to cienki wrapper: `run_fixes all --only dkms` z prefiksem roota z `$SUDO` skryptu (`FIXES_SUDO`), zawsze
+`return 0`. Bez fałszywych alarmów w monitoringu (`--check` bez roota). Test: `test/unit/test_dkms_fix.sh` (mocki poleceń w PATH).
 
 calibre: `install_calibre` w każdym `*/install.sh` (po `install_claude`) i `update_calibre` w
 `*/update.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
