@@ -1,40 +1,22 @@
 #!/usr/bin/env bash
-# Wspólna funkcja fix_sysusers_version_skew dla vanilla/install.sh i
-# vanilla/update.sh. Sourcowane, nie wykonywane.
+# Cienki wrapper fix_sysusers_version_skew dla vanilla/install.sh i vanilla/update.sh.
+# Sourcowane, nie wykonywane. Logika siedzi w rejestrze napraw:
+# packages/vanilla/fixes.d/010_sysusers.sh (#144) — wykrycie (tylko odczyt) i naprawa osobno.
 #
-# Wymaga od skryptu wołającego zdefiniowanej wcześniej (przed WYWOŁANIEM, nie przed
-# source'owaniem tego pliku) zmiennej $SUDO.
+# Wołać po `apt-get update` (świeży indeks dla `apt-get download`), a przed `full-upgrade`/instalacją
+# listy pakietów. Prefiks roota bierze z $SUDO skryptu wołającego (FIXES_SUDO). Zawsze `return 0` —
+# wynik naprawy jest w raporcie runnera. Od wołającego: $SUDO oraz (opcjonalnie) FIXES_DIRS; domyślnie
+# tylko katalog fixes.d obok tego pliku.
+_SYSUSERS_FIX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=packages/commons/fixes_runner.sh
+. "$_SYSUSERS_FIX_DIR/../commons/fixes_runner.sh"
 
-# Pakiety bywają spakowane z sysusers.d, który używa nowszej składni (np.
-# modyfikator `u!`, dodany w systemd 257 — tak ma pcscd ≥2.5.2) niż binarka
-# sysusers faktycznie obsługuje. Kontener apx nie ma pełnego systemd, tylko
-# minimalny `systemd-standalone-sysusers` — a nic w `Depends:` pcscd nie
-# wymusza jego wersji, więc apt nie podciąga go automatycznie przy instalacji
-# security_tools. Rozjazd wersji psuje postinst ("Unknown modifier 'u!'").
-#
-# Zwykłe `apt-get install --only-upgrade` tu NIE wystarczy: skoro pcscd już
-# raz padł, apt przy KAŻDYM kolejnym wywołaniu najpierw samo próbuje domknąć
-# pozostawiony w stanie "half-configured" pcscd (ten sam błąd, zanim zdąży
-# podciągnąć nowszy sysusers) — stąd błąd wciąż wraca nawet po dodaniu tego
-# kroku, jeśli maszyna już wcześniej ugrzęzła na tym pakiecie. Obchodzimy to
-# przez goły `dpkg -i`: w przeciwieństwie do apt, dpkg wywołane z konkretnym
-# plikiem konfiguruje TYLKO ten pakiet, nie dotykając innych pozostawionych
-# w locie — więc nowszy sysusers ląduje skonfigurowany PRZED jakimkolwiek
-# `apt-get install`/`full-upgrade`, które by wywołało tę pułapkę.
-#
-# Wołać po `apt-get update` (żeby `apt-get download` brał najnowszą wersję),
-# a przed `full-upgrade`/instalacją listy pakietów.
 fix_sysusers_version_skew() {
-    local sysusers_bin owner_pkg tmp_dir
-    sysusers_bin=$(command -v systemd-sysusers 2>/dev/null) || return 0
-    owner_pkg=$(dpkg -S "$sysusers_bin" 2>/dev/null | cut -d: -f1 | head -1)
-    [ -n "$owner_pkg" ] || return 0
-
-    tmp_dir=$(mktemp -d)
-    (
-        cd "$tmp_dir" || exit 0
-        $SUDO apt-get download "$owner_pkg" >/dev/null 2>&1 || exit 0
-        $SUDO dpkg -i "${owner_pkg}"_*.deb >/dev/null 2>&1 || true
-    )
-    rm -rf "$tmp_dir"
+    local dirs="${FIXES_DIRS:-$_SYSUSERS_FIX_DIR/fixes.d}"
+    if [ "${SUDO+x}" = x ]; then
+        FIXES_DIRS="$dirs" FIXES_SUDO="$SUDO" run_fixes post-update --only sysusers
+    else
+        FIXES_DIRS="$dirs" run_fixes post-update --only sysusers
+    fi
+    return 0
 }
