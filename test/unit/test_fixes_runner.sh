@@ -116,6 +116,19 @@ testApplyFailureAndStrictExitCodes() {
     assertEquals "--strict: 11" "11" "$_RC"
 }
 
+testFailedUsesFixDetailOverGenericMessage() {
+    _mkfix 010_d d pre-apt low 0 'return 0' 'fix_detail "klucz bez dopasowanego źródła"; return 1'
+    _run pre-apt --format tsv
+    assertContains "szczegół fixa" "$_OUT" "klucz bez dopasowanego źródła"
+    assertNotContains "bez ogólnego komunikatu" "$_OUT" "fix_apply zakończył się błędem"
+}
+
+testFailedWithoutDetailKeepsGenericMessage() {
+    _mkfix 010_g g pre-apt low 0 'return 0' 'return 1'
+    _run pre-apt --format tsv
+    assertContains "ogólny komunikat" "$_OUT" "fix_apply zakończył się błędem"
+}
+
 testVerifyFailureMakesFailed() {
     _mkfix 010_v v pre-apt low 0 'return 0' 'return 0' 'return 1'
     _run pre-apt --format tsv
