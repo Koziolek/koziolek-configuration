@@ -19,11 +19,12 @@ function refresh_apt_gpg_keys() {
     log_info apt_trust.checking
     $sudo_cmd mkdir -p "$KEYRING_DIR"
 
-    # Remove expired imported keys so they can be re-fetched fresh
+    # Remove expired imported keys so they can be re-fetched fresh. --with-colons: pole 2 rekordu pub to `e`
+    # dla wygasłego klucza (ludzki zapis to `[expired: data]`, nie `[expired]`, i zależy od języka).
     local keyfile removed=0
     for keyfile in "$KEYRING_DIR"/imported-*.gpg; do
         [[ -f "$keyfile" ]] || continue
-        if gpg --show-keys "$keyfile" 2>/dev/null | grep -q '\[expired\]'; then
+        if gpg --show-keys --with-colons "$keyfile" 2>/dev/null | awk -F: '$1 == "pub" && $2 == "e" {f=1} END {exit !f}'; then
             log_warn apt_trust.removing_expired "$(basename "$keyfile")"
             $sudo_cmd rm -f "$keyfile"
             (( removed++ )) || true
