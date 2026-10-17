@@ -5,7 +5,7 @@
 # log_*) to bash/functions.d/096_function_apt_trust.sh; patrz „Dwie implementacje” niżej.
 #
 # Wykrywanie NIE woła `apt-get update` (sieć + root + zapis list). Źródłem dowodu jest log ostatniego
-# `apt-get update` (FIX_APT_UPDATE_LOG; zapisuje go wrapper refresh_apt_gpg_keys i sam fix po naprawie)
+# `apt-get update` (FIX_APT_UPDATE_LOG; zapisuje go fixes_refresh_apt_log z packages/commons/fixes_apply.sh i sam fix po naprawie)
 # oraz stan keyringu na dysku:
 #   • wiersze `NO_PUBKEY <id>` w logu            -> brakujące klucze,
 #   • pliki imported-*.gpg z `[expired]`         -> wygasłe klucze (offline, bez logu),

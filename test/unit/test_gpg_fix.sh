@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: fix apt-gpg (packages/commons/fixes.d/020_apt_gpg.sh) przez runner
-# oraz wrapper refresh_apt_gpg_keys (packages/commons/gpg_fix.sh).
+# oraz przez fixes_refresh_apt_log + apply_fixes (packages/commons/fixes_apply.sh) — tak wołają go {ubuntu,vanilla}/update.sh.
 #
 # Fix leci w osobnym procesie, więc polecenia są mockami w $_BIN (PATH ograniczony do mocków
 # i symlinków do kilku narzędzi). /etc/apt podmieniony na katalogi w $_TMP.
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUNNER="$PROJECT_ROOT/packages/commons/fixes_runner.sh"
-WRAPPER="$PROJECT_ROOT/packages/commons/gpg_fix.sh"
+APPLY="$PROJECT_ROOT/packages/commons/fixes_apply.sh"
 
 _NOPUB='W: GPG error: https://repo.example.com/apt stable InRelease: The following signatures couldn'"'"'t be verified because the public key is not available: NO_PUBKEY ABCDEF0123456789'
 _DEAD='E: The repository '"'"'https://dead.example.com/apt orchid Release'"'"' does not have a Release file.'
@@ -47,12 +47,12 @@ _mock() { printf '#!%s\n%s\n' "$_BIN/bash" "$2" > "$_BIN/$1"; chmod +x "$_BIN/$1
 _log() { printf '%s\n' "$@" > "$FIX_APT_UPDATE_LOG"; }
 _calls() { cat "$_LOG"; }
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
-# wrapper: ok/warn/info jak w update.sh; po wywołaniu wypisuje REPOS_DEAD
+# update.sh: fixes_refresh_apt_log + apply_fixes; po wywołaniu wypisuje REPOS_DEAD
 _wrap() {
     PATH="$_BIN" "$_BIN/bash" -c '
         ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }
-        SUDO=""; declare -a REPOS_DEAD=(); . "$1"; . "$2"; refresh_apt_gpg_keys; echo "rc=$?"
-        for r in "${REPOS_DEAD[@]}"; do echo "DEAD $r"; done' _ "$RUNNER" "$WRAPPER" 2>&1
+        SUDO=""; declare -a REPOS_DEAD=(); . "$1"; fixes_refresh_apt_log; apply_fixes pre-apt; echo "rc=$?"
+        for r in "${REPOS_DEAD[@]}"; do echo "DEAD $r"; done' _ "$APPLY" 2>&1
 }
 
 testNoLogAndNoExpiredKeysIsUnknownNotOk() {
@@ -161,36 +161,36 @@ testExpiredKeyIsRemovedAndRefetched() {
     assertContains "ponowne pobranie" "$(_calls)" "--recv-keys ABCDEF0123456789"
 }
 
-testWrapperRepairsAndReports() {
+testApplyFixesRepairsAndReports() {
     printf '%s\n' "$_NOPUB" > "$APT_OUT_FILE"
     local out
     out="$(_wrap)"
-    assertContains "ok po naprawie" "$out" "OK Klucze GPG naprawione"
+    assertContains "ok po naprawie" "$out" "OK [apt-gpg] naprawiono"
     assertContains "kod 0" "$out" "rc=0"
     assertTrue "log apt-get update zapisany" "[ -f '$FIX_APT_UPDATE_LOG' ]"
 }
 
-testWrapperHealthySystem() {
+testApplyFixesHealthySystem() {
     printf 'Pobrano 0 B\n' > "$APT_OUT_FILE"
     local out
     out="$(_wrap)"
-    assertContains "ok" "$out" "OK Klucze GPG w porządku"
+    assertContains "ok" "$out" "OK [apt-gpg] w porządku"
 }
 
-testWrapperCollectsDeadReposIntoArray() {
+testApplyFixesCollectsDeadReposIntoArray() {
     printf '%s\n' "$_DEAD" > "$APT_OUT_FILE"
     local out
     out="$(_wrap)"
     assertContains "REPOS_DEAD wypełnione" "$out" "DEAD https://dead.example.com/apt"
 }
 
-testWrapperNeverFailsWhenRepairFails() {
+testApplyFixesNeverFailsWhenRepairFails() {
     printf '%s\n' "$_NOPUB" > "$APT_OUT_FILE"
     export GPG_RECV_RC=1
     local out
     out="$(_wrap)"
     assertContains "kod 0" "$out" "rc=0"
-    assertContains "ostrzeżenie" "$out" "WARN Klucze GPG (failed)"
+    assertContains "ostrzeżenie" "$out" "WARN [apt-gpg] naprawa nieudana"
 }
 
 # ---------------------------------------------------------------------------

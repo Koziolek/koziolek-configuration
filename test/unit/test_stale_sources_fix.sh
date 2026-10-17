@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: fix stale-sources (packages/vanilla/fixes.d/005_stale_sources.sh) przez runner
-# oraz wrapper cleanup_stale_sources (packages/vanilla/stale_sources_fix.sh).
+# oraz przez apply_fixes (packages/commons/fixes_apply.sh) — zgoda na FIX_RISK=high jest tam, nie w fixie.
 #
 # Fix leci w osobnym procesie, więc polecenia są mockami w $_BIN (PATH ograniczony do mocków
 # i symlinków do kilku narzędzi). Pliki /etc podmienione na katalogi w $_TMP.
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUNNER="$PROJECT_ROOT/packages/commons/fixes_runner.sh"
-WRAPPER="$PROJECT_ROOT/packages/vanilla/stale_sources_fix.sh"
+APPLY="$PROJECT_ROOT/packages/commons/fixes_apply.sh"
 
 setUp() {
     _TMP="$(mktemp -d)"
@@ -32,11 +32,11 @@ tearDown() { rm -rf "$_TMP"; }
 _mock_docker() { printf '#!%s\n' "$_BIN/bash" > "$_BIN/docker"; chmod +x "$_BIN/docker"; }
 _stale() { : > "$_TMP/sources/docker.list"; : > "$_TMP/keyrings/docker.gpg"; }
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
-# wrapper z odpowiedzią $1 na pytanie; helpery ok/warn/info jak w update.sh
+# apply_fixes z odpowiedzią $1 na pytanie o zgodę; helpery ok/warn/info jak w update.sh
 _wrap() {
     printf '%s' "$1" | PATH="$_BIN" "$_BIN/bash" -c '
         ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }
-        SUDO=""; . "$1"; . "$2"; cleanup_stale_sources' _ "$RUNNER" "$WRAPPER" 2>&1
+        SUDO=""; . "$1"; apply_fixes pre-apt' _ "$APPLY" 2>&1
 }
 
 testNoDockerListIsOk() {
@@ -89,34 +89,34 @@ testOtherContextIsNotApplicable() {
     assertNotContains "nie dotyczy ubuntu" "$out" "stale-sources"
 }
 
-testWrapperNothingToDo() {
+testApplyFixesNothingToDo() {
     local out
     out="$(_wrap n)"
-    assertContains "komunikat" "$out" "OK Brak martwych źródeł do wyczyszczenia"
+    assertContains "komunikat" "$out" "OK [stale-sources] w porządku"
 }
 
-testWrapperRemovesAfterConsent() {
+testApplyFixesRemovesAfterConsent() {
     _stale; rm "$_BIN/docker"
     local out
     out="$(_wrap y)"
-    assertContains "ok po usunięciu" "$out" "OK docker.list usunięty"
+    assertContains "ok po usunięciu" "$out" "OK [stale-sources] naprawiono"
     assertFalse "docker.list usunięty" "[ -e '$_TMP/sources/docker.list' ]"
 }
 
-testWrapperKeepsFilesWithoutConsent() {
+testApplyFixesKeepsFilesWithoutConsent() {
     _stale; rm "$_BIN/docker"
     local out
     out="$(_wrap n)"
-    assertContains "pominięto" "$out" "INFO Pominięto usuwanie docker.list"
+    assertContains "pominięto" "$out" "INFO [stale-sources] pominięto (brak zgody)"
     assertTrue "docker.list zostaje" "[ -f '$_TMP/sources/docker.list' ]"
 }
 
-testWrapperDefaultsToNoWithoutInput() {
+testApplyFixesDefaultsToNoWithoutInput() {
     _stale; rm "$_BIN/docker"
     local out
     out="$(_wrap '')"
     assertTrue "docker.list zostaje przy EOF" "[ -f '$_TMP/sources/docker.list' ]"
-    assertContains "pominięto" "$out" "INFO Pominięto"
+    assertContains "pominięto" "$out" "INFO [stale-sources] pominięto"
 }
 
 # ---------------------------------------------------------------------------

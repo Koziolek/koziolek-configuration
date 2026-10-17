@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: fix sysusers (packages/vanilla/fixes.d/010_sysusers.sh) przez runner
-# oraz wrapper fix_sysusers_version_skew (packages/vanilla/sysusers_fix.sh).
+# oraz przez apply_fixes (packages/commons/fixes_apply.sh) — tak wołają go vanilla/{install,update}.sh.
 #
 # Fix leci w osobnym procesie, więc polecenia są mockami w $_BIN (PATH ograniczony do mocków
 # i symlinków do kilku narzędzi). sysusers.d podmienione na katalog w $_TMP.
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUNNER="$PROJECT_ROOT/packages/commons/fixes_runner.sh"
-WRAPPER="$PROJECT_ROOT/packages/vanilla/sysusers_fix.sh"
+APPLY="$PROJECT_ROOT/packages/commons/fixes_apply.sh"
 
 setUp() {
     _TMP="$(mktemp -d)"
@@ -41,7 +41,7 @@ _ver() { echo "$1" > "$SYSUSERS_VER_FILE"; }
 _conf() { printf '%s\n' "$2" > "$_TMP/sysusers.d/$1"; }
 _calls() { cat "$_LOG"; }
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
-_wrap() { PATH="$_BIN" "$_BIN/bash" -c 'SUDO=""; . "$1"; . "$2"; fix_sysusers_version_skew' _ "$RUNNER" "$WRAPPER" 2>&1; }
+_wrap() { PATH="$_BIN" "$_BIN/bash" -c 'ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }; SUDO=""; . "$1"; apply_fixes post-update' _ "$APPLY" 2>&1; }
 
 testNoSysusersBinaryIsNotApplicable() {
     rm "$_BIN/systemd-sysusers"
@@ -132,28 +132,28 @@ testOtherContextIsNotApplicable() {
     assertNotContains "nie dotyczy ubuntu" "$out" "sysusers"
 }
 
-testWrapperRepairsAndReturnsZero() {
+testApplyFixesRepairsAndReturnsZero() {
     _conf pcscd.conf 'u! pcscd - "PC/SC"'
     local out rc=0
     out="$(_wrap)" || rc=$?
-    assertEquals "wrapper zawsze 0" 0 "$rc"
-    assertContains "raport" "$out" "[fixed] sysusers"
+    assertEquals "apply_fixes zawsze 0" 0 "$rc"
+    assertContains "raport" "$out" "OK [sysusers] naprawiono"
     assertContains "dpkg -i" "$(_calls)" "DPKG -i"
 }
 
-testWrapperNeverFailsWhenRepairFails() {
+testApplyFixesNeverFailsWhenRepairFails() {
     _conf pcscd.conf 'u! pcscd - "PC/SC"'
     export SYSUSERS_DOWNLOAD_RC=1
     local out rc=0
     out="$(_wrap)" || rc=$?
-    assertEquals "wrapper zawsze 0" 0 "$rc"
-    assertContains "raport błędu" "$out" "[failed] sysusers"
+    assertEquals "apply_fixes zawsze 0" 0 "$rc"
+    assertContains "raport błędu" "$out" "WARN [sysusers] naprawa nieudana"
 }
 
-testWrapperIsNoopOnHealthySystem() {
+testApplyFixesIsNoopOnHealthySystem() {
     local out
     out="$(_wrap)"
-    assertContains "ok" "$out" "[ok] sysusers"
+    assertContains "ok" "$out" "OK [sysusers] w porządku"
     assertEquals "brak wywołań" "" "$(_calls)"
 }
 

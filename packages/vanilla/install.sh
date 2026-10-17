@@ -110,17 +110,21 @@ safe_apt_install() {
   fi
 }
 
-# fix_sysusers_version_skew — wspólna z vanilla/update.sh
-# (packages/vanilla/sysusers_fix.sh).
-# shellcheck source=packages/vanilla/sysusers_fix.sh
-source "$SCRIPT_DIR/sysusers_fix.sh"
+# apply_fixes — rejestr napraw (#144), wspólny z vanilla/update.sh: tu faza post-update (fix sysusers
+# z packages/vanilla/fixes.d). Wymaga ok/warn/info i $SUDO.
+ok()   { printf '✓ %s\n' "$*"; }
+warn() { printf '⚠ %s\n' "$*"; }
+info() { printf '  %s\n' "$*"; }
+FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"
+# shellcheck source=packages/commons/fixes_apply.sh
+source "$COMMONS_DIR/fixes_apply.sh"
 
 # Debian sid to rolling release: pakiet zbudowany na nowszej bibliotece potrafi
 # zadeklarować w `Depends:` zbyt luźną wersję, więc instalacja/upgrade samego
 # pakietu zostawia starą bibliotekę (np. htop vs libunwind8 → "undefined symbol:
 # _Ux86_64_get_elf_filename"). Na sid jedyny spójny stan to pełny upgrade całego
 # systemu — dlatego robimy go PRZED instalacją listy pakietów. Po
-# fix_sysusers_version_skew, żeby pcscd nie ugrzązł na postinst.
+# apply_fixes post-update (sysusers), żeby pcscd nie ugrzązł na postinst.
 full_upgrade_system() {
     echo "Pełna aktualizacja systemu (apt-get full-upgrade, Debian sid)..."
     $SUDO apt-get -qqy full-upgrade
@@ -128,7 +132,7 @@ full_upgrade_system() {
 
 install_initial_packages() {
     $SUDO apt-get -qq update
-    fix_sysusers_version_skew
+    apply_fixes post-update
     full_upgrade_system
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).

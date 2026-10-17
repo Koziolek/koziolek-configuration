@@ -53,13 +53,10 @@ apt_installed() {
 
 declare -a REPOS_DEAD=()
 
-# refresh_apt_gpg_keys — wspólna z vanilla/update.sh (packages/commons/gpg_fix.sh).
-# shellcheck source=packages/commons/gpg_fix.sh
-source "$COMMONS_DIR/gpg_fix.sh"
-
-# repair_broken_dkms_packages — wspólna z vanilla/update.sh (packages/commons/dkms_fix.sh).
-# shellcheck source=packages/commons/dkms_fix.sh
-source "$COMMONS_DIR/dkms_fix.sh"
+# apply_fixes / fixes_refresh_apt_log — rejestr napraw (packages/commons/fixes.d, #144), wspólne z
+# vanilla/update.sh. Co i kiedy się uruchamia, wynika z FIX_PHASE/FIX_CONTEXTS w fixes.d.
+# shellcheck source=packages/commons/fixes_apply.sh
+source "$COMMONS_DIR/fixes_apply.sh"
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
@@ -434,11 +431,13 @@ echo "  Aktualizacja"
 echo "======================================="
 
 echo ""
-echo "=== Klucze GPG ==="
-refresh_apt_gpg_keys
-repair_broken_dkms_packages
+echo "=== Naprawy systemowe (przed apt) ==="
+fixes_refresh_apt_log
+apply_fixes pre-apt
 update_apt_packages
-repair_broken_dkms_packages
+echo ""
+echo "=== Naprawy systemowe (po apt) ==="
+apply_fixes post-apt
 update_gh
 update_docker
 update_kubectl

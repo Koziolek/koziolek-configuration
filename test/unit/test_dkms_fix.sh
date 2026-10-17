@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: fix dkms (packages/commons/fixes.d/010_dkms.sh) uruchamiany przez runner
-# oraz wrapper repair_broken_dkms_packages (packages/commons/dkms_fix.sh).
+# oraz przez apply_fixes (packages/commons/fixes_apply.sh) — tak wołają go {ubuntu,vanilla}/update.sh.
 #
 # Fix leci w osobnym procesie bash, więc polecenia systemowe są mockami w $_BIN (PATH ograniczony
 # do mocków i kilku narzędzi z symlinków) — dzięki temu obecność/brak `dkms` jest deterministyczna.
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RUNNER="$PROJECT_ROOT/packages/commons/fixes_runner.sh"
-WRAPPER="$PROJECT_ROOT/packages/commons/dkms_fix.sh"
+APPLY="$PROJECT_ROOT/packages/commons/fixes_apply.sh"
 
 setUp() {
     _TMP="$(mktemp -d)"
@@ -40,7 +40,7 @@ _mock() { printf '#!%s\n%s\n' "$_BIN/bash" "$2" > "$_BIN/$1"; chmod +x "$_BIN/$1
 _state() { printf '%s' "$1" > "$DKMS_STATE"; }
 # PATH ograniczony do mocków tylko dla procesu pod testem (sam shunit2 potrzebuje pełnego PATH).
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
-_wrap() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; SUDO="${2-}"; repair_broken_dkms_packages' _ "$WRAPPER" "$@" 2>&1; }
+_wrap() { PATH="$_BIN" "$_BIN/bash" -c 'ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }; SUDO="${2-}"; . "$1"; apply_fixes "${3:-pre-apt}"' _ "$APPLY" "$@" 2>&1; }
 _calls() { cat "$_LOG"; }
 
 testHealthyPackagesAreOk() {
@@ -106,25 +106,32 @@ testApplyOnHealthySystemIsNoop() {
     assertEquals "idempotentne — brak wywołań" "" "$(_calls)"
 }
 
-testWrapperRepairsAndReturnsZero() {
+testApplyFixesRepairsAndReturnsZero() {
     _state $'iF  v4l2loopback-dkms\n'
     local out rc=0
     out="$(_wrap '')" || rc=$?
-    assertEquals "wrapper zawsze 0" 0 "$rc"
-    assertContains "raport naprawy" "$out" "[fixed] dkms"
+    assertEquals "apply_fixes zawsze 0" 0 "$rc"
+    assertContains "raport naprawy" "$out" "OK [dkms] naprawiono"
     assertContains "dpkg --configure" "$(_calls)" "DPKG --configure v4l2loopback-dkms"
 }
 
-testWrapperNeverFailsWhenRepairFails() {
+testPostAptPhaseAlsoRunsDkms() {
+    _state $'iF  v4l2loopback-dkms\n'
+    local out
+    out="$(_wrap '' post-apt)"
+    assertContains "dkms w fazie post-apt" "$out" "OK [dkms] naprawiono"
+}
+
+testApplyFixesNeverFailsWhenRepairFails() {
     _state $'iF  v4l2loopback-dkms\n'
     export DKMS_CONFIGURE_RC=1
     local out rc=0
     out="$(_wrap '')" || rc=$?
-    assertEquals "wrapper zawsze 0" 0 "$rc"
-    assertContains "raport błędu" "$out" "[failed] dkms"
+    assertEquals "apply_fixes zawsze 0" 0 "$rc"
+    assertContains "raport błędu" "$out" "WARN [dkms] naprawa nieudana"
 }
 
-testWrapperUsesCallerSudoPrefix() {
+testApplyFixesUsesCallerSudoPrefix() {
     _mock mysudo 'echo "SUDO $*" >> "$DKMS_LOG"; "$@"'
     _state $'iF  v4l2loopback-dkms\n'
     _wrap "$_BIN/mysudo" >/dev/null
