@@ -47,3 +47,12 @@ Lint rejestru: `fixes_lint [katalog…]` (test: `test/unit/test_fixes_registry.s
 `fixes_refresh_apt_log`, który zapisuje log `apt-get update` dla fixa `apt-gpg`). `apply_fixes` robi `run_fixes <faza> --check`,
 przy wykrytym `FIX_RISK=high` pyta `[y/N]` (domyślnie nie) i dopiero potem uruchamia naprawy bez pytań w samym fixie. Skrypt musi mieć
 `$SUDO` oraz `ok`/`warn`/`info`; opcjonalnie tablicę `REPOS_DEAD` i `FIXES_DIRS` (dla Vanilli: `commons/fixes.d` + `vanilla/fixes.d`).
+
+## Wołanie z crona (monitoring)
+
+`packages/fixes_check.sh` to funkcje tylko do odczytu, bez reguł cron — harmonogram wybiera wołający (np. `cron_add`). Sourcowane:
+`. packages/fixes_check.sh; fixes_check [faza|all] [--only id,…] [--format text|tsv|json]` (domyślnie `all`, `tsv`); uruchamiane
+wprost: `bash packages/fixes_check.sh [te same argumenty]`. Zawsze `run_fixes --check` (bez `fix_apply`, roota, sieci i pytań),
+kod wyjścia jak w runnerze: 0 / 10 / 11 / 12, 2 = błędne wywołanie. Kontekst wykrywa sam (cron nie ma `$CONFIG_CONTEXT`), a katalogi
+rejestru składa `fixes_check_dirs` (`commons/fixes.d` + `packages/<system>/fixes.d`, jeśli istnieje). Fix `apt-gpg` bez logu
+`FIX_APT_UPDATE_LOG` (zapisuje go `fixes_refresh_apt_log` z `update.sh`) daje `unknown`, czyli kod 12 — brak danych, nie alarm.

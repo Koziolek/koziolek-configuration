@@ -458,6 +458,9 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
+Wejście dla crona/monitoringu (krok 7): `packages/fixes_check.sh` — funkcje `fixes_check [faza|all] [--only id,…] [--format text|tsv|json]` i `fixes_check_dirs`,
+sourcowane albo uruchamiane wprost (`bash packages/fixes_check.sh`); zawsze `run_fixes --check`, kod 0/10/11/12 (2 = zły argument), kontekst i katalogi rejestru
+wykrywane same (cron nie ma `$CONFIG_CONTEXT`). Nie dodaje wpisów cron — harmonogram ustawia użytkownik (`cron_add`). Test: `test/unit/test_fixes_check.sh`.
 W rejestrze są fixy `dkms` (`fixes.d/010_dkms.sh`), `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`), `sysusers`
 (`packages/vanilla/fixes.d/010_sysusers.sh`) i `apt-gpg` (`fixes.d/020_apt_gpg.sh`). Skrypty nie wołają fixów po nazwie, tylko
 `apply_fixes <faza>` z `packages/commons/fixes_apply.sh` (krok 6): kolejność i zakres wynikają z `FIX_PHASE`/`FIX_CONTEXTS` i numeru pliku.
