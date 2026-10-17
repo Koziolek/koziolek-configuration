@@ -385,9 +385,9 @@ nie commituj tu danych uwierzytelniających. Plik `.senv.template` pokazuje ocze
 Instalacja i aktualizacja narzędzi — osobny katalog na system w `packages/` (`ubuntu/`, `vanilla/`, `redhat/`,
 `mac/`), każdy z `install.sh` i `update.sh`, plus `packages/commons/` na rzeczy współdzielone. Zasada: plik używany
 przez jeden system leży w jego katalogu (`redhat/yum_packages.sh`, `mac/brew_packages.sh`,
-`vanilla/sysusers_fix.sh`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
-`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh` oraz fixy `gpg_fix.sh`,
-`dkms_fix.sh`). Fix dotyczący jednego systemu idzie do katalogu tego systemu, współdzielony do `commons/`.
+`vanilla/fixes.d/`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
+`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
+`fixes.d/`). Fix dotyczący jednego systemu idzie do `packages/<system>/fixes.d/`, współdzielony do `commons/fixes.d/`.
 
 **`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
 klon repo do `~/workspace/<projekt>` + symlink `~/.<projekt>` (inline, idempotentny, bez `pull`) →
@@ -426,16 +426,16 @@ sourcują zwykłym `source "$COMMONS_DIR/<plik>.sh"` (`COMMONS_DIR="$SCRIPT_DIR/
 Wariant Vanilla: uruchamiany **wewnątrz subsystemu** (`vso shell` / `apx enter`), reużywa
 `commons/apt_packages.sh`, używa `podman` + `podman-compose` zamiast Dockera, pomija
 `add-apt-repository universe` (baza = Debian sid),
-`vanilla/update.sh` sprząta martwe źródła apt (`docker.list`): `cleanup_stale_sources` (wrapper w `vanilla/stale_sources_fix.sh`) to fix
-`stale-sources` z rejestru (tylko Vanilla → `packages/vanilla/fixes.d/`, `FIX_CONTEXTS=vanilla`, `FIX_RISK=high`). `fix_detect` (tylko odczyt):
+`vanilla/update.sh` sprząta martwe źródła apt (`docker.list`): fix `stale-sources` z rejestru (tylko Vanilla →
+`packages/vanilla/fixes.d/005_stale_sources.sh`, `FIX_CONTEXTS=vanilla`, `FIX_RISK=high`). `fix_detect` (tylko odczyt):
 `docker.list` istnieje i brak `docker`; `fix_apply`: `rm` listy + keyringu, `apt-get update`. Fix nie pyta o nic (stdin z `/dev/null`), więc
-zgodę daje wrapper: `run_fixes --check` → pytanie `[y/N]` (domyślnie nie) → `run_fixes --allow-high`; `FIX_RISK=high` nigdy z crona.
-`vanilla/update.sh` ustawia `FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"`. Test: `test/unit/test_stale_sources_fix.sh`. Oba robią `apt-get full-upgrade`
+zgodę na `FIX_RISK=high` daje `apply_fixes` (`[y/N]`, domyślnie nie); `FIX_RISK=high` nigdy z crona.
+`vanilla/{install,update}.sh` ustawiają `FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"`. Test: `test/unit/test_stale_sources_fix.sh`. Oba robią `apt-get full-upgrade`
 (install: przed listą pakietów; update: zamiast `install --only-upgrade <lista>`), zawsze poprzedzony
-`fix_sysusers_version_skew` (wrapper w `packages/vanilla/sysusers_fix.sh` → fix `sysusers` z `vanilla/fixes.d/010_sysusers.sh`,
+`apply_fixes post-update` (fix `sysusers` z `vanilla/fixes.d/010_sysusers.sh`,
 `FIX_PHASE=post-update`, `FIX_CONTEXTS=vanilla`): nowszy `systemd-sysusers` przez `apt-get download` + `dpkg -i`, zanim postinst pcscd
 padnie na `u!`. `fix_detect` (tylko odczyt, bez sieci) zgłasza `detected` wyłącznie z dodatniego dowodu: `systemd-sysusers --version` < 257
-**i** któryś plik `sysusers.d` ma modyfikator `!`; sam nowszy sysusers w repo to nie awaria (brak fałszywych alarmów). Wrapper zawsze
+**i** któryś plik `sysusers.d` ma modyfikator `!`; sam nowszy sysusers w repo to nie awaria (brak fałszywych alarmów). `apply_fixes` zawsze
 `return 0`, a nieudany download/`dpkg -i` jest teraz `failed` w raporcie (wcześniej cichy). Test: `test/unit/test_sysusers_fix.sh`. Sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
 (htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
 
@@ -458,27 +458,33 @@ Naprawy systemowe (#144, krok 1 — szkielet): rejestr `packages/commons/fixes.d
 `bash` (stdin z `/dev/null`, `timeout`, bez `set -e`/`trap ERR` wołającego), więc jeden fix nie przerywa reszty. Stany `ok/na/
 detected/fixed/failed/skipped/unknown` (`detected`/`failed` tylko z dodatniego dowodu, brak danych = `unknown`), kody 0/10/11/12;
 bez `--check` i `--strict` zawsze `return 0`. Z crona wyłącznie `--check` (bez roota i sieci); `FIX_RISK=high` nigdy z crona.
-Przeniesione są fixy `dkms` (`fixes.d/010_dkms.sh`, krok 2) i `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`, krok 3), `sysusers` (`packages/vanilla/fixes.d/010_sysusers.sh`, krok 4) i `apt-gpg` (`fixes.d/020_apt_gpg.sh`, krok 5); podmiana wywołań w `update_*` na `run_fixes <faza>` w kroku 6. Testy:
-`test/unit/test_fixes_runner.sh` (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID,
-`fix_detect` bez sudo/sieci/zapisu).
+W rejestrze są fixy `dkms` (`fixes.d/010_dkms.sh`), `stale-sources` (`packages/vanilla/fixes.d/005_stale_sources.sh`), `sysusers`
+(`packages/vanilla/fixes.d/010_sysusers.sh`) i `apt-gpg` (`fixes.d/020_apt_gpg.sh`). Skrypty nie wołają fixów po nazwie, tylko
+`apply_fixes <faza>` z `packages/commons/fixes_apply.sh` (krok 6): kolejność i zakres wynikają z `FIX_PHASE`/`FIX_CONTEXTS` i numeru pliku.
+`apply_fixes` robi `run_fixes <faza> --check`, pyta o zgodę `[y/N]` (domyślnie nie, EOF = nie) przy wykrytym `FIX_RISK=high`, potem
+`run_fixes <faza> --only <reszta>` (`FIXES_TIMEOUT=900`, prefiks roota z `$SUDO` skryptu przez `FIXES_SUDO`), tłumaczy raport na `ok/warn`
+i dopisuje martwe repo do `REPOS_DEAD`; zawsze `return 0`. Wymaga od skryptu `$SUDO`, `ok/warn/info` i (opcjonalnie) `REPOS_DEAD`.
+`fixes_refresh_apt_log` robi jeden `apt-get update` do `FIX_APT_UPDATE_LOG` (z niego czyta `apt-gpg`). Kolejność w `{ubuntu,vanilla}/update.sh`:
+`fixes_refresh_apt_log` → `apply_fixes pre-apt` → `update_apt_packages` (Vanilla: wewnątrz `apply_fixes post-update` przed `full-upgrade`) →
+`apply_fixes post-apt`; `vanilla/install.sh`: `apply_fixes post-update` przed `full-upgrade`. Testy: `test/unit/test_fixes_runner.sh`
+(syntetyczne fixy w `mktemp`), `test/unit/test_fixes_apply.sh` (zgoda, raport, `REPOS_DEAD`, odporność na `set -Eeuo pipefail`),
+`test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID, `fix_detect` bez sudo/sieci/zapisu).
 
 DKMS: fix `dkms` w rejestrze (`packages/commons/fixes.d/010_dkms.sh`, `FIX_PHASE="pre-apt post-apt"`, `FIX_CONTEXTS=debian`,
 root). `fix_detect` (tylko odczyt) wskazuje pakiety `*-dkms` ze statusem `iF/iH/iU/iW/iT` w `dpkg-query` — dodatni dowód;
 `rc`/`un` nie są uszkodzeniem i nie są ruszane; brak `dkms` = `na`. `fix_apply` naprawia pakiety `*-dkms` (np. `v4l2loopback-dkms`:
 `Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
 `dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu); `fix_verify` sprawdza, że nic nie zostało w `iF`.
-`repair_broken_dkms_packages` (`packages/commons/dkms_fix.sh`, sourcowane w `{ubuntu,vanilla}/update.sh`, wołane przed i po
-`update_apt_packages`) to cienki wrapper: `run_fixes all --only dkms` z prefiksem roota z `$SUDO` skryptu (`FIXES_SUDO`), zawsze
-`return 0`. Bez fałszywych alarmów w monitoringu (`--check` bez roota). Test: `test/unit/test_dkms_fix.sh` (mocki poleceń w PATH).
+Fix ma `FIX_PHASE="pre-apt post-apt"`, więc `apply_fixes` woła go przed i po `update_apt_packages` (jedno miejsce zamiast dwóch
+ręcznych wywołań). Bez fałszywych alarmów w monitoringu (`--check` bez roota). Test: `test/unit/test_dkms_fix.sh` (mocki poleceń w PATH).
 
 Klucze GPG apt: fix `apt-gpg` (`packages/commons/fixes.d/020_apt_gpg.sh`, `FIX_PHASE=pre-apt`, `FIX_CONTEXTS=debian`, root) naprawia
 brakujące (`NO_PUBKEY`) i wygasłe klucze repo apt; klucz pobiera z keyservera do izolowanego keyringu i przypina `signed-by=` do pliku
 źródła — nigdy `trusted.gpg.d`. `fix_detect` **nie woła `apt-get update`**: dowodem jest log ostatniego update'u
 (`FIX_APT_UPDATE_LOG`, domyślnie `~/.cache/koziolek-configuration/apt-update.log`, ważny 7 dni) oraz wygasłe `imported-*.gpg` (offline,
 `gpg --with-colons`); bez logu i bez wygasłych kluczy stan to `unknown`, nie `ok`. Martwe repo (404) idzie przez `fix_note_dead_repo`
-(`#dead_repo` w raporcie), nie zmienia stanu. `refresh_apt_gpg_keys` (`packages/commons/gpg_fix.sh`, wołane w `{ubuntu,vanilla}/update.sh`)
-to wrapper: jeden `apt-get update` do logu → `run_fixes pre-apt --only apt-gpg` (`FIXES_TIMEOUT=900`, prefiks roota z `$SUDO`) →
-tłumaczy raport na `ok/warn` i uzupełnia `REPOS_DEAD`; zawsze `return 0`. Dwie implementacje zostają (decyzja z #144): powłokowa
+(`#dead_repo` w raporcie), nie zmienia stanu. Log zapisuje `fixes_refresh_apt_log` (wołane w `{ubuntu,vanilla}/update.sh`
+przed `apply_fixes pre-apt`); `apply_fixes` uzupełnia `REPOS_DEAD` z raportu. Dwie implementacje zostają (decyzja z #144): powłokowa
 `096_function_apt_trust.sh` (interaktywna, `are_you_sure`, i18n) i ta bootstrapowa (bez pytań) — różnią się UX i zależnościami; zmiana
 algorytmu wymaga poprawki w obu. Test: `test/unit/test_gpg_fix.sh`.
 

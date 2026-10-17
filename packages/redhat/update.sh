@@ -2,7 +2,7 @@
 #
 # Raport stanu + aktualizacja dla rodziny RedHat (RHEL/CentOS/Fedora/Rocky/Alma).
 # Mirror ubuntu/update.sh — yum zamiast apt. Sekcja "Klucze GPG"
-# (refresh_apt_gpg_keys/gpg_fix.sh) pominięta — nie dotyczy modelu kluczy rpm.
+# (fix apt-gpg z fixes.d) pominięta — nie dotyczy modelu kluczy rpm.
 
 set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR

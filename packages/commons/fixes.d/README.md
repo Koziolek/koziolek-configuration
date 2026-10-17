@@ -40,3 +40,10 @@ i `--strict` funkcja zawsze zwraca `0`. Raport `fixes-report v1`: TSV (`fix_id s
 nagłówek `#fixes-report v1`) albo JSON Lines.
 
 Lint rejestru: `fixes_lint [katalog…]` (test: `test/unit/test_fixes_registry.sh`).
+
+## Wołanie ze skryptów
+
+`install.sh`/`update.sh` nie wołają fixów po nazwie, tylko `apply_fixes <faza>` z `packages/commons/fixes_apply.sh` (po
+`fixes_refresh_apt_log`, który zapisuje log `apt-get update` dla fixa `apt-gpg`). `apply_fixes` robi `run_fixes <faza> --check`,
+przy wykrytym `FIX_RISK=high` pyta `[y/N]` (domyślnie nie) i dopiero potem uruchamia naprawy bez pytań w samym fixie. Skrypt musi mieć
+`$SUDO` oraz `ok`/`warn`/`info`; opcjonalnie tablicę `REPOS_DEAD` i `FIXES_DIRS` (dla Vanilli: `commons/fixes.d` + `vanilla/fixes.d`).

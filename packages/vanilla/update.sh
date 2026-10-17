@@ -8,9 +8,9 @@
 #
 # Różnice wobec ubuntu/update.sh (Ubuntu):
 #   • `podman` + `podman-compose` zamiast Dockera (check_podman / update_podman_compose);
-#   • cleanup_stale_sources() — usuwa martwe źródła apt (np. docker.list z suite
-#     `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany
-#     (fix `stale-sources` z rejestru, FIX_RISK=high — po zgodzie użytkownika);
+#   • fix `stale-sources` z rejestru (vanilla/fixes.d) — usuwa martwe źródła apt (np. docker.list
+#     z suite `orchid`, który zwraca 404), jeśli Docker i tak nie jest zainstalowany; FIX_RISK=high,
+#     więc apply_fixes pyta o zgodę;
 #   • pakiety apt: `apt-get full-upgrade` zamiast `install --only-upgrade <lista>`
 #     (sid jest rolling — częściowy upgrade zostawia rozjechane biblioteki);
 #   • reszta (asdf, difft, sdkman, gh, kubectl, klucze GPG) — jak w wersji Ubuntu,
@@ -75,25 +75,11 @@ apt_installed() {
 
 declare -a REPOS_DEAD=()
 
-# refresh_apt_gpg_keys — wspólna z ubuntu/update.sh (packages/commons/gpg_fix.sh).
-# shellcheck source=packages/commons/gpg_fix.sh
-source "$COMMONS_DIR/gpg_fix.sh"
-
-# fix_sysusers_version_skew — wspólna z vanilla/install.sh (packages/vanilla/sysusers_fix.sh).
-# shellcheck source=packages/vanilla/sysusers_fix.sh
-source "$SCRIPT_DIR/sysusers_fix.sh"
-
-# repair_broken_dkms_packages — wspólna z ubuntu/update.sh (packages/commons/dkms_fix.sh).
-# shellcheck source=packages/commons/dkms_fix.sh
-source "$COMMONS_DIR/dkms_fix.sh"
-
-# Rejestr napraw: wspólne (commons/fixes.d) + własne Vanilli (vanilla/fixes.d, np. stale-sources).
+# Rejestr napraw (#144): wspólne (commons/fixes.d) + własne Vanilli (vanilla/fixes.d: stale-sources,
+# sysusers). apply_fixes / fixes_refresh_apt_log — wspólne z ubuntu/update.sh i vanilla/install.sh.
 FIXES_DIRS="$COMMONS_DIR/fixes.d:$SCRIPT_DIR/fixes.d"
-
-# cleanup_stale_sources — martwe źródła apt (docker.list bez Dockera); fix stale-sources
-# (packages/vanilla/fixes.d/005_stale_sources.sh), zgoda użytkownika w wrapperze.
-# shellcheck source=packages/vanilla/stale_sources_fix.sh
-source "$SCRIPT_DIR/stale_sources_fix.sh"
+# shellcheck source=packages/commons/fixes_apply.sh
+source "$COMMONS_DIR/fixes_apply.sh"
 
 # ---------------------------------------------------------------------------
 # Phase 1: Status report
@@ -235,9 +221,9 @@ update_apt_packages() {
     # symbol: _Ux86_64_get_elf_filename"). Pełny upgrade całego systemu daje
     # spójny stan i obejmuje też wszystko z APT_INSTALLED.
     # Najpierw nowszy sysusers — inaczej full-upgrade może ugrząźć na postinst
-    # pcscd ("Unknown modifier 'u!'"), patrz packages/vanilla/sysusers_fix.sh.
-    # (apt-get update zrobił już refresh_apt_gpg_keys.)
-    fix_sysusers_version_skew
+    # pcscd ("Unknown modifier 'u!'"), patrz fixes.d/010_sysusers.sh.
+    # (apt-get update zrobił już fixes_refresh_apt_log.)
+    apply_fixes post-update
     info "Pełna aktualizacja systemu (apt-get full-upgrade)..."
     if $SUDO apt-get -qqy full-upgrade; then
         ok "System zaktualizowany"
@@ -484,12 +470,13 @@ echo "  Aktualizacja"
 echo "======================================="
 
 echo ""
-echo "=== Klucze GPG ==="
-refresh_apt_gpg_keys
-cleanup_stale_sources
-repair_broken_dkms_packages
+echo "=== Naprawy systemowe (przed apt) ==="
+fixes_refresh_apt_log
+apply_fixes pre-apt
 update_apt_packages
-repair_broken_dkms_packages
+echo ""
+echo "=== Naprawy systemowe (po apt) ==="
+apply_fixes post-apt
 update_gh
 update_podman_compose
 update_kubectl
