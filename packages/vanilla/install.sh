@@ -274,12 +274,17 @@ install_claude() {
     }
 }
 
+# calibre_install_deps — libxcb-cursor (Qt xcb) przed instalatorem calibre
+# shellcheck source=packages/commons/calibre_deps.sh
+source "$COMMONS_DIR/calibre_deps.sh"
+
 install_calibre() {
     if command -v calibre &>/dev/null; then
         echo "✓ calibre już zainstalowany"
         return 0
     fi
     echo "Instalacja calibre (oficjalny instalator binarny)..."
+    calibre_install_deps
     # Strona calibre odradza pakiety dystrybucji (często nieaktualne) — używamy instalatora
     # z calibre-ebook.com. Brak oficjalnej sumy kontrolnej; błąd nie przerywa skryptu.
     { [ -z "$SUDO" ] || $SUDO -v; } \
