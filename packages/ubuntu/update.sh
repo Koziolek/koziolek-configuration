@@ -314,9 +314,14 @@ update_claude() {
 # shellcheck source=packages/commons/git_bug.sh
 source "$COMMONS_DIR/git_bug.sh"
 
+# calibre_install_deps — libxcb-cursor (Qt xcb) przed instalatorem calibre
+# shellcheck source=packages/commons/calibre_deps.sh
+source "$COMMONS_DIR/calibre_deps.sh"
+
 update_calibre() {
     echo ""
     echo "=== calibre ==="
+    calibre_install_deps
     info "Instalacja/aktualizacja calibre (oficjalny instalator uruchamiany ponownie)..."
     if { [ -z "$SUDO" ] || $SUDO -v; } \
         && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin; then

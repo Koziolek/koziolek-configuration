@@ -498,6 +498,8 @@ odradza pakiety dystrybucji; aktualizacja = ponowne uruchomienie instalatora; be
 ostrzeżenie, `return 0`). macOS: oficjalnie ręczny DMG, więc `brew install --cask calibre` /
 `brew upgrade --cask calibre` (w update, gdy cask nie jest zainstalowany, `brew install`). Instalacja
 idempotentna (`command -v calibre`); `update_calibre` nie sprawdza obecności — instaluje, gdy brak.
+Przed instalatorem oba wołają `calibre_install_deps` (`packages/commons/calibre_deps.sh`): `libxcb-cursor0` (apt) / `xcb-util-cursor` (yum) —
+bez tej biblioteki Qt nie ładuje wtyczki `xcb` i GUI nie startuje (na Vanilla OS jej nie ma w standardzie); błąd = ostrzeżenie. Test: `test/unit/test_calibre_deps.sh`.
 
 git-bug: `install_git_bug` w `{ubuntu,vanilla,redhat}/install.sh` (po `install_calibre`) i `update_git_bug` w
 `{ubuntu,vanilla,redhat}/update.sh` (po `update_calibre`), wspólne `packages/commons/git_bug.sh` (w install sourcowane
