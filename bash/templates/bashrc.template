@@ -5,7 +5,7 @@
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
-      *) exit 0;;
+      *) return;;
 esac
 
 if [ -d $HOME/.koziolek-configuration/ ]; then
