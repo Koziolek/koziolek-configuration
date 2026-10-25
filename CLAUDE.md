@@ -370,6 +370,16 @@ zwykły `git push -u origin <gałąź>` (także w `git bleeh` — bez `--force-w
 przepisywano), nie ma → koniec z kodem 0. Są zmiany → działanie jak dotąd. Helpery:
 `__git_has_changes_or_push`, `__git_has_unpushed` (niewyeksportowane).
 
+### Funkcja `git_exterminatus_worktree`
+
+`git exterminatus-worktree [-n|--dry-run]` (`git/git_functions.sh`) usuwa worktree, których gałąź jest już zmergowana do
+gałęzi domyślnej (`origin/HEAD`, domyślnie `master`): worktree, lokalną gałąź i zdalną (jeśli istnieje). Po `git fetch --prune`
+rozpoznaje zwykły/ff merge (`merge-base --is-ancestor`) **i squash/rebase merge** — `git branch --merged` tego nie widzi, więc
+tworzy tymczasowy commit z drzewem gałęzi na `merge-base` i sprawdza `git cherry` (zmiana ma odpowiednik po patch-id; nie
+potrzebuje `gh`). Zostają: niezmergowane, brudne (`git worktree remove` bez `--force`), bieżące oraz świeże gałęzie bez własnych
+commitów (jeden wpis w reflogu — inaczej wyglądałyby na zmergowane). `-n` tylko pokazuje. Główny checkout nigdy nie jest ruszany.
+Test: `test/unit/test_git_exterminatus_worktree.sh` (prawdziwy git na bare origin w `mktemp`).
+
 ### Funkcja `git_context`
 
 Interaktywne narzędzie do przełączania `user.name`/`user.email` git per-repozytorium, sterowane plikiem
