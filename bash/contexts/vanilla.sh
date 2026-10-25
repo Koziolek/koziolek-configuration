@@ -23,3 +23,20 @@ unset _psock
 # Było BŁĘDNIE aliasem dla całego "nie-Darwin"; to jest wyłącznie Vanilla
 # (kontener apx montuje własny resolv.conf, DNS hosta bywa potrzebny ręcznie).
 alias fix-net='sudo umount /etc/resolv.conf && sudo mount --rbind -o rslave /run/host/etc/resolv.conf /etc/resolv.conf'
+
+# --- Czcionka konsoli tekstowej (TTY) -----------------------------------------
+# Bez poprawnie wystartowanego tmuxa konsola wirtualna (Ctrl+Alt+F<n>) pokazuje domyślną
+# czcionkę jądra bez polskich znaków. Lat2-Terminus16 (Latin-2, z mapą unicode) je ma.
+# Tylko prawdziwy VT: TERM=linux + terminal na stdout. Terminal graficzny i tmux
+# (TERM=xterm-*/tmux-*/screen-*) pomija się sam; w subsystemie apx bez dostępu do VT
+# `setfont` kończy się błędem — milczymy. Zmiana nietrwała (do restartu / `setfont` bez
+# argumentów). Inna czcionka: VANILLA_CONSOLE_FONT=…, wyłączenie: VANILLA_CONSOLE_FONT="".
+vanilla_console_font() {
+    local font="${VANILLA_CONSOLE_FONT-Lat2-Terminus16}"
+    [ -n "$font" ] || return 0
+    [ "${TERM:-}" = "linux" ] && [ -t 1 ] || return 0
+    command -v setfont >/dev/null 2>&1 || return 0
+    setfont "$font" >/dev/null 2>&1 || true
+    return 0
+}
+vanilla_console_font

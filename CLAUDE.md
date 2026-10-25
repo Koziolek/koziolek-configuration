@@ -287,7 +287,7 @@ Vanilla OS / WSL / RedHat. `bash/contexts/detect.sh` dokłada warstwę:
 
 Pliki `contexts/{linux,debian,ubuntu,vanilla,wsl,redhat,darwin}.sh` trzymają **tylko** nadpisania
 swojej warstwy (aliasy, `export`, redefinicje funkcji). Wspólne rzeczy zostają w `bash_*.sh` /
-`functions.d/`. Stan: `linux` (aliasy), `debian` (hub/apt), `vanilla` (`DOCKER_CLI`/`DOCKER_COMPOSE`/`fix-net`),
+`functions.d/`. Stan: `linux` (aliasy), `debian` (hub/apt), `vanilla` (`DOCKER_CLI`/`DOCKER_COMPOSE`/`fix-net`, `vanilla_console_font` — `setfont Lat2-Terminus16` tylko na VT: `TERM=linux` + TTY na stdout, więc tmux i terminal graficzny pomija; nietrwałe, `VANILLA_CONSOLE_FONT` zmienia/wyłącza),
 `wsl` (`in-window`→`wslview`), `redhat` (hub/yum), `darwin` (Homebrew, hub/brew, redefinicje funkcji);
 `ubuntu` pusty. Testy: `test/unit/test_context_detect.sh`,
 `test/unit/linux/test_{vanilla_aliases,vanilla_context,debian_context,wsl_context,redhat_context}.sh`.

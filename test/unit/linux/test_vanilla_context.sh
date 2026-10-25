@@ -45,5 +45,44 @@ testFunctionsUseDockerCliIndirection() {
     assertNotContains 'brak gołego `docker inspect`' "$body" 'docker inspect'
 }
 
+# Czcionka konsoli: mock setfont zapisuje argumenty; `[ -t 1 ]` wymaga TTY, więc stdout
+# idzie przez `script` (pseudo-terminal). $1 = TERM, $2 = dodatkowe export/mocki.
+_run_console_font() {
+    local log="$1" term="$2" extra="${3:-}" runner
+    : > "$log"
+    runner="$(mktemp)"
+    cat > "$runner" <<EOS
+export HOME='$(mktemp -d)' TERM='$term'
+setfont() { echo "setfont \$*" >> '$log'; }
+$extra
+. '$_VANILLA'
+EOS
+    script -qec "bash --norc --noprofile '$runner'" /dev/null >/dev/null 2>&1
+    rm -f "$runner"
+}
+
+testConsoleFontSetOnLinuxVt() {
+    local log; log="$(mktemp)"
+    _run_console_font "$log" linux
+    assertEquals 'setfont Lat2-Terminus16' "$(cat "$log")"
+    rm -f "$log"
+}
+
+testConsoleFontSkippedInTmux() {
+    local log; log="$(mktemp)"
+    _run_console_font "$log" tmux-256color
+    assertEquals '' "$(cat "$log")"
+    rm -f "$log"
+}
+
+testConsoleFontOverrideAndDisable() {
+    local log; log="$(mktemp)"
+    _run_console_font "$log" linux "export VANILLA_CONSOLE_FONT=Lat2-Terminus20x10"
+    assertEquals 'setfont Lat2-Terminus20x10' "$(cat "$log")"
+    _run_console_font "$log" linux "export VANILLA_CONSOLE_FONT="
+    assertEquals '' "$(cat "$log")"
+    rm -f "$log"
+}
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
