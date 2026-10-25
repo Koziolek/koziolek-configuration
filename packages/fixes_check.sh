@@ -38,15 +38,27 @@ fixes_check() {
     local phase=all fmt=tsv
     local -a extra=()
     case "${1:-}" in
-        pre-apt|post-update|post-apt|all) phase="$1"; shift ;;
+    pre-apt | post-update | post-apt | all)
+        phase="$1"
+        shift
+        ;;
     esac
     while [ $# -gt 0 ]; do
         case "$1" in
-            --format) fmt="${2:-}"; shift ;;
-            --format=*) fmt="${1#*=}" ;;
-            --only) extra+=(--only "${2:-}"); shift ;;
-            --only=*) extra+=("$1") ;;
-            *) echo "fixes_check: nieznany argument '$1'" >&2; return 2 ;;
+        --format)
+            fmt="${2:-}"
+            shift
+            ;;
+        --format=*) fmt="${1#*=}" ;;
+        --only)
+            extra+=(--only "${2:-}")
+            shift
+            ;;
+        --only=*) extra+=("$1") ;;
+        *)
+            echo "fixes_check: nieznany argument '$1'" >&2
+            return 2
+            ;;
         esac
         shift
     done

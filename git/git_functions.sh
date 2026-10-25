@@ -39,6 +39,7 @@ function git_exterminatus() {
   local project_name=$(git_project_name)
   log_exterminatus "project of ${project_name}"
   git_delete_merged_remote
+  git_exterminatus_worktree
   git p
   gone_branches=$(LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}')
   if [ -n "$gone_branches" ]; then
