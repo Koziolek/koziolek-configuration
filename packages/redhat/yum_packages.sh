@@ -36,6 +36,7 @@ image_tools=(
 diag_tools=(
   memtester stress-ng dmidecode pciutils lm_sensors smartmontools nvme-cli gdb
   libinput-utils
+  ddrescue mdadm pv testdisk
 )
 
 boxes_vm=(
