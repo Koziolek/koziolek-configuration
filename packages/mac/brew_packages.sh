@@ -37,4 +37,7 @@ image_tools=(
 diag_tools=(
   smartmontools
   gdb
+  ddrescue
+  pv
+  testdisk
 )
