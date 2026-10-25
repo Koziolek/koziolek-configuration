@@ -42,6 +42,7 @@
     lsd = log --oneline --graph --decorate
     p = pull --prune
     exterminatus = fun git_exterminatus
+    exterminatus-worktree = fun git_exterminatus_worktree
     armageddon = fun git_armageddon
     home = fun git_home
     clean-home = "! git home && git exterminatus"

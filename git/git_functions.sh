@@ -46,6 +46,106 @@ function git_exterminatus() {
   fi
 }
 
+# True gdy zmiany gałęzi są już w <base>: zwykły/fast-forward merge (gałąź jest przodkiem)
+# albo squash/rebase merge (zmiana gałęzi ma odpowiednik w <base> po patch-id — git cherry).
+# Nie eksportowana (brak prefiksu git_/hub_).
+function __git_branch_merged_into() {
+  local branch="$1" base="$2" mb tree
+  git merge-base --is-ancestor "$branch" "$base" && return 0
+  mb=$(git merge-base "$base" "$branch") || return 1
+  tree=$(GIT_AUTHOR_NAME=x GIT_AUTHOR_EMAIL=x@x GIT_COMMITTER_NAME=x GIT_COMMITTER_EMAIL=x@x \
+    git commit-tree "${branch}^{tree}" -p "$mb" -m squashed) || return 1
+  [ "$(git cherry "$base" "$tree" | cut -c1)" = "-" ]
+}
+
+# Usuwa worktree (z .worktrees/ itp.), których gałąź jest już zmergowana do gałęzi domyślnej:
+# worktree, lokalną gałąź i zdalną gałąź. Niezmergowane, brudne, bieżące i świeże (bez własnych
+# commitów) zostają. Merge rozpoznaje też squash/rebase (patrz __git_branch_merged_into).
+# Argumenty: [-n|--dry-run]  — tylko pokaż, co zostałoby usunięte
+function git_exterminatus_worktree() {
+  local dry_run=0
+  case "${1:-}" in
+  -n | --dry-run) dry_run=1 ;;
+  "") ;;
+  *) log_error git.usage_git_exterminatus_worktree; return 2 ;;
+  esac
+
+  git rev-parse --is-inside-work-tree &>/dev/null || { log_error git.not_a_git_repository; return 1; }
+
+  local remote="origin" has_remote=0 default_branch base
+  git remote get-url "$remote" &>/dev/null && has_remote=1
+  default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  default_branch="${default_branch:-master}"
+  if [ "$has_remote" = 1 ]; then
+    git fetch -q --prune "$remote" || log_warn git.worktree_fetch_failed "$remote"
+    base="$remote/$default_branch"
+  else
+    base="$default_branch"
+  fi
+  git rev-parse --verify -q "${base}^{commit}" >/dev/null || { log_error git.worktree_no_base "$base"; return 1; }
+
+  # git worktree list --porcelain: bloki rozdzielone pustą linią; pierwszy to główny checkout.
+  local -a wt_paths=() wt_branches=()
+  local line path="" branch=""
+  while IFS= read -r line; do
+    case "$line" in
+    "worktree "*) path="${line#worktree }"; branch="" ;;
+    "branch refs/heads/"*) branch="${line#branch refs/heads/}" ;;
+    "")
+      [ -n "$path" ] && { wt_paths+=("$path"); wt_branches+=("$branch"); }
+      path=""; branch=""
+      ;;
+    esac
+  done < <(git worktree list --porcelain; echo)
+
+  local current i b p removed=0 own_commits
+  current=$(git rev-parse --show-toplevel)
+  for ((i = 1; i < ${#wt_paths[@]}; i++)); do
+    p="${wt_paths[$i]}"
+    b="${wt_branches[$i]}"
+    [ -n "$b" ] && [ "$b" != "$default_branch" ] || continue
+
+    # Świeża gałąź bez własnych commitów jest przodkiem bazy, więc wyglądałaby na zmergowaną.
+    # Jedyny wpis w reflogu = nic na niej nie zrobiono.
+    own_commits=$(git reflog show --format=%H "refs/heads/$b" 2>/dev/null | wc -l)
+    if [ "$own_commits" -eq 1 ]; then
+      log_debug git.worktree_skip_no_commits "$p" "$b"
+      continue
+    fi
+    if ! __git_branch_merged_into "$b" "$base"; then
+      log_debug git.worktree_skip_unmerged "$p" "$b"
+      continue
+    fi
+    if [ "$p" = "$current" ]; then
+      log_warn git.worktree_skip_current "$p" "$b"
+      continue
+    fi
+
+    removed=$((removed + 1))
+    if [ "$dry_run" = 1 ]; then
+      log_info git.worktree_would_remove "$p" "$b"
+      continue
+    fi
+    if ! git worktree remove "$p"; then
+      log_warn git.worktree_remove_failed "$p" "$b"
+      removed=$((removed - 1))
+      continue
+    fi
+    git branch -D "$b" >/dev/null || log_warn git.worktree_branch_delete_failed "$b"
+    if [ "$has_remote" = 1 ] && git show-ref --verify -q "refs/remotes/$remote/$b"; then
+      git push -q "$remote" --delete "$b" || log_warn git.worktree_remote_delete_failed "$remote" "$b"
+    fi
+    log_info git.worktree_removed "$p" "$b"
+  done
+
+  if [ "$removed" -eq 0 ]; then
+    log_info git.worktree_nothing_to_remove
+  else
+    log_info git.worktree_summary "$removed"
+  fi
+  return 0
+}
+
 # Git go home.
 function git_home() {
   local home_branch_name=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
