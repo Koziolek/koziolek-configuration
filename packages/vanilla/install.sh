@@ -110,8 +110,8 @@ safe_apt_install() {
   fi
 }
 
-# apply_fixes — rejestr napraw (#144), wspólny z vanilla/update.sh: tu faza post-update (fix sysusers
-# z packages/vanilla/fixes.d). Wymaga ok/warn/info i $SUDO.
+# apply_fixes — rejestr napraw (#144), wspólny z vanilla/update.sh: fazy pre-apt/post-apt (dkms, apt-gpg,
+# stale-sources) i post-update (fix sysusers z packages/vanilla/fixes.d). Wymaga ok/warn/info i $SUDO.
 ok()   { printf '✓ %s\n' "$*"; }
 warn() { printf '⚠ %s\n' "$*"; }
 info() { printf '  %s\n' "$*"; }
@@ -131,13 +131,16 @@ full_upgrade_system() {
 }
 
 install_initial_packages() {
-    $SUDO apt-get -qq update
+    fixes_refresh_apt_log
+    # pre-apt (m.in. uszkodzone pakiety *-dkms) przed full-upgrade i instalacją — inaczej padają na ich postinst.
+    apply_fixes pre-apt
     apply_fixes post-update
     full_upgrade_system
     safe_apt_install "${prerequisites[@]}"
     # Debian sid — wszystko w `main`, brak komponentu `universe` (to Ubuntu).
     $SUDO apt-get -qq update
     safe_apt_install "${all_packages[@]}"
+    apply_fixes post-apt
 }
 
 # prepare_workspace — wspólna z install.sh/ubuntu/install.sh/mac/install.sh

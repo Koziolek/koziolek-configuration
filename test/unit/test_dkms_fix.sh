@@ -16,7 +16,7 @@ setUp() {
     mkdir -p "$_BIN"
     : > "$_LOG"
     local t p
-    for t in bash awk grep tr head basename dirname mktemp sort cut rm cat id timeout; do
+    for t in bash awk grep tr head tail basename dirname mktemp sort cut rm cat id timeout; do
         p="$(builtin command -v "$t" 2>/dev/null)" && [ -n "$p" ] && ln -s "$p" "$_BIN/$t"
     done
     export DKMS_LOG="$_LOG" DKMS_QUERY_OUT='' DKMS_CONFIGURE_RC=0
@@ -28,7 +28,13 @@ setUp() {
         --configure) echo "DPKG --configure $2" >> "$DKMS_LOG"
             [ "$DKMS_CONFIGURE_RC" = 0 ] && : > "$DKMS_STATE"; exit "$DKMS_CONFIGURE_RC" ;;
         esac'
-    _mock dkms 'echo "DKMS $*" >> "$DKMS_LOG"'
+    # DKMS_REMOVE_STICKS=1: `dkms remove` nic nie usuwa, a `dkms status` dalej widzi moduł, dopóki
+    # istnieje jego katalog w drzewie (DKMS_TREE_DIR) — jak przy wpisach po odinstalowanych kernelach.
+    export DKMS_TREE_DIR="$_TMP/dkms-tree" DKMS_REMOVE_STICKS=''
+    _mock dkms 'echo "DKMS $*" >> "$DKMS_LOG"
+        if [ "$1" = status ] && [ -n "$DKMS_REMOVE_STICKS" ] && [ -d "$DKMS_TREE_DIR/$2" ]; then
+            echo "$2, 6.8.0-106-generic, x86_64: installed (WARNING! Missing some built modules!)"
+        fi'
     export FIXES_SUDO='' FIXES_CONTEXT=debian
 }
 
@@ -88,6 +94,63 @@ testApplyRemovesFromTreeThenConfigures() {
     assertContains "dpkg --configure pakietu" "$(_calls)" "DPKG --configure v4l2loopback-dkms"
     assertNotContains "zdrowy pakiet nietknięty" "$(_calls)" "openrazer"
     assertEquals "kolejność" "DKMS remove v4l2loopback/0.12.7 --all" "$(grep -E '^(DKMS|DPKG)' "$_LOG" | head -1)"
+}
+
+_make_stuck_tree() {
+    mkdir -p "$DKMS_TREE_DIR/v4l2loopback/0.12.7/6.8.0-106-generic"
+    ln -s 0.12.7/6.8.0-106-generic/x86_64 "$DKMS_TREE_DIR/v4l2loopback/kernel-6.8.0-106-generic-x86_64"
+}
+
+testStuckTreeIsPurgedWhenDkmsRemoveLeavesEntry() {
+    _state $'iF  v4l2loopback-dkms\n'
+    export DKMS_REMOVE_STICKS=1
+    _make_stuck_tree
+    local out
+    out="$(_run all --only dkms --format tsv)"
+    assertContains "naprawiono" "$out" "dkms	fixed"
+    assertContains "informacja o ręcznym czyszczeniu" "$out" "czyszczę ręcznie"
+    assertFalse "katalog wersji usunięty" "[ -e '$DKMS_TREE_DIR/v4l2loopback/0.12.7' ]"
+    assertFalse "wiszący symlink kernel-* usunięty" "[ -L '$DKMS_TREE_DIR/v4l2loopback/kernel-6.8.0-106-generic-x86_64' ]"
+    assertContains "configure po czyszczeniu" "$(_calls)" "DPKG --configure v4l2loopback-dkms"
+}
+
+testTreeIsLeftAloneWhenDkmsRemoveWorks() {
+    _state $'iF  v4l2loopback-dkms\n'
+    _make_stuck_tree
+    local out
+    out="$(_run all --only dkms --format tsv)"
+    assertContains "naprawiono" "$out" "dkms	fixed"
+    assertNotContains "bez ręcznego czyszczenia" "$out" "czyszczę ręcznie"
+    assertTrue "drzewo nietknięte, gdy dkms sam sobie poradził" "[ -d '$DKMS_TREE_DIR/v4l2loopback/0.12.7' ]"
+}
+
+testPurgeOnlyTouchesTheBrokenModuleVersion() {
+    _state $'iF  v4l2loopback-dkms\n'
+    export DKMS_REMOVE_STICKS=1
+    _make_stuck_tree
+    mkdir -p "$DKMS_TREE_DIR/openrazer-driver/3.12.4"
+    _run all --only dkms --format tsv >/dev/null
+    assertTrue "inny moduł nietknięty" "[ -d '$DKMS_TREE_DIR/openrazer-driver/3.12.4' ]"
+}
+
+testConfigureFailureShowsDpkgOutput() {
+    _state $'iF  v4l2loopback-dkms\n'
+    export DKMS_CONFIGURE_RC=1
+    _mock dpkg 'case "$1" in
+        -L) echo "/usr/src/v4l2loopback-0.12.7" ;;
+        --configure) echo "Error! DKMS tree already contains: v4l2loopback-0.12.7" >&2; exit 1 ;;
+        esac'
+    local out
+    out="$(_run all --only dkms --format tsv)"
+    assertContains "błąd dpkg widoczny w logu" "$out" "DKMS tree already contains"
+}
+
+testDkmsRemoveErrorIsLogged() {
+    _state $'iF  v4l2loopback-dkms\n'
+    _mock dkms 'echo "DKMS $*" >> "$DKMS_LOG"; [ "$1" = remove ] && { echo "Error! kernel headers missing" >&2; exit 3; }; exit 0'
+    local out
+    out="$(_run all --only dkms --format tsv)"
+    assertContains "błąd dkms remove widoczny" "$out" "kernel headers missing"
 }
 
 testConfigureFailureIsFailedButApplyReturnsZero() {
