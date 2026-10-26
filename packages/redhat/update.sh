@@ -33,6 +33,7 @@ all_yum_packages=(
     "${gui_libs[@]}"
     "${image_tools[@]}"
     "${diag_tools[@]}"
+    "${build_libs[@]}"
     "${boxes_vm[@]}"
 )
 
@@ -287,6 +288,8 @@ source "$COMMONS_DIR/git_bug.sh"
 source "$COMMONS_DIR/calibre_deps.sh"
 # shellcheck source=packages/commons/sdk_tools_apply.sh
 source "$COMMONS_DIR/sdk_tools_apply.sh"
+# shellcheck source=packages/commons/lang_packages_apply.sh
+source "$COMMONS_DIR/lang_packages_apply.sh"
 
 update_calibre() {
     echo ""
@@ -333,25 +336,6 @@ update_asdf() {
     tar -xzf "$archive"
     rm -f "$archive"
     ok "asdf zaktualizowany do $latest_tag"
-}
-
-update_difft() {
-    echo ""
-    echo "=== difftastic ==="
-    local asdf_bin="$HOME/.local/bin/asdf"
-    if [ ! -x "$asdf_bin" ]; then
-        warn "asdf niedostępny — pomijam aktualizację difftastic"
-        return 0
-    fi
-    if ! "$asdf_bin" list rust 2>/dev/null | grep -q '[0-9]'; then
-        warn "Rust nie zainstalowany w asdf — pomijam aktualizację difftastic"
-        return 0
-    fi
-    info "Aktualizacja difftastic..."
-    # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
-    # zależności semver, a te wymuszają nowszego rustc niż daje asdf.
-    "$asdf_bin" exec cargo install --locked difftastic
-    ok "difftastic zaktualizowany: $(difft --version)"
 }
 
 update_sdkman() {
@@ -403,7 +387,7 @@ update_docker
 update_kubectl
 update_asdf
 update_asdf_tools
-update_difft
+update_lang_packages
 update_sdkman
 update_claude
 update_calibre

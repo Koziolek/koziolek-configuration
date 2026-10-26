@@ -103,7 +103,9 @@ Instalator linuksowy nie ma sumy kontrolnej do zweryfikowania, więc `verify_and
 przy SDKMAN); odmowa nie przerywa instalacji — wypisuje ostrzeżenie z ręcznym poleceniem. Gdy `claude` jest już
 zainstalowany, instalacja jest pomijana; gdy go brak, `update_claude` tylko ostrzega.
 
-`install_difft` / `update_difft` (rust przychodzi z `install_asdf_tools` / `update_asdf_tools`) instalują difftastic przez **`cargo install --locked difftastic`**.
+Narzędzia instalowane toolchainami z asdf (`install_lang_packages` / `update_lang_packages`; rust, go, ghc i cabal
+przychodzą z `install_asdf_tools` / `update_asdf_tools`) są na liście `packages/commons/lang_packages.sh`:
+difftastic i linthis przez **`cargo install --locked`**, shfmt przez `go install`, ShellCheck przez `cabal install`.
 Bez `--locked` cargo dobiera najnowsze zależności semver (`tree-sitter-language`), a te wymuszają nowszego
 `rustc` niż daje asdf → `rustc X is not supported by the following packages`.
 

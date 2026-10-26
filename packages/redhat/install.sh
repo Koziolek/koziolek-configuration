@@ -10,7 +10,7 @@
 #   • install_apps() pomija Spotify/1Password/Steam — dystrybuowane jako .deb /
 #     apt-repo, brak sensownego 1:1 na yum (zainstaluj ręcznie: flatpak / .rpm);
 #   • install_gh()/install_docker() używają oficjalnych repo yum zamiast apt;
-#   • install_asdf/install_asdf_tools/install_difft/install_sdkman/install_kubectl —
+#   • install_asdf/install_asdf_tools/install_lang_packages/install_sdkman/install_kubectl —
 #     bez zmian, OS-agnostyczne (curl + binarki/tarball).
 
 set -Eeuo pipefail
@@ -51,6 +51,8 @@ source "$SCRIPT_DIR/yum_packages.sh"
 source "$COMMONS_DIR/verify_and_run_script.sh"
 # shellcheck source=packages/commons/sdk_tools_apply.sh
 source "$COMMONS_DIR/sdk_tools_apply.sh"
+# shellcheck source=packages/commons/lang_packages_apply.sh
+source "$COMMONS_DIR/lang_packages_apply.sh"
 
 all_packages=(
   "${minimal_tools[@]}"
@@ -60,6 +62,7 @@ all_packages=(
   "${gui_libs[@]}"
   "${image_tools[@]}"
   "${diag_tools[@]}"
+  "${build_libs[@]}"
   "${boxes_vm[@]}"
 )
 
@@ -147,33 +150,6 @@ install_asdf() {
     echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo "source \$HOME/.local/bin/asdf/asdf.sh"
     echo "source \$HOME/.local/bin/asdf/completions/asdf.bash"
-}
-
-install_difft() {
-    if command -v difft &>/dev/null; then
-        echo "difftastic już zainstalowany: $(difft --version)"
-        return 0
-    fi
-
-    local asdf_bin="$HOME/.local/bin/asdf"
-    if [ ! -x "$asdf_bin" ]; then
-        echo "Błąd: asdf nie jest zainstalowany. Uruchom najpierw install_asdf."
-        return 1
-    fi
-
-    local cargo_bin
-    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null || true)
-    if [ -z "$cargo_bin" ]; then
-        echo "Błąd: cargo niedostępne po instalacji Rust"
-        return 1
-    fi
-
-    echo "Instalacja difftastic..."
-    # --locked: użyj Cargo.lock difftastica. Bez tego cargo dobiera najnowsze
-    # zależności semver, a te (np. tree-sitter-language) wymuszają nowszego rustc
-    # niż daje asdf → "rustc X is not supported by the following packages".
-    "$cargo_bin" install --locked difftastic
-    echo "difftastic zainstalowany pomyślnie"
 }
 
 install_sdkman() {
@@ -391,7 +367,7 @@ install_initial_packages
 prepare_workspace
 install_asdf
 install_asdf_tools
-install_difft
+install_lang_packages
 install_sdkman
 install_apps
 install_gh

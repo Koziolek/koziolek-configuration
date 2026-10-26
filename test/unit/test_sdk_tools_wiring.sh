@@ -24,29 +24,29 @@ testEverySystemSourcesApplyHelpers() {
 }
 
 testInstallersCallHelpersInOrder() {
-    local s asdf tools difft sdkman
+    local s asdf tools lang sdkman
     for s in $SYSTEMS; do
         asdf="$(_line "$s/install.sh" '^install_asdf$')"
         tools="$(_line "$s/install.sh" '^install_asdf_tools$')"
-        difft="$(_line "$s/install.sh" '^install_difft$')"
+        lang="$(_line "$s/install.sh" '^install_lang_packages$')"
         sdkman="$(_line "$s/install.sh" '^install_sdkman$')"
         assertNotEquals "$s/install.sh: brak install_asdf_tools" "" "$tools"
         assertTrue "$s/install.sh: asdf przed narzędziami asdf" "[ '${asdf:-999}' -lt '${tools:-0}' ]"
-        assertTrue "$s/install.sh: narzędzia asdf przed difftastic (potrzebuje cargo z rust)" "[ '${tools:-999}' -lt '${difft:-0}' ]"
+        assertTrue "$s/install.sh: narzędzia asdf przed pakietami cargo/go/cabal (potrzebują toolchainów)" "[ '${tools:-999}' -lt '${lang:-0}' ]"
         assertNotEquals "$s/install.sh: install_sdkman nie woła narzędzi sdkman" "" "$(_line "$s/install.sh" '^[[:space:]]+install_sdkman_tools$')"
         assertNotEquals "$s/install.sh: brak install_sdkman w sekwencji" "" "$sdkman"
     done
 }
 
 testUpdatersCallHelpersInOrder() {
-    local s asdf tools difft
+    local s asdf tools lang
     for s in $SYSTEMS; do
         asdf="$(_line "$s/update.sh" '^update_asdf$')"
         tools="$(_line "$s/update.sh" '^update_asdf_tools$')"
-        difft="$(_line "$s/update.sh" '^update_difft$')"
+        lang="$(_line "$s/update.sh" '^update_lang_packages$')"
         assertNotEquals "$s/update.sh: brak update_asdf_tools" "" "$tools"
         assertTrue "$s/update.sh: update_asdf przed update_asdf_tools" "[ '${asdf:-999}' -lt '${tools:-0}' ]"
-        assertTrue "$s/update.sh: update_asdf_tools przed update_difft" "[ '${tools:-999}' -lt '${difft:-0}' ]"
+        assertTrue "$s/update.sh: update_asdf_tools przed update_lang_packages" "[ '${tools:-999}' -lt '${lang:-0}' ]"
         assertNotEquals "$s/update.sh: update_sdkman nie woła narzędzi sdkman" "" "$(_line "$s/update.sh" '^[[:space:]]+update_sdkman_tools$')"
     done
 }
@@ -58,6 +58,34 @@ testNoHardcodedToolsLeft() {
             assertEquals "$s/$f: ręczne sdk install/upgrade" "0" "$(_count "$s/$f" 'sdk (i|install|upgrade) (java|maven|mvnd)')"
             assertEquals "$s/$f: ręczny plugin rust" "0" "$(_count "$s/$f" 'plugin add rust|asdf_bin" (install|global) rust')"
         done
+    done
+}
+
+testEverySystemSourcesLangPackagesHelpers() {
+    local s f
+    for s in $SYSTEMS; do
+        for f in install.sh update.sh; do
+            assertNotEquals "$s/$f: brak source lang_packages_apply.sh" "" "$(_line "$s/$f" 'source .*lang_packages_apply\.sh')"
+        done
+    done
+}
+
+testNoHardcodedLangPackagesLeft() {
+    local s f
+    for s in $SYSTEMS; do
+        for f in install.sh update.sh; do
+            assertEquals "$s/$f: ręczny cargo/go/cabal install" "0" "$(_count "$s/$f" 'cargo install|go install|cabal install|(install|update)_difft')"
+        done
+    done
+}
+
+testBuildLibsInEveryLinuxPackageList() {
+    local f
+    for f in commons/apt_packages.sh redhat/yum_packages.sh; do
+        assertNotEquals "$f: brak tablicy build_libs" "" "$(_line "$f" '^build_libs=\(')"
+    done
+    for f in ubuntu/install.sh ubuntu/update.sh vanilla/install.sh vanilla/update.sh redhat/install.sh redhat/update.sh; do
+        assertNotEquals "$f: build_libs poza listą pakietów" "" "$(_line "$f" '"\$\{build_libs\[@\]\}"')"
     done
 }
 

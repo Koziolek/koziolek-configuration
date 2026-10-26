@@ -396,7 +396,7 @@ Instalacja i aktualizacja narzędzi — osobny katalog na system w `packages/` (
 `mac/`), każdy z `install.sh` i `update.sh`, plus `packages/commons/` na rzeczy współdzielone. Zasada: plik używany
 przez jeden system leży w jego katalogu (`redhat/yum_packages.sh`, `mac/brew_packages.sh`,
 `vanilla/fixes.d/`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
-`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `sdk_tools.sh`, `sdk_tools_apply.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
+`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `sdk_tools.sh`, `sdk_tools_apply.sh`, `lang_packages.sh`, `lang_packages_apply.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
 `fixes.d/`). Fix dotyczący jednego systemu idzie do `packages/<system>/fixes.d/`, współdzielony do `commons/fixes.d/`.
 
 **`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
@@ -537,19 +537,29 @@ katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/uni
 
 Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_CANDIDATES` (nazwy dla
 `sdk install`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
-sdkman `java maven mvnd`, asdf `rust golang shellcheck shfmt` (shellcheck jest w Haskellu, nie w Go — plugin pobiera binarkę, tak samo shfmt; konsument: linthis, #168). Dodanie wpisu do listy wystarcza — `*/install.sh` i `*/update.sh` (#167) nie mają już narzędzi wpisanych na sztywno.
+sdkman `java maven mvnd`, asdf tylko toolchainy: `rust golang ghc cabal` (`ghc` i `cabal` z jednego pluginu ghcup, `sestrella/asdf-ghcup`). Narzędzia nimi instalowane — niżej, `lang_packages.sh` (#172). Dodanie wpisu do listy wystarcza — `*/install.sh` i `*/update.sh` (#167) nie mają już narzędzi wpisanych na sztywno.
 Iterują po niej helpery z `packages/commons/sdk_tools_apply.sh` (sourcowane po `verify_and_run_script.sh` w install, po `calibre_deps.sh` w update; w `mac/update.sh` po `brew_packages.sh`):
 `install_sdkman_tools` / `update_sdkman_tools` (`sdk install`; w update `sdk upgrade` dla zainstalowanych, brakujący jest instalowany; podpowłoka `set +eu` + `trap - ERR`;
 `SDKMAN_DIR`) oraz `install_asdf_tools` / `update_asdf_tools` (`plugin add` tylko gdy pluginu brak → `install` → `asdf set -u`, a dla asdf < 0.16 `asdf global` → `reshim`;
 update dodatkowo `plugin update`; `ASDF_BIN`). Błąd jednego narzędzia = ostrzeżenie z podsumowaniem, reszta leci dalej; brak SDKMAN-a/asdf = ostrzeżenie; zawsze `return 0`.
-Kolejność w install: `install_asdf` → `install_asdf_tools` → `install_difft` (potrzebuje `cargo` z rust) → `install_sdkman` (woła `install_sdkman_tools`; mac także gdy SDKMAN już jest);
-w update: `update_asdf` → `update_asdf_tools` → `update_difft`, `update_sdkman` woła `update_sdkman_tools` po `sdk selfupdate`.
+Kolejność w install: `install_asdf` → `install_asdf_tools` → `install_lang_packages` (potrzebuje toolchainów z asdf) → `install_sdkman` (woła `install_sdkman_tools`; mac także gdy SDKMAN już jest);
+w update: `update_asdf` → `update_asdf_tools` → `update_lang_packages`, `update_sdkman` woła `update_sdkman_tools` po `sdk selfupdate`.
 Testy: `test/unit/test_sdk_tools_apply.sh` (mocki `sdk` w fałszywym `sdkman-init.sh` i `asdf`), `test/unit/test_sdk_tools_wiring.sh` (podpięcie i kolejność w czterech systemach).
 Szablony `bash/templates/.sdkman.template` (odpowiednik `sdk current` z `$HOME`: linie `kandydat=wersja`, format `.sdkmanrc`) i `bash/templates/.tool-versions.template` (kopia `~/.tool-versions`) odzwierciedlają
 konfigurację z `$HOME`; instalatory ich jeszcze nie wdrażają. Test: `test/unit/test_sdk_tools.sh`.
 
-difftastic instaluje się przez `cargo install --locked difftastic` (wszędzie: install + update,
-linux/vanilla/mac). Bez `--locked` cargo dobiera najnowsze zależności semver, które co jakiś czas
+Pakiety instalowane toolchainami: `packages/commons/lang_packages.sh` (wzór: `apt_packages.sh`; same dane) — `CARGO_PACKAGES` (`difftastic|difft`, `linthis`),
+`GO_PACKAGES` (`mvdan.cc/sh/v3/cmd/shfmt@latest`), `CABAL_PACKAGES` (`ShellCheck`). Wpis `pakiet` albo `pakiet|binarka` (binarka = sprawdzenie „już jest”; domyślnie nazwa małymi
+literami, dla go ostatni człon ścieżki). Dodanie wpisu wystarcza. Helpery z `packages/commons/lang_packages_apply.sh` (sourcowane zaraz po `sdk_tools_apply.sh`):
+`install_{cargo,go,cabal}_packages` / `update_{cargo,go,cabal}_packages` oraz wrappery `install_lang_packages` / `update_lang_packages`. Toolchainy wołane przez `asdf exec`
+z shimami asdf w PATH (cabal szuka `ghc` w PATH); install pomija pakiet, którego binarka jest, update instaluje zawsze (też brakujące). Binarki go i cabal lądują w
+`${LANG_PACKAGES_BIN_DIR:-~/.local/bin}` (`GOBIN`, `cabal --installdir --install-method=copy --overwrite-policy=always`), więc są w PATH bez reshimu; cargo — jak dotąd w katalogu asdf + `reshim`.
+Brak asdf albo toolchaina = ostrzeżenie i pominięcie listy; błąd pakietu = ostrzeżenie z podsumowaniem; zawsze `return 0`. Indeks Hackage (`cabal update`) raz na przebieg i tylko gdy coś się instaluje.
+Kompilatory i biblioteki do budowy toolchainów (ghc z ghcup: gcc, gmp, ncurses, libffi…) to tablica `build_libs` w `apt_packages.sh` i `yum_packages.sh` (wpięta w listy pakietów
+`{ubuntu,vanilla,redhat}/{install,update}.sh`); na macOS wystarczą narzędzia Xcode CLT, więc brew nie ma odpowiednika.
+Test: `test/unit/test_lang_packages.sh` (lista + mock `asdf`); wiring w `test_sdk_tools_wiring.sh`.
+
+cargo zawsze z `--locked` (difftastic, linthis…): bez tego cargo dobiera najnowsze zależności semver, które co jakiś czas
 podbijają wymóg `rustc` ponad to, co daje asdf → `rustc X is not supported by the following packages`.
 
 ## Konwencje
