@@ -15,8 +15,13 @@ setUp() {
     export ASDF_DATA_DIR="$_TMP/asdf-data"
     _OLD_PATH="$PATH"
     mkdir -p "$_TMP/path"
-    # PATH bez katalogów użytkownika — prawdziwe difft/shfmt hosta nie mogą udawać zainstalowanych
-    PATH="$_TMP/path:/usr/bin:/bin"
+    # Hermetyczny PATH: tylko symlinki do podstawowych poleceń. Prawdziwe difft/shfmt/shellcheck/linthis
+    # hosta (np. shellcheck w /usr/bin na runnerze CI) nie mogą udawać zainstalowanych.
+    local t src
+    for t in bash env mkdir tr chmod cat grep sed awk uniq sort head dirname rm wc mktemp date; do
+        src="$(command -v "$t" 2>/dev/null)" && ln -s "$src" "$_TMP/path/$t"
+    done
+    PATH="$_TMP/path"
     unset ASDF_MISSING ASDF_FAIL
     unset CARGO_PACKAGES GO_PACKAGES CABAL_PACKAGES
     # shellcheck source=/dev/null
