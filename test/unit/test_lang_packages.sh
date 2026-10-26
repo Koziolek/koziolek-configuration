@@ -14,7 +14,8 @@ setUp() {
     export LANG_PACKAGES_BIN_DIR="$_TMP/bin"
     export ASDF_DATA_DIR="$_TMP/asdf-data"
     _OLD_PATH="$PATH"
-    mkdir -p "$_TMP/path"
+    mkdir -p "$_TMP/path" "$_TMP/ghc-install/bin"
+    : > "$_TMP/ghc-install/bin/ghc"; chmod +x "$_TMP/ghc-install/bin/ghc"
     # Hermetyczny PATH: tylko symlinki do podstawowych poleceń. Prawdziwe difft/shfmt/shellcheck/linthis
     # hosta (np. shellcheck w /usr/bin na runnerze CI) nie mogą udawać zainstalowanych.
     local t src
@@ -42,6 +43,7 @@ _mock_asdf() {
 #!/usr/bin/env bash
 case "\$1" in
     which) echo "asdf which \$2" >> "$_LOG"; case " \${ASDF_MISSING:-} " in *" \$2 "*) exit 1;; esac; exit 0;;
+    where) echo "asdf where \$2" >> "$_LOG"; case " \${ASDF_MISSING:-} " in *" \$2 "*) exit 1;; esac; printf '%s' "$_TMP/ghc-install"; exit 0;;
     reshim) echo "asdf reshim" >> "$_LOG"; exit 0;;
     exec)
         shift
@@ -199,9 +201,26 @@ testCabalInstallRefreshesIndexOnceThenInstallsToBinDir() {
     CABAL_PACKAGES=(ShellCheck hlint)
     install_cabal_packages >/dev/null
     assertEquals "exec cabal update
-exec cabal install --install-method=copy --overwrite-policy=always --installdir=$LANG_PACKAGES_BIN_DIR ShellCheck
-exec cabal install --install-method=copy --overwrite-policy=always --installdir=$LANG_PACKAGES_BIN_DIR hlint" "$(_calls)"
+exec cabal install --with-compiler=$_TMP/ghc-install/bin/ghc --install-method=copy --overwrite-policy=always --installdir=$LANG_PACKAGES_BIN_DIR ShellCheck
+exec cabal install --with-compiler=$_TMP/ghc-install/bin/ghc --install-method=copy --overwrite-policy=always --installdir=$LANG_PACKAGES_BIN_DIR hlint" "$(_calls)"
     assertTrue "shellcheck (małe litery) w katalogu docelowym" "[ -e '$LANG_PACKAGES_BIN_DIR/shellcheck' ]"
+}
+
+testCabalUsesGhcFromAsdfPluginNotShim() {
+    _mock_asdf
+    install_cabal_packages >/dev/null
+    assertContains "kompilator z asdf where ghc" "$(_calls)" "--with-compiler=$_TMP/ghc-install/bin/ghc"
+}
+
+testCabalWithoutGhcWarnsAndDoesNotInstall() {
+    _mock_asdf
+    export ASDF_MISSING="ghc"
+    local out rc
+    out="$(install_cabal_packages)"; rc=$?
+    assertEquals 0 "$rc"
+    assertContains "$out" "ghc z asdf niedostępny"
+    assertContains "$out" "nie udało się: ShellCheck"
+    assertNotContains "$(_calls)" "cabal install"
 }
 
 testCabalSecondInstallDoesNothing() {
