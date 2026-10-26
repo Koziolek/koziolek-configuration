@@ -16,6 +16,8 @@ COMMONS_DIR="$SCRIPT_DIR/../commons"
 source "$COMMONS_DIR/verify_and_run_script.sh"
 # shellcheck source=packages/commons/sdk_tools_apply.sh
 source "$COMMONS_DIR/sdk_tools_apply.sh"
+# shellcheck source=packages/commons/lang_packages_apply.sh
+source "$COMMONS_DIR/lang_packages_apply.sh"
 
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -99,28 +101,6 @@ install_asdf() {
     tar -xzf "$archive"
     rm -f "$archive"
     echo "✓ asdf $latest_tag zainstalowany w $HOME/.local/bin/"
-}
-
-install_difft() {
-    if command -v difft &>/dev/null; then
-        echo "✓ difftastic już zainstalowany: $(difft --version)"
-        return 0
-    fi
-
-    local asdf_bin="$HOME/.local/bin/asdf"
-    if [ ! -x "$asdf_bin" ]; then
-        echo "Błąd: asdf nie jest zainstalowany"
-        return 1
-    fi
-
-    local cargo_bin
-    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null || true)
-    [ -z "$cargo_bin" ] && { echo "Błąd: cargo niedostępne"; return 1; }
-
-    # --locked: użyj Cargo.lock difftastica (inaczej nowsze zależności wymuszają
-    # nowszego rustc niż daje asdf).
-    "$cargo_bin" install --locked difftastic
-    echo "✓ difftastic zainstalowany"
 }
 
 install_sdkman() {
@@ -208,7 +188,7 @@ install_brew_packages "${diag_tools[@]}"
 prepare_workspace
 install_asdf
 install_asdf_tools
-install_difft
+install_lang_packages
 install_sdkman
 install_gh
 install_claude

@@ -39,6 +39,12 @@ diag_tools=(
   ddrescue mdadm pv testdisk
 )
 
+# Kompilatory i biblioteki do budowania toolchainów z asdf (ghc z pluginu ghcup, cargo, cabal) — mirror
+# build_libs z apt_packages.sh (#172).
+build_libs=(
+  gcc gcc-c++ make perl gmp-devel ncurses-devel libffi-devel pkgconf-pkg-config xz zlib-devel
+)
+
 boxes_vm=(
   gnome-boxes qemu-kvm libvirt-daemon libvirt-daemon-config-network
 )

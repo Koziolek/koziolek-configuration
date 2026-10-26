@@ -30,11 +30,14 @@ testContainsCurrentTools() {
     assertContains "${ASDF_TOOLS[*]}" "rust|"
 }
 
-testAsdfListHasGoAndShellTools() {
+testAsdfListHasOnlyToolchains() {
     local joined="${ASDF_TOOLS[*]}"
     assertContains "$joined" "golang|https://github.com/asdf-community/asdf-golang.git|"
-    assertContains "$joined" "shellcheck|https://github.com/luizm/asdf-shellcheck.git|"
-    assertContains "$joined" "shfmt|https://github.com/luizm/asdf-shfmt.git|"
+    assertContains "$joined" "ghc|https://github.com/sestrella/asdf-ghcup.git|"
+    assertContains "$joined" "cabal|https://github.com/sestrella/asdf-ghcup.git|"
+    # narzędzia instaluje lang_packages.sh (go install / cabal install), nie asdf (#172)
+    assertNotContains "$joined" "shellcheck"
+    assertNotContains "$joined" "shfmt"
 }
 
 # _asdf_pos <nazwa> — pozycja narzędzia na liście ASDF_TOOLS (0 = brak)
@@ -47,10 +50,11 @@ _asdf_pos() {
     echo 0
 }
 
-testAsdfListOrderRustThenGolangThenGoTools() {
-    # rust przed difftastic (cargo), golang przed narzędziami pisanymi w Go
-    assertTrue "rust przed golang" "[ \"$(_asdf_pos rust)\" -gt 0 ] && [ \"$(_asdf_pos rust)\" -lt \"$(_asdf_pos golang)\" ]"
-    assertTrue "golang przed shfmt" "[ \"$(_asdf_pos golang)\" -lt \"$(_asdf_pos shfmt)\" ]"
+testAsdfListOrderToolchainsBeforeDependents() {
+    # ghc przed cabalem (cabal potrzebuje ghc), rust i golang obecne
+    assertTrue "rust na liście" "[ \"$(_asdf_pos rust)\" -gt 0 ]"
+    assertTrue "golang na liście" "[ \"$(_asdf_pos golang)\" -gt 0 ]"
+    assertTrue "ghc przed cabal" "[ \"$(_asdf_pos ghc)\" -gt 0 ] && [ \"$(_asdf_pos ghc)\" -lt \"$(_asdf_pos cabal)\" ]"
 }
 
 testSdkmanCandidatesAreValidAndUnique() {

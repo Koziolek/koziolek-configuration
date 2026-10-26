@@ -41,6 +41,12 @@ diag_tools=(
   gddrescue mdadm pv testdisk
 )
 
+# Kompilatory i biblioteki do budowania toolchainów z asdf: ghc (plugin ghcup) wymaga gcc, gmp, ncurses,
+# libffi, a cargo/cabal budują pakiety z `lang_packages.sh` (#172). curl jest w `minimal_tools`.
+build_libs=(
+  build-essential libffi-dev libgmp-dev libncurses-dev pkg-config xz-utils zlib1g-dev
+)
+
 boxes_vm=(
   gnome-boxes qemu-kvm libvirt-daemon-system
 )
