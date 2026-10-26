@@ -73,6 +73,8 @@ source "$COMMONS_DIR/apt_packages.sh"
 # (packages/commons/verify_and_run_script.sh).
 # shellcheck source=packages/commons/verify_and_run_script.sh
 source "$COMMONS_DIR/verify_and_run_script.sh"
+# shellcheck source=packages/commons/sdk_tools_apply.sh
+source "$COMMONS_DIR/sdk_tools_apply.sh"
 
 all_packages=(
   "${minimal_tools[@]}"
@@ -200,7 +202,7 @@ install_asdf() {
     echo "asdf $LATEST_TAG został pomyślnie zainstalowany w $HOME/.local/bin/"
 }
 
-install_rust_and_difft() {
+install_difft() {
     if command -v difft &>/dev/null; then
         echo "difftastic już zainstalowany: $(difft --version)"
         return 0
@@ -212,15 +214,8 @@ install_rust_and_difft() {
         return 1
     fi
 
-    echo "Dodawanie pluginu rust dla asdf..."
-    "$asdf_bin" plugin add rust https://github.com/asdf-community/asdf-rust.git 2>/dev/null || true
-
-    echo "Instalacja najnowszej wersji Rust..."
-    "$asdf_bin" install rust latest
-    "$asdf_bin" global rust latest
-
     local cargo_bin
-    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
+    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null || true)
     if [ -z "$cargo_bin" ]; then
         echo "Błąd: cargo niedostępne po instalacji Rust"
         return 1
@@ -248,19 +243,7 @@ install_sdkman() {
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY
 
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
-    # SDKMAN (sourcowany init, ale też wewnętrzne skrypty wywoływane przez
-    # `sdk install`, np. sdkman-install.sh) nie jest pisany pod `set -u` —
-    # odwołuje się do niepodanych argumentów pozycyjnych (`$2`), co pod naszym
-    # `set -Eeuo pipefail` wywala "$2: unbound variable" przy PIERWSZEJ
-    # instalacji kandydata, nie tylko przy samym source'owaniu. `set -u` musi
-    # więc zostać wyłączone na czas WSZYSTKICH wywołań `sdk`, nie tylko source.
-    set +u
-    # shellcheck source=/dev/null
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
-    sdk i java
-    sdk i maven
-    sdk i mvnd
-    set -u
+    install_sdkman_tools
 }
 
 install_claude() {
@@ -476,7 +459,8 @@ cd "$HOME/" || exit 1
 install_initial_packages
 prepare_workspace
 install_asdf
-install_rust_and_difft
+install_asdf_tools
+install_difft
 install_sdkman
 install_apps
 install_gh
