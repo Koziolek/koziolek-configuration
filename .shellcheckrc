@@ -1,0 +1,23 @@
+# Konfiguracja ShellCheck (czytana też przez linthis).
+shell=bash
+
+# Wstępna lista wyłączeń: reguły, które w tym repo są szumem, nie błędami. Każde wyłączenie ma
+# uzasadnienie — wracamy do nich, gdy repo będzie czyściejsze.
+
+# Pliki są sourcowane ścieżką liczoną w locie ("$COMMONS_DIR/…") — ShellCheck nie może ich śledzić.
+disable=SC1090,SC1091
+
+# Pliki z danymi i bibliotekami (np. packages/commons/*.sh, bash/messages/*) deklarują zmienne
+# i funkcje używane dopiero w skryptach, które je sourcują.
+disable=SC2034
+
+# Odwrotnie: zmienne (kolory, ścieżki, tablice) pochodzą z sourcowanych bibliotek.
+disable=SC2154
+
+# Funkcje testowe shunit2 i funkcje z sourcowanych bibliotek są wołane z innych plików
+# albo po nazwie ("testXxx"), więc „never invoked" jest fałszywym alarmem.
+disable=SC2329
+
+# Pojedyncze cudzysłowy są celowe: wypisujemy polecenia do skopiowania ('export PATH="$HOME/…"')
+# oraz wzorce sed/awk, w których $ nie ma być rozwijane.
+disable=SC2016

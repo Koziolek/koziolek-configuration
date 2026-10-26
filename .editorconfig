@@ -1,0 +1,6 @@
+# Czytane przez shfmt (a więc i linthis) przy formatowaniu skryptów powłoki.
+root = true
+
+[*.{sh,bash}]
+indent_style = space
+indent_size = 4
