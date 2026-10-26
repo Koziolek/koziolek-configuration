@@ -30,6 +30,29 @@ testContainsCurrentTools() {
     assertContains "${ASDF_TOOLS[*]}" "rust|"
 }
 
+testAsdfListHasGoAndShellTools() {
+    local joined="${ASDF_TOOLS[*]}"
+    assertContains "$joined" "golang|https://github.com/asdf-community/asdf-golang.git|"
+    assertContains "$joined" "shellcheck|https://github.com/luizm/asdf-shellcheck.git|"
+    assertContains "$joined" "shfmt|https://github.com/luizm/asdf-shfmt.git|"
+}
+
+# _asdf_pos <nazwa> — pozycja narzędzia na liście ASDF_TOOLS (0 = brak)
+_asdf_pos() {
+    local i=1 e
+    for e in "${ASDF_TOOLS[@]}"; do
+        [ "${e%%|*}" = "$1" ] && { echo "$i"; return; }
+        i=$((i + 1))
+    done
+    echo 0
+}
+
+testAsdfListOrderRustThenGolangThenGoTools() {
+    # rust przed difftastic (cargo), golang przed narzędziami pisanymi w Go
+    assertTrue "rust przed golang" "[ \"$(_asdf_pos rust)\" -gt 0 ] && [ \"$(_asdf_pos rust)\" -lt \"$(_asdf_pos golang)\" ]"
+    assertTrue "golang przed shfmt" "[ \"$(_asdf_pos golang)\" -lt \"$(_asdf_pos shfmt)\" ]"
+}
+
 testSdkmanCandidatesAreValidAndUnique() {
     local c dups
     for c in "${SDKMAN_CANDIDATES[@]}"; do

@@ -538,7 +538,7 @@ katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/uni
 
 Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_CANDIDATES` (nazwy dla
 `sdk install`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
-sdkman `java maven mvnd`, asdf `rust`. Skrypty `*/install.sh` i `*/update.sh` jeszcze mają te narzędzia wpisane na sztywno — przejście na listę to #167.
+sdkman `java maven mvnd`, asdf `rust golang shellcheck shfmt` (shellcheck jest w Haskellu, nie w Go — plugin pobiera binarkę, tak samo shfmt; konsument: linthis, #168). Skrypty `*/install.sh` i `*/update.sh` jeszcze mają te narzędzia wpisane na sztywno — przejście na listę to #167.
 Szablony `bash/templates/.sdkman.template` (odpowiednik `sdk current` z `$HOME`: linie `kandydat=wersja`, format `.sdkmanrc`) i `bash/templates/.tool-versions.template` (kopia `~/.tool-versions`) odzwierciedlają
 konfigurację z `$HOME`; instalatory ich jeszcze nie wdrażają. Test: `test/unit/test_sdk_tools.sh`.
 
