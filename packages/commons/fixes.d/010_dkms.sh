@@ -40,19 +40,45 @@ fix_detect() {
     return 0
 }
 
+# _dkms_purge_tree <moduł> <wersja> — ostatnia deska, gdy `dkms remove --all` zostawił wpis: usuwa
+# katalog drzewa DKMS tej wersji i wiszące symlinki kernel-*. Nazwy walidowane (to idzie do `rm -rf`).
+# DKMS_TREE_DIR (domyślnie /var/lib/dkms) pozwala testom nie dotykać systemu.
+_dkms_purge_tree() {
+    local mod="$1" ver="$2" tree="${DKMS_TREE_DIR:-/var/lib/dkms}" link
+    [[ "$mod" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ && "$ver" =~ ^[A-Za-z0-9][A-Za-z0-9._+~-]*$ ]] || return 1
+    $SUDO rm -rf -- "$tree/$mod/$ver"
+    for link in "$tree/$mod"/kernel-*; do
+        [ -L "$link" ] && [ ! -e "$link" ] && $SUDO rm -f -- "$link"
+    done
+    return 0
+}
+
+# Pakiet *-dkms bywa nie do naprawienia samym `dkms remove --all`: drzewo trzyma wpisy dla kerneli,
+# które już odinstalowano ("Missing some built modules"), remove się o nie potyka i zostawia moduł —
+# wtedy postinst znów kończy się "DKMS tree already contains". Dlatego po remove sprawdzamy
+# `dkms status`, a gdy wpis został, czyścimy drzewo ręcznie (to tylko artefakty builda, postinst
+# zbuduje moduł od nowa). Błędy poleceń są logowane, nie połykane.
 fix_apply() {
-    local broken pkg dir name rc=0
+    local broken pkg dir name mod ver out rc=0
     broken=$(_dkms_broken_packages)
     for pkg in $broken; do
         fix_log "pakiet %s nie jest w pełni skonfigurowany — czyszczę drzewo DKMS i dokańczam konfigurację" "$pkg"
         while IFS= read -r dir; do
             name=$(basename "$dir")
-            $SUDO dkms remove "${name%-*}/${name##*-}" --all >/dev/null 2>&1 || true
+            mod="${name%-*}"
+            ver="${name##*-}"
+            out=$($SUDO dkms remove "$mod/$ver" --all 2>&1) \
+                || fix_log "dkms remove %s/%s: %s" "$mod" "$ver" "$(printf '%s' "$out" | tail -n 1)"
+            if [ -n "$($SUDO dkms status "$mod/$ver" 2>/dev/null)" ]; then
+                fix_log "dkms remove zostawił %s/%s w drzewie — czyszczę ręcznie" "$mod" "$ver"
+                _dkms_purge_tree "$mod" "$ver" || fix_log "nieprawidłowa nazwa modułu %s/%s — pomijam" "$mod" "$ver"
+            fi
         done < <(dpkg -L "$pkg" 2>/dev/null | grep -E '^/usr/src/[^/]+$' || true)
 
-        if $SUDO dpkg --configure "$pkg" >/dev/null 2>&1; then
+        if out=$($SUDO dpkg --configure "$pkg" 2>&1); then
             fix_log "%s skonfigurowany" "$pkg"
         else
+            fix_log "dpkg --configure %s: %s" "$pkg" "$(printf '%s' "$out" | tail -n 3 | tr '\n' ' ')"
             fix_log "nie udało się dokończyć konfiguracji %s — sprawdź ręcznie: sudo dpkg --configure %s" "$pkg" "$pkg"
             rc=1
         fi

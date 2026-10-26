@@ -479,7 +479,9 @@ W rejestrze są fixy `dkms` (`fixes.d/010_dkms.sh`), `stale-sources` (`packages/
 i dopisuje martwe repo do `REPOS_DEAD`; zawsze `return 0`. Wymaga od skryptu `$SUDO`, `ok/warn/info` i (opcjonalnie) `REPOS_DEAD`.
 `fixes_refresh_apt_log` robi jeden `apt-get update` do `FIX_APT_UPDATE_LOG` (z niego czyta `apt-gpg`). Kolejność w `{ubuntu,vanilla}/update.sh`:
 `fixes_refresh_apt_log` → `apply_fixes pre-apt` → `update_apt_packages` (Vanilla: wewnątrz `apply_fixes post-update` przed `full-upgrade`) →
-`apply_fixes post-apt`; `vanilla/install.sh`: `apply_fixes post-update` przed `full-upgrade`. Testy: `test/unit/test_fixes_runner.sh`
+`apply_fixes post-apt`; `ubuntu/install.sh`: `fixes_refresh_apt_log` → `apply_fixes pre-apt` → `safe_apt_install` → `apply_fixes post-apt`;
+`vanilla/install.sh`: `fixes_refresh_apt_log` → `pre-apt` → `post-update` (przed `full-upgrade`) → instalacja listy → `post-apt` (bez tego uszkodzony pakiet `*-dkms`
+blokował `apt-get install` w instalatorze). Dispatchery root-owe (`install.sh`, `initial_packages.sh`, `update_packages.sh`) tylko wybierają skrypt systemu — naprawy żyją w `packages/<system>/`. Test pilnujący podpięcia i kolejności: `test/unit/test_fixes_wiring.sh`. Testy: `test/unit/test_fixes_runner.sh`
 (syntetyczne fixy w `mktemp`), `test/unit/test_fixes_apply.sh` (zgoda, raport, `REPOS_DEAD`, odporność na `set -Eeuo pipefail`),
 `test/unit/test_fixes_registry.sh` (lint: metadane, unikalne ID, `fix_detect` bez sudo/sieci/zapisu).
 
@@ -487,7 +489,7 @@ DKMS: fix `dkms` w rejestrze (`packages/commons/fixes.d/010_dkms.sh`, `FIX_PHASE
 root). `fix_detect` (tylko odczyt) wskazuje pakiety `*-dkms` ze statusem `iF/iH/iU/iW/iT` w `dpkg-query` — dodatni dowód;
 `rc`/`un` nie są uszkodzeniem i nie są ruszane; brak `dkms` = `na`. `fix_apply` naprawia pakiety `*-dkms` (np. `v4l2loopback-dkms`:
 `Error! DKMS tree already contains …`): `dkms remove <moduł>/<wersja> --all` dla katalogów `/usr/src` pakietu, potem
-`dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu); `fix_verify` sprawdza, że nic nie zostało w `iF`.
+`dpkg --configure <pkg>` (nie apt — ten sam błąd przy każdym wywołaniu); po `dkms remove` fix sprawdza `dkms status` — gdy wpis został (drzewo trzyma kernele już odinstalowane, `Missing some built modules`), czyści `/var/lib/dkms/<moduł>/<wersja>` i wiszące `kernel-*` ręcznie (`DKMS_TREE_DIR` dla testów); błędy `dkms`/`dpkg` są logowane, nie połykane. `fix_verify` sprawdza, że nic nie zostało w `iF`.
 Fix ma `FIX_PHASE="pre-apt post-apt"`, więc `apply_fixes` woła go przed i po `update_apt_packages` (jedno miejsce zamiast dwóch
 ręcznych wywołań). Bez fałszywych alarmów w monitoringu (`--check` bez roota). Test: `test/unit/test_dkms_fix.sh` (mocki poleceń w PATH).
 

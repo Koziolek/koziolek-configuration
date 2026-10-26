@@ -82,9 +82,22 @@ install_initial_packages() {
     $SUDO apt-get -qq update
     safe_apt_install "${prerequisites[@]}"
     $SUDO add-apt-repository -y universe
-    $SUDO apt-get -qq update
+    # apt-get update z zapisem do logu (czyta go fix apt-gpg), potem naprawy: uszkodzony pakiet *-dkms
+    # zablokowałby apt-get install na swoim postinst.
+    fixes_refresh_apt_log
+    apply_fixes pre-apt
     safe_apt_install "${all_packages[@]}"
+    apply_fixes post-apt
 }
+
+# apply_fixes — rejestr napraw (#144), wspólny z update.sh. Tu fazy pre-apt/post-apt: bez nich uszkodzony
+# pakiet *-dkms (stan iF, np. v4l2loopback-dkms: "DKMS tree already contains") blokuje każdy
+# `apt-get install` (dpkg próbuje go dokończyć przy każdej instalacji). Wymaga ok/warn/info i $SUDO.
+ok()   { printf '✓ %s\n' "$*"; }
+warn() { printf '⚠ %s\n' "$*"; }
+info() { printf '  %s\n' "$*"; }
+# shellcheck source=packages/commons/fixes_apply.sh
+source "$COMMONS_DIR/fixes_apply.sh"
 
 # prepare_workspace — wspólna z install.sh/mac/install.sh/vanilla/install.sh
 # (packages/commons/prepare_workspace.sh).
