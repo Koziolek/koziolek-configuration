@@ -2,7 +2,7 @@
 # Instalacja i aktualizacja narzędzi z listy packages/commons/sdk_tools.sh.
 # Sourcowane, nie wykonywane. Wspólne dla {ubuntu,vanilla,redhat,mac}/{install,update}.sh.
 #
-#   install_sdkman_tools   sdk install <kandydat> dla każdego z SDKMAN_CANDIDATES
+#   install_sdkman_tools   sdk install <kandydat> dla każdego z SDKMAN_TOOLS
 #   update_sdkman_tools    sdk upgrade <kandydat>; brakujący kandydat jest instalowany
 #   install_asdf_tools     plugin add → install → ustawienie wersji w ~/.tool-versions → reshim
 #   update_asdf_tools      to samo + plugin update (wersja `latest` bierze nowe wydanie)
@@ -44,11 +44,13 @@ _sdkman_tools_run() {
     (
         set +eu
         trap - ERR
+        # zrzut listy przed source — sdkman-init.sh nadpisuje własne zmienne (SDKMAN_CANDIDATES itd.)
+        tools=("${SDKMAN_TOOLS[@]}")
         export SDKMAN_DIR="$sdkman_dir"
         # shellcheck source=/dev/null
         source "$init"
         failed=()
-        for candidate in "${SDKMAN_CANDIDATES[@]}"; do
+        for candidate in "${tools[@]}"; do
             if [ "$mode" = update ] && [ -d "$sdkman_dir/candidates/$candidate" ]; then
                 # `sdk upgrade` zwraca niezerowy kod także przy "nic do aktualizacji" — nie jest błędem
                 sdk upgrade "$candidate" || true

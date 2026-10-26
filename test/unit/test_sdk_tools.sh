@@ -6,7 +6,7 @@ SDK_TOOLS_FILE="$PROJECT_ROOT/packages/commons/sdk_tools.sh"
 TEMPLATES_DIR="$PROJECT_ROOT/bash/templates"
 
 setUp() {
-    unset SDKMAN_CANDIDATES ASDF_TOOLS
+    unset SDKMAN_TOOLS ASDF_TOOLS
     # shellcheck source=/dev/null
     . "$SDK_TOOLS_FILE"
 }
@@ -18,12 +18,12 @@ testSourcingHasNoSideEffects() {
 }
 
 testDefinesBothLists() {
-    assertTrue "SDKMAN_CANDIDATES niepusta" "[ ${#SDKMAN_CANDIDATES[@]} -gt 0 ]"
+    assertTrue "SDKMAN_TOOLS niepusta" "[ ${#SDKMAN_TOOLS[@]} -gt 0 ]"
     assertTrue "ASDF_TOOLS niepusta" "[ ${#ASDF_TOOLS[@]} -gt 0 ]"
 }
 
 testContainsCurrentTools() {
-    local joined=" ${SDKMAN_CANDIDATES[*]} "
+    local joined=" ${SDKMAN_TOOLS[*]} "
     assertContains "$joined" " java "
     assertContains "$joined" " maven "
     assertContains "$joined" " mvnd "
@@ -59,10 +59,10 @@ testAsdfListOrderToolchainsBeforeDependents() {
 
 testSdkmanCandidatesAreValidAndUnique() {
     local c dups
-    for c in "${SDKMAN_CANDIDATES[@]}"; do
+    for c in "${SDKMAN_TOOLS[@]}"; do
         assertTrue "poprawna nazwa '$c'" "[[ '$c' =~ ^[a-z0-9][a-z0-9._-]*$ ]]"
     done
-    dups="$(printf '%s\n' "${SDKMAN_CANDIDATES[@]}" | sort | uniq -d)"
+    dups="$(printf '%s\n' "${SDKMAN_TOOLS[@]}" | sort | uniq -d)"
     assertEquals "brak duplikatów sdkman" "" "$dups"
 }
 
@@ -99,7 +99,7 @@ testSdkmanTemplateIsCandidateVersionList() {
 
 testSdkmanTemplateCoversSdkmanCandidates() {
     local c
-    for c in "${SDKMAN_CANDIDATES[@]}"; do
+    for c in "${SDKMAN_TOOLS[@]}"; do
         assertTrue "'$c' w .sdkman.template" "grep -q '^$c=' '$TEMPLATES_DIR/.sdkman.template'"
     done
 }

@@ -535,8 +535,8 @@ skille są wspólne między maszynami. Repo `klaudyna` (`$KLAUDYNA_DIR`, domyśl
 gdy brak; brak dostępu (repo prywatne) = ostrzeżenie i `return 0`. Idempotentne; istniejący prawdziwy
 katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/unit/test_link_claude_skills.sh`.
 
-Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_CANDIDATES` (nazwy dla
-`sdk install`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
+Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_TOOLS` (nazwy dla
+`sdk install`; **nie** `SDKMAN_CANDIDATES` — tak SDKMAN nazywa własną tablicę wszystkich dostępnych kandydatów i `sdkman-init.sh` ją nadpisuje, a pętla zainstalowałaby cały katalog; helper dodatkowo robi zrzut listy przed `source`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
 sdkman `java maven mvnd`, asdf tylko toolchainy: `rust golang ghc cabal` (`ghc` i `cabal` z jednego pluginu ghcup, `sestrella/asdf-ghcup`). Narzędzia nimi instalowane — niżej, `lang_packages.sh` (#172). Dodanie wpisu do listy wystarcza — `*/install.sh` i `*/update.sh` (#167) nie mają już narzędzi wpisanych na sztywno.
 Iterują po niej helpery z `packages/commons/sdk_tools_apply.sh` (sourcowane po `verify_and_run_script.sh` w install, po `calibre_deps.sh` w update; w `mac/update.sh` po `brew_packages.sh`):
 `install_sdkman_tools` / `update_sdkman_tools` (`sdk install`; w update `sdk upgrade` dla zainstalowanych, brakujący jest instalowany; podpowłoka `set +eu` + `trap - ERR`;
