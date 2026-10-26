@@ -128,8 +128,16 @@ _lang_package_install() {
                 _LANG_CABAL_INDEX_REFRESHED=1
                 _lang_run cabal update >/dev/null 2>&1 || true
             fi
-            _lang_run cabal install --install-method=copy --overwrite-policy=always \
-                --installdir="$dir" "$pkg"
+            # Kompilator wskazany wprost: shim `ghc` jest wspólny z pluginem `haskell` (stack), który
+            # wygrywa, gdy ma wersję w ~/.tool-versions — cabal budowałby wtedy ze starym ghc.
+            local ghc_dir
+            ghc_dir="$("${ASDF_BIN:-$HOME/.local/bin/asdf}" where ghc 2>/dev/null)" || ghc_dir=""
+            if [ -z "$ghc_dir" ] || [ ! -x "$ghc_dir/bin/ghc" ]; then
+                echo "⚠️  ghc z asdf niedostępny — nie instaluję $pkg"
+                return 1
+            fi
+            _lang_run cabal install --with-compiler="$ghc_dir/bin/ghc" \
+                --install-method=copy --overwrite-policy=always --installdir="$dir" "$pkg"
             ;;
         *) return 1 ;;
     esac
