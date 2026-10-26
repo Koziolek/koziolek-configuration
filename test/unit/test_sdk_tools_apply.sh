@@ -16,7 +16,7 @@ setUp() {
     unset SDK_FAIL ASDF_FAIL ASDF_NO_SET
     # shellcheck source=/dev/null
     . "$PROJECT_ROOT/packages/commons/sdk_tools_apply.sh"
-    SDKMAN_CANDIDATES=(java maven mvnd)
+    SDKMAN_TOOLS=(java maven mvnd)
     ASDF_TOOLS=("rust|https://example.invalid/asdf-rust.git|latest")
 }
 
@@ -26,7 +26,10 @@ tearDown() {
 
 # Mock SDKMAN-a: `sdk` sięga po niepodane $3 (jak sdkman-install.sh) — pod `set -u` wywaliłoby się od razu.
 _mock_sdkman() {
+    # Prawdziwy sdkman-init.sh wczytuje do SDKMAN_CANDIDATES listę WSZYSTKICH dostępnych kandydatów
+    # (var/candidates) — nasza lista nie może mieć tej nazwy (#174).
     cat > "$SDKMAN_DIR/bin/sdkman-init.sh" <<MOCK
+SDKMAN_CANDIDATES=(activemq ant asciidoctorj bld java maven mvnd quarkus)
 sdk() {
     echo "sdk \$1 \${2:-}" >> "$_LOG"
     : "\$3"
@@ -68,7 +71,7 @@ sdk install mvnd" "$(_calls)"
 
 testSdkmanNewListEntryIsPickedUp() {
     _mock_sdkman
-    SDKMAN_CANDIDATES+=(quarkus)
+    SDKMAN_TOOLS+=(quarkus)
     install_sdkman_tools >/dev/null
     assertContains "$(_calls)" "sdk install quarkus"
 }

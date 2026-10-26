@@ -3,7 +3,9 @@
 # Sourcowane, nie wykonywane — same dane, zero efektów ubocznych przy sourcowaniu.
 # Jedno miejsce prawdy dla {ubuntu,vanilla,redhat,mac}/{install,update}.sh.
 #
-# SDKMAN_CANDIDATES — nazwy kandydatów sdkman (`sdk install <nazwa>`), po jednej na element.
+# SDKMAN_TOOLS — nazwy kandydatów sdkman (`sdk install <nazwa>`), po jednej na element.
+#   Nazwa celowo NIE jest SDKMAN_CANDIDATES: tak nazywa się tablica z listą wszystkich dostępnych
+#   kandydatów, którą nadpisuje sdkman-init.sh — instalowalibyśmy wtedy cały katalog SDKMAN.
 #
 # ASDF_TOOLS — wpisy `nazwa|url pluginu|wersja`:
 #   nazwa        nazwa pluginu asdf (`asdf plugin add <nazwa> <url>`)
@@ -11,7 +13,7 @@
 #   wersja       `latest` albo konkretna wersja (`asdf install <nazwa> <wersja>`)
 # Pola nie mogą zawierać `|`; nazwa i wersja są wymagane.
 
-SDKMAN_CANDIDATES=(
+SDKMAN_TOOLS=(
     java
     maven
     mvnd
