@@ -396,7 +396,7 @@ Instalacja i aktualizacja narzędzi — osobny katalog na system w `packages/` (
 `mac/`), każdy z `install.sh` i `update.sh`, plus `packages/commons/` na rzeczy współdzielone. Zasada: plik używany
 przez jeden system leży w jego katalogu (`redhat/yum_packages.sh`, `mac/brew_packages.sh`,
 `vanilla/fixes.d/`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
-`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
+`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `sdk_tools.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
 `fixes.d/`). Fix dotyczący jednego systemu idzie do `packages/<system>/fixes.d/`, współdzielony do `commons/fixes.d/`.
 
 **`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
@@ -535,6 +535,12 @@ skille są wspólne między maszynami. Repo `klaudyna` (`$KLAUDYNA_DIR`, domyśl
 `~/workspace/tools/klaudyna` — to samo miejsce co `install_lib` w `bash_customs.sh`) klonowane bez promptu,
 gdy brak; brak dostępu (repo prywatne) = ostrzeżenie i `return 0`. Idempotentne; istniejący prawdziwy
 katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/unit/test_link_claude_skills.sh`.
+
+Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_CANDIDATES` (nazwy dla
+`sdk install`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
+sdkman `java maven mvnd`, asdf `rust`. Skrypty `*/install.sh` i `*/update.sh` jeszcze mają te narzędzia wpisane na sztywno — przejście na listę to #167.
+Szablony `bash/templates/.sdkman.template` (odpowiednik `sdk current` z `$HOME`: linie `kandydat=wersja`, format `.sdkmanrc`) i `bash/templates/.tool-versions.template` (kopia `~/.tool-versions`) odzwierciedlają
+konfigurację z `$HOME`; instalatory ich jeszcze nie wdrażają. Test: `test/unit/test_sdk_tools.sh`.
 
 difftastic instaluje się przez `cargo install --locked difftastic` (wszędzie: install + update,
 linux/vanilla/mac). Bez `--locked` cargo dobiera najnowsze zależności semver, które co jakiś czas
