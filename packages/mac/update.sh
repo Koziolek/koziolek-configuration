@@ -14,6 +14,9 @@ minimal_tools=(
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=packages/mac/brew_packages.sh
 source "$SCRIPT_DIR/brew_packages.sh"
+COMMONS_DIR="$SCRIPT_DIR/../commons"
+# shellcheck source=packages/commons/sdk_tools_apply.sh
+source "$COMMONS_DIR/sdk_tools_apply.sh"
 
 all_brew_packages=(
     "${minimal_tools[@]}"
@@ -310,14 +313,9 @@ update_sdkman() {
         sdk selfupdate
     ) || true
 
-    info "Aktualizacja SDK (java, maven, mvnd)..."
+    info "Aktualizacja narzędzi sdkman (lista: packages/commons/sdk_tools.sh)..."
     (
-        set +eu
-        # shellcheck source=/dev/null
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk upgrade java  || true
-        sdk upgrade maven || true
-        sdk upgrade mvnd  || true
+        update_sdkman_tools
     )
     ok "SDKMAN zaktualizowany"
 }
@@ -354,6 +352,7 @@ update_brew_packages
 update_gh
 update_docker
 update_asdf
+update_asdf_tools
 update_difft
 update_sdkman
 update_claude

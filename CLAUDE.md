@@ -396,7 +396,7 @@ Instalacja i aktualizacja narzędzi — osobny katalog na system w `packages/` (
 `mac/`), każdy z `install.sh` i `update.sh`, plus `packages/commons/` na rzeczy współdzielone. Zasada: plik używany
 przez jeden system leży w jego katalogu (`redhat/yum_packages.sh`, `mac/brew_packages.sh`,
 `vanilla/fixes.d/`), używany przez więcej niż jeden — w `commons/` (`apt_packages.sh` dla Debian/Ubuntu/Vanilla,
-`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `sdk_tools.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
+`prepare_workspace.sh`, `verify_and_run_script.sh`, `link_claude_skills.sh`, `git_bug.sh`, `sdk_tools.sh`, `sdk_tools_apply.sh`, `fixes_runner.sh`, `fixes_apply.sh` oraz
 `fixes.d/`). Fix dotyczący jednego systemu idzie do `packages/<system>/fixes.d/`, współdzielony do `commons/fixes.d/`.
 
 **`install.sh`** (root repo) — bootstrap pod `curl … | bash`, dla maszyny bez klonu. Robi **tylko**: `ensure_git` →
@@ -449,10 +449,9 @@ padnie na `u!`. `fix_detect` (tylko odczyt, bez sieci) zgłasza `detected` wył�
 `return 0`, a nieudany download/`dpkg -i` jest teraz `failed` w raporcie (wcześniej cichy). Test: `test/unit/test_sysusers_fix.sh`. Sid jest rolling, a częściowy upgrade zostawiał stare biblioteki przy nowych binarkach
 (htop vs `libunwind8`: `undefined symbol: _Ux86_64_get_elf_filename`).
 
-We wszystkich czterech `*/install.sh`: (1) `set +u` obejmuje `source sdkman-init.sh` **i** wszystkie
-`sdk i …` — wewnętrzny `sdkman-install.sh` sięga po niepodane `$2` (`$2: unbound variable` pod `set -Eeuo
-pipefail`), `set -u` wraca dopiero po ostatnim `sdk`; na Vanilli dodatkowo czyszczone są zmienne proxy przed
-SDKMAN; (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` (symlink na szablon
+We wszystkich czterech `*/install.sh`: (1) `install_sdkman_tools` (commons) robi `source sdkman-init.sh` **i** wszystkie
+`sdk install …` w podpowłoce z `set +eu` — wewnętrzny `sdkman-install.sh` sięga po niepodane argumenty (`unbound variable` pod `set -Eeuo
+pipefail`); na Vanilli dodatkowo czyszczone są zmienne proxy przed SDKMAN (install: w `install_sdkman`, update: w podpowłoce wokół `update_sdkman_tools`); (2) `prepare_bashrc` robi `rm -f ~/.bashrc` + `cp szablon` zamiast `cat szablon > ~/.bashrc` (symlink na szablon
 byłby obcięty przez `>`).
 
 Claude Code: `install_claude` w każdym `*/install.sh` (po `install_gh`) i `update_claude` w
@@ -538,7 +537,14 @@ katalog w `~/.claude/skills` (np. `synced`) zostaje nietknięty. Test: `test/uni
 
 Lista narzędzi sdkman/asdf: `packages/commons/sdk_tools.sh` — same dane, bez efektów ubocznych przy sourcowaniu. `SDKMAN_CANDIDATES` (nazwy dla
 `sdk install`) oraz `ASDF_TOOLS` (wpisy `nazwa|url pluginu|wersja`, url pusty = plugin z rejestru asdf, wersja `latest` lub konkretna). Obecny stan:
-sdkman `java maven mvnd`, asdf `rust`. Skrypty `*/install.sh` i `*/update.sh` jeszcze mają te narzędzia wpisane na sztywno — przejście na listę to #167.
+sdkman `java maven mvnd`, asdf `rust`. Dodanie wpisu do listy wystarcza — `*/install.sh` i `*/update.sh` (#167) nie mają już narzędzi wpisanych na sztywno.
+Iterują po niej helpery z `packages/commons/sdk_tools_apply.sh` (sourcowane po `verify_and_run_script.sh` w install, po `calibre_deps.sh` w update; w `mac/update.sh` po `brew_packages.sh`):
+`install_sdkman_tools` / `update_sdkman_tools` (`sdk install`; w update `sdk upgrade` dla zainstalowanych, brakujący jest instalowany; podpowłoka `set +eu` + `trap - ERR`;
+`SDKMAN_DIR`) oraz `install_asdf_tools` / `update_asdf_tools` (`plugin add` tylko gdy pluginu brak → `install` → `asdf set -u`, a dla asdf < 0.16 `asdf global` → `reshim`;
+update dodatkowo `plugin update`; `ASDF_BIN`). Błąd jednego narzędzia = ostrzeżenie z podsumowaniem, reszta leci dalej; brak SDKMAN-a/asdf = ostrzeżenie; zawsze `return 0`.
+Kolejność w install: `install_asdf` → `install_asdf_tools` → `install_difft` (potrzebuje `cargo` z rust) → `install_sdkman` (woła `install_sdkman_tools`; mac także gdy SDKMAN już jest);
+w update: `update_asdf` → `update_asdf_tools` → `update_difft`, `update_sdkman` woła `update_sdkman_tools` po `sdk selfupdate`.
+Testy: `test/unit/test_sdk_tools_apply.sh` (mocki `sdk` w fałszywym `sdkman-init.sh` i `asdf`), `test/unit/test_sdk_tools_wiring.sh` (podpięcie i kolejność w czterech systemach).
 Szablony `bash/templates/.sdkman.template` (odpowiednik `sdk current` z `$HOME`: linie `kandydat=wersja`, format `.sdkmanrc`) i `bash/templates/.tool-versions.template` (kopia `~/.tool-versions`) odzwierciedlają
 konfigurację z `$HOME`; instalatory ich jeszcze nie wdrażają. Test: `test/unit/test_sdk_tools.sh`.
 

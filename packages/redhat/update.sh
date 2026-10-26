@@ -285,6 +285,8 @@ source "$COMMONS_DIR/git_bug.sh"
 # calibre_install_deps — libxcb-cursor (Qt xcb) przed instalatorem calibre
 # shellcheck source=packages/commons/calibre_deps.sh
 source "$COMMONS_DIR/calibre_deps.sh"
+# shellcheck source=packages/commons/sdk_tools_apply.sh
+source "$COMMONS_DIR/sdk_tools_apply.sh"
 
 update_calibre() {
     echo ""
@@ -367,14 +369,9 @@ update_sdkman() {
         sdk selfupdate
     ) || true
 
-    info "Aktualizacja SDK (java, maven, mvnd)..."
+    info "Aktualizacja narzędzi sdkman (lista: packages/commons/sdk_tools.sh)..."
     (
-        set +eu
-        # shellcheck source=/dev/null
-        source "$HOME/.sdkman/bin/sdkman-init.sh"
-        sdk upgrade java  || true
-        sdk upgrade maven || true
-        sdk upgrade mvnd  || true
+        update_sdkman_tools
     )
     ok "SDKMAN zaktualizowany"
 }
@@ -405,6 +402,7 @@ update_gh
 update_docker
 update_kubectl
 update_asdf
+update_asdf_tools
 update_difft
 update_sdkman
 update_claude

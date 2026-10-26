@@ -14,6 +14,8 @@ COMMONS_DIR="$SCRIPT_DIR/../commons"
 # (packages/commons/verify_and_run_script.sh).
 # shellcheck source=packages/commons/verify_and_run_script.sh
 source "$COMMONS_DIR/verify_and_run_script.sh"
+# shellcheck source=packages/commons/sdk_tools_apply.sh
+source "$COMMONS_DIR/sdk_tools_apply.sh"
 
 install_homebrew() {
     if command -v brew >/dev/null 2>&1; then
@@ -99,7 +101,7 @@ install_asdf() {
     echo "✓ asdf $latest_tag zainstalowany w $HOME/.local/bin/"
 }
 
-install_rust_and_difft() {
+install_difft() {
     if command -v difft &>/dev/null; then
         echo "✓ difftastic już zainstalowany: $(difft --version)"
         return 0
@@ -111,12 +113,8 @@ install_rust_and_difft() {
         return 1
     fi
 
-    "$asdf_bin" plugin add rust https://github.com/asdf-community/asdf-rust.git 2>/dev/null || true
-    "$asdf_bin" install rust latest
-    "$asdf_bin" global rust latest
-
     local cargo_bin
-    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null)
+    cargo_bin=$("$asdf_bin" which cargo 2>/dev/null || true)
     [ -z "$cargo_bin" ] && { echo "Błąd: cargo niedostępne"; return 1; }
 
     # --locked: użyj Cargo.lock difftastica (inaczej nowsze zależności wymuszają
@@ -128,23 +126,13 @@ install_rust_and_difft() {
 install_sdkman() {
     if [ -d "$HOME/.sdkman" ]; then
         echo "✓ SDKMAN już zainstalowany"
+        install_sdkman_tools
         return 0
     fi
     # get.sdkman.io nie jest statycznym plikiem w repo (dynamiczny endpoint SDKMAN),
     # więc nie ma oficjalnej sumy kontrolnej do zweryfikowania — zawsze zapyta.
     verify_and_run_script "instalator SDKMAN" "https://get.sdkman.io" || return 1
-    # SDKMAN nie jest pisany pod `set -u` — jego wewnętrzne skrypty (np.
-    # sdkman-install.sh, wołane przy PIERWSZEJ instalacji kandydata) odwołują
-    # się do niepodanych argumentów pozycyjnych, co pod naszym
-    # `set -Eeuo pipefail` wywala "$2: unbound variable". `set -u` musi więc
-    # zostać wyłączone na czas WSZYSTKICH wywołań `sdk`, nie tylko source.
-    set +u
-    # shellcheck source=/dev/null
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
-    sdk install java
-    sdk install maven
-    sdk install mvnd
-    set -u
+    install_sdkman_tools
 }
 
 install_claude() {
@@ -219,7 +207,8 @@ install_brew_packages "${diag_tools[@]}"
 
 prepare_workspace
 install_asdf
-install_rust_and_difft
+install_asdf_tools
+install_difft
 install_sdkman
 install_gh
 install_claude
