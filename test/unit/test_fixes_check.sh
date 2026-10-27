@@ -11,7 +11,7 @@ setUp() {
     _REG="$_TMP/reg"
     _MARK="$_TMP/applied"
     mkdir -p "$_REG"
-    : > "$_MARK"
+    : >"$_MARK"
     export FIXES_DIRS="$_REG" FIXES_SUDO='' MARK="$_MARK"
     unset FIXES_CONTEXT CONFIG_CONTEXT CONFIG_CONTEXT_FORCE
 }
@@ -21,7 +21,7 @@ tearDown() { rm -rf "$_TMP"; }
 # _mkfix <plik> <id> <fazy> <ryzyko> <kod-detect>
 _mkfix() {
     printf 'FIX_ID=%s\nFIX_DESC="opis %s"\nFIX_PHASE=%q\nFIX_CONTEXTS=all\nFIX_NEEDS_ROOT=0\nFIX_RISK=%s\nfix_detect() { return %s; }\nfix_apply() { echo "%s" >> "$MARK"; }\n' \
-        "$2" "$2" "$3" "$4" "$5" "$2" > "$_REG/$1.sh"
+        "$2" "$2" "$3" "$4" "$5" "$2" >"$_REG/$1.sh"
 }
 # Jak z crona: sourcowanie, potem funkcja; wynik = wyjście, kod w ostatniej linii.
 _check() {
@@ -98,7 +98,8 @@ testBadArgumentReturnsTwo() {
 testRunsDirectly() {
     _mkfix 010_a a pre-apt low 0
     local out rc
-    out="$(bash "$CHECK" pre-apt 2>/dev/null </dev/null)"; rc=$?
+    out="$(bash "$CHECK" pre-apt 2>/dev/null </dev/null)"
+    rc=$?
     assertEquals "kod 10 wprost" 10 "$rc"
     assertContains "raport" "$out" $'a\tdetected\t'
 }
@@ -106,29 +107,40 @@ testRunsDirectly() {
 testWorksWithoutConfigContextLikeCron() {
     _mkfix 010_a a pre-apt low 1
     local out rc
-    out="$(env -i PATH="$PATH" HOME="$_TMP" FIXES_DIRS="$_REG" MARK="$_MARK" bash "$CHECK" 2>/dev/null </dev/null)"; rc=$?
+    out="$(env -i PATH="$PATH" HOME="$_TMP" FIXES_DIRS="$_REG" MARK="$_MARK" bash "$CHECK" 2>/dev/null </dev/null)"
+    rc=$?
     assertEquals "kod 0 bez CONFIG_CONTEXT" 0 "$rc"
     assertContains "raport" "$out" $'a\tok\t'
 }
 
 testDirsIncludeSystemRegistry() {
     local dirs
-    dirs="$(unset FIXES_DIRS; CONFIG_CONTEXT_FORCE=vanilla bash -c '. "$1"; fixes_check_dirs' _ "$CHECK")"
+    dirs="$(
+        unset FIXES_DIRS
+        CONFIG_CONTEXT_FORCE=vanilla bash -c '. "$1"; fixes_check_dirs' _ "$CHECK"
+    )"
     assertContains "commons" "$dirs" "packages/commons/fixes.d"
     assertContains "vanilla" "$dirs" "packages/vanilla/fixes.d"
 }
 
 testDirsWithoutSystemRegistryAreCommonsOnly() {
     local dirs
-    dirs="$(unset FIXES_DIRS; CONFIG_CONTEXT_FORCE=ubuntu bash -c '. "$1"; fixes_check_dirs' _ "$CHECK")"
+    dirs="$(
+        unset FIXES_DIRS
+        CONFIG_CONTEXT_FORCE=ubuntu bash -c '. "$1"; fixes_check_dirs' _ "$CHECK"
+    )"
     assertContains "commons" "$dirs" "packages/commons/fixes.d"
     assertNotContains "bez vanilla" "$dirs" "vanilla"
 }
 
 testRealRegistryCheckNeverFailsHard() {
     local out rc
-    out="$(unset FIXES_DIRS; env -i PATH="$PATH" HOME="$_TMP" bash "$CHECK" 2>/dev/null </dev/null)"; rc=$?
-    case "$rc" in 0|10|11|12) rc=ok ;; esac
+    out="$(
+        unset FIXES_DIRS
+        env -i PATH="$PATH" HOME="$_TMP" bash "$CHECK" 2>/dev/null </dev/null
+    )"
+    rc=$?
+    case "$rc" in 0 | 10 | 11 | 12) rc=ok ;; esac
     assertEquals "kod z zestawu 0/10/11/12" ok "$rc"
 }
 

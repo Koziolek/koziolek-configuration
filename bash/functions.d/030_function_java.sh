@@ -1,47 +1,46 @@
 #!/usr/bin/env bash
 
-
 # Wersje Linux (/proc/sys/kernel). macOS cieniuje w bash/contexts/darwin.sh.
 function turn_async_profiler_on() {
-  make_me_sudo
-  $SUDO sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
-  $SUDO sh -c 'echo 0 > /proc/sys/kernel/kptr_restrict'
-  unmake_me_sudo
+    make_me_sudo
+    $SUDO sh -c 'echo 1 > /proc/sys/kernel/perf_event_paranoid'
+    $SUDO sh -c 'echo 0 > /proc/sys/kernel/kptr_restrict'
+    unmake_me_sudo
 }
 
 function turn_async_profiler_off() {
-  make_me_sudo
-  $SUDO sh -c 'echo 4 > /proc/sys/kernel/perf_event_paranoid'
-  $SUDO sh -c 'echo 1 > /proc/sys/kernel/kptr_restrict'
-  unmake_me_sudo
+    make_me_sudo
+    $SUDO sh -c 'echo 4 > /proc/sys/kernel/perf_event_paranoid'
+    $SUDO sh -c 'echo 1 > /proc/sys/kernel/kptr_restrict'
+    unmake_me_sudo
 }
 
 function java_clear() {
-  local target_dir="${1:-.}"
+    local target_dir="${1:-.}"
 
-  if ! command -v fdfind &>/dev/null; then
-    log_error java.clear_no_fdfind
-    return 1
-  fi
-
-  while IFS= read -r build_file; do
-    local dir
-    dir="$(dirname "$build_file")"
-    local filename
-    filename="$(basename "$build_file")"
-
-    if [[ "$filename" == "pom.xml" ]]; then
-      log_info java.clear_mvn "$dir"
-      (cd "$dir" && mvn clean)
-    elif [[ "$filename" == "build.gradle" || "$filename" == "build.gradle.kts" ]]; then
-      log_info java.clear_gradle "$dir"
-      if [[ -f "$dir/gradlew" ]]; then
-        (cd "$dir" && ./gradlew clean)
-      else
-        (cd "$dir" && gradle clean)
-      fi
+    if ! command -v fdfind &>/dev/null; then
+        log_error java.clear_no_fdfind
+        return 1
     fi
-  done < <(fdfind -t f '(pom\.xml|build\.gradle(\.kts)?)' "$target_dir")
+
+    while IFS= read -r build_file; do
+        local dir
+        dir="$(dirname "$build_file")"
+        local filename
+        filename="$(basename "$build_file")"
+
+        if [[ "$filename" == "pom.xml" ]]; then
+            log_info java.clear_mvn "$dir"
+            (cd "$dir" && mvn clean)
+        elif [[ "$filename" == "build.gradle" || "$filename" == "build.gradle.kts" ]]; then
+            log_info java.clear_gradle "$dir"
+            if [[ -f "$dir/gradlew" ]]; then
+                (cd "$dir" && ./gradlew clean)
+            else
+                (cd "$dir" && gradle clean)
+            fi
+        fi
+    done < <(fdfind -t f '(pom\.xml|build\.gradle(\.kts)?)' "$target_dir")
 }
 
 export -f turn_async_profiler_on

@@ -14,12 +14,12 @@ setUp() {
     _BIN="$_TMP/bin"
     _LOG="$_TMP/calls.log"
     mkdir -p "$_BIN" "$_TMP/sources" "$_TMP/keyrings"
-    : > "$_LOG"
+    : >"$_LOG"
     local t p
     for t in bash awk grep tr head basename dirname mktemp sort cut rm cat id timeout; do
         p="$(builtin command -v "$t" 2>/dev/null)" && [ -n "$p" ] && ln -s "$p" "$_BIN/$t"
     done
-    printf '#!%s\necho "APT $*" >> "$STALE_LOG"\n' "$_BIN/bash" > "$_BIN/apt-get"
+    printf '#!%s\necho "APT $*" >> "$STALE_LOG"\n' "$_BIN/bash" >"$_BIN/apt-get"
     chmod +x "$_BIN/apt-get"
     export STALE_LOG="$_LOG" FIX_APT_SOURCES_DIR="$_TMP/sources" FIX_APT_KEYRINGS_DIR="$_TMP/keyrings"
     export FIXES_SUDO='' FIXES_CONTEXT=vanilla
@@ -29,8 +29,14 @@ setUp() {
 
 tearDown() { rm -rf "$_TMP"; }
 
-_mock_docker() { printf '#!%s\n' "$_BIN/bash" > "$_BIN/docker"; chmod +x "$_BIN/docker"; }
-_stale() { : > "$_TMP/sources/docker.list"; : > "$_TMP/keyrings/docker.gpg"; }
+_mock_docker() {
+    printf '#!%s\n' "$_BIN/bash" >"$_BIN/docker"
+    chmod +x "$_BIN/docker"
+}
+_stale() {
+    : >"$_TMP/sources/docker.list"
+    : >"$_TMP/keyrings/docker.gpg"
+}
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
 # apply_fixes z odpowiedzią $1 na pytanie o zgodę; helpery ok/warn/info jak w update.sh
 _wrap() {
@@ -54,7 +60,8 @@ testDockerInstalledMeansOkEvenWithList() {
 }
 
 testListWithoutDockerIsDetectedAndCheckTouchesNothing() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out rc=0
     out="$(_run all --only stale-sources --check --format tsv)" || rc=$?
     assertEquals "kod --check" 10 "$rc"
@@ -64,7 +71,8 @@ testListWithoutDockerIsDetectedAndCheckTouchesNothing() {
 }
 
 testApplyWithoutAllowHighIsSkipped() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(_run all --only stale-sources --format tsv)"
     assertContains "skipped" "$out" "stale-sources	skipped"
@@ -73,7 +81,8 @@ testApplyWithoutAllowHighIsSkipped() {
 }
 
 testApplyWithAllowHighRemovesListAndKeyring() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(_run all --only stale-sources --allow-high --format tsv)"
     assertContains "fixed" "$out" "stale-sources	fixed"
@@ -83,7 +92,8 @@ testApplyWithAllowHighRemovesListAndKeyring() {
 }
 
 testOtherContextIsNotApplicable() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(FIXES_CONTEXT=ubuntu _run all --only stale-sources --check --format tsv)"
     assertNotContains "nie dotyczy ubuntu" "$out" "stale-sources"
@@ -96,7 +106,8 @@ testApplyFixesNothingToDo() {
 }
 
 testApplyFixesRemovesAfterConsent() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(_wrap y)"
     assertContains "ok po usunięciu" "$out" "OK [stale-sources] naprawiono"
@@ -104,7 +115,8 @@ testApplyFixesRemovesAfterConsent() {
 }
 
 testApplyFixesKeepsFilesWithoutConsent() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(_wrap n)"
     assertContains "pominięto" "$out" "INFO [stale-sources] pominięto (brak zgody)"
@@ -112,7 +124,8 @@ testApplyFixesKeepsFilesWithoutConsent() {
 }
 
 testApplyFixesDefaultsToNoWithoutInput() {
-    _stale; rm "$_BIN/docker"
+    _stale
+    rm "$_BIN/docker"
     local out
     out="$(_wrap '')"
     assertTrue "docker.list zostaje przy EOF" "[ -f '$_TMP/sources/docker.list' ]"

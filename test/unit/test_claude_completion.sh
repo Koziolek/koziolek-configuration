@@ -15,7 +15,7 @@ _TOOLS=''
 oneTimeSetUp() {
     _TMP="$(mktemp -d)"
     mkdir -p "$_TMP/bin" "$_TMP/home"
-    printf '#!/bin/sh\nexit 0\n' > "$_TMP/bin/mvn"
+    printf '#!/bin/sh\nexit 0\n' >"$_TMP/bin/mvn"
     cp "$_TMP/bin/mvn" "$_TMP/bin/mvnd"
     chmod +x "$_TMP/bin/mvn" "$_TMP/bin/mvnd"
 }
@@ -35,7 +35,7 @@ _source_completion() {
 
 _make_stub_repo() {
     mkdir -p "$_TOOLS/claude-bash-completion"
-    cat > "$_TOOLS/claude-bash-completion/$CLAUDE_COMP_FILE" <<'STUB'
+    cat >"$_TOOLS/claude-bash-completion/$CLAUDE_COMP_FILE" <<'STUB'
 _claude_stub_completion() { COMPREPLY=(); }
 complete -o default -F _claude_stub_completion claude
 STUB
@@ -52,7 +52,8 @@ testRegistersClaudeCompletionWhenRepoPresent() {
 
 testNoClaudeCompletionWhenRepoMissing() {
     local out rc
-    out="$(_source_completion)"; rc=$?
+    out="$(_source_completion)"
+    rc=$?
     assertEquals "brak klonu nie może wywalić ładowania" 0 "$rc"
     assertEquals "brak rejestracji bez klonu" "" "$out"
 }

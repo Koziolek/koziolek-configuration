@@ -27,7 +27,7 @@ oneTimeTearDown() {
 }
 
 setUp() {
-    : > "$_GIT_LOG"
+    : >"$_GIT_LOG"
     unset _LS_REMOTE_RC
     # shellcheck source=/dev/null
     . "$PROJECT_ROOT/bash/functions.d/095_function_misc.sh"
@@ -35,7 +35,7 @@ setUp() {
     # Mock git — loguje wywołania zamiast wykonywać. `ls-remote` zwraca kod
     # sterowany $_LS_REMOTE_RC (domyślnie sukces) — do testów flagi -p.
     git() {
-        echo "GIT $*" >> "$_GIT_LOG"
+        echo "GIT $*" >>"$_GIT_LOG"
         [ "$1" = "ls-remote" ] && return "${_LS_REMOTE_RC:-0}"
         return 0
     }
@@ -56,7 +56,7 @@ testFastPathSkipsCloneWhenDirExists() {
 
 testFastPathNoSourceWithoutXFlag() {
     mkdir -p "$_FAKE_TOOLS/mylib"
-    echo 'SOURCED_MARKER=yes' > "$_FAKE_TOOLS/mylib/init.sh"
+    echo 'SOURCED_MARKER=yes' >"$_FAKE_TOOLS/mylib/init.sh"
     unset SOURCED_MARKER
     install_lib -r "https://example.com/mylib.git" -t "mylib" -e "init.sh" >/dev/null 2>&1
     assertNull 'bez -x plik nie powinien być sourcowany' "${SOURCED_MARKER:-}"
@@ -65,7 +65,7 @@ testFastPathNoSourceWithoutXFlag() {
 
 testFastPathSourcesFileWhenXFlagSet() {
     mkdir -p "$_FAKE_TOOLS/mylib"
-    echo 'SOURCED_MARKER=yes' > "$_FAKE_TOOLS/mylib/init.sh"
+    echo 'SOURCED_MARKER=yes' >"$_FAKE_TOOLS/mylib/init.sh"
     unset SOURCED_MARKER
     install_lib -r "https://example.com/mylib.git" -t "mylib" -e "init.sh" -x >/dev/null 2>&1
     assertEquals 'z -x plik powinien być sourcowany' 'yes' "${SOURCED_MARKER:-}"

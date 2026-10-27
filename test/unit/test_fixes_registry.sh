@@ -10,7 +10,7 @@ tearDown() { rm -rf "$_TMP"; }
 _lint() { bash -c '. "$1"; shift; fixes_lint "$@"' _ "$RUNNER" "$@" 2>&1; }
 
 _valid_fix() {
-    cat > "$1" <<FIX
+    cat >"$1" <<FIX
 FIX_ID=${2:-ok-fix}
 FIX_DESC="opis"
 FIX_PHASE="pre-apt"
@@ -56,8 +56,9 @@ testDuplicateIdIsReported() {
 }
 
 testMissingFunctionsAndBadMetadataAreReported() {
-    printf 'FIX_ID=nodetect\nFIX_DESC=x\nFIX_PHASE=pre-apt\nFIX_CONTEXTS=all\nFIX_NEEDS_ROOT=0\nFIX_RISK=low\nfix_apply() { :; }\n' > "$_TMP/010_a.sh"
-    _valid_fix "$_TMP/020_b.sh" badphase; sed -i 's/pre-apt/sometime/' "$_TMP/020_b.sh"
+    printf 'FIX_ID=nodetect\nFIX_DESC=x\nFIX_PHASE=pre-apt\nFIX_CONTEXTS=all\nFIX_NEEDS_ROOT=0\nFIX_RISK=low\nfix_apply() { :; }\n' >"$_TMP/010_a.sh"
+    _valid_fix "$_TMP/020_b.sh" badphase
+    sed -i 's/pre-apt/sometime/' "$_TMP/020_b.sh"
     _valid_fix "$_TMP/030_c.sh" BadId
     local out rc=0
     out="$(_lint "$_TMP")" || rc=$?

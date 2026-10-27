@@ -19,7 +19,7 @@ _BIN=''
 oneTimeSetUp() {
     _BIN="$(mktemp -d)"
 
-    cat > "$_BIN/dmidecode" <<'MOCK'
+    cat >"$_BIN/dmidecode" <<'MOCK'
 #!/bin/sh
 case "$2" in
   processor)
@@ -80,7 +80,7 @@ esac
 MOCK
     chmod +x "$_BIN/dmidecode"
 
-    cat > "$_BIN/lspci" <<'MOCK'
+    cat >"$_BIN/lspci" <<'MOCK'
 #!/bin/sh
 echo "01:00.0 VGA compatible controller: NVIDIA Corporation Device 2684"
 echo "00:02.0 Ethernet controller: Intel Corporation Device 15f3"
@@ -190,7 +190,7 @@ testRunDiagnosticInvokesScriptWithArgs() {
     local fake_tools out
     fake_tools="$(mktemp -d)"
     mkdir -p "$fake_tools/fix-comp"
-    cat > "$fake_tools/fix-comp/pre-analyze.sh" <<'EOF'
+    cat >"$fake_tools/fix-comp/pre-analyze.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "CALLED_WITH:$*"
 EOF
@@ -209,7 +209,7 @@ testRunDiagnosticPropagatesExitCode() {
     local fake_tools rc=0
     fake_tools="$(mktemp -d)"
     mkdir -p "$fake_tools/fix-comp"
-    printf '#!/usr/bin/env bash\nexit 3\n' > "$fake_tools/fix-comp/pre-analyze.sh"
+    printf '#!/usr/bin/env bash\nexit 3\n' >"$fake_tools/fix-comp/pre-analyze.sh"
     chmod +x "$fake_tools/fix-comp/pre-analyze.sh"
 
     WORKSPACE_TOOLS="$fake_tools" bash --norc --noprofile -c "

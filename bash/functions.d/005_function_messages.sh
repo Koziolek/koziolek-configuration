@@ -29,38 +29,38 @@ export _MESSAGES_DIR_DEFAULT
 # Wybrany język (dwuliterowy kod): MESSAGES_LANG > LC_ALL > LC_MESSAGES > LANG; C/POSIX/puste → domyślny.
 # Usage: messages_lang
 function messages_lang() {
-  local raw="${MESSAGES_LANG:-${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}}"
-  raw="${raw%%[._@:]*}"   # pl_PL.UTF-8 → pl, en_GB → en
-  raw="${raw%%_*}"
-  raw="${raw,,}"
-  case "$raw" in
-  "" | c | posix) raw="$MESSAGES_DEFAULT_LANG" ;;
-  esac
-  echo "$raw"
+    local raw="${MESSAGES_LANG:-${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}}"
+    raw="${raw%%[._@:]*}" # pl_PL.UTF-8 → pl, en_GB → en
+    raw="${raw%%_*}"
+    raw="${raw,,}"
+    case "$raw" in
+    "" | c | posix) raw="$MESSAGES_DEFAULT_LANG" ;;
+    esac
+    echo "$raw"
 }
 
 # (Prze)ładuje tablice komunikatów dla bieżącego języka.
 # Usage: messages_load
 function messages_load() {
-  local dir="${MESSAGES_DIR:-${_MESSAGES_DIR_DEFAULT:-${BASH_CONFIGURATION_DIR:+$BASH_CONFIGURATION_DIR/messages}}}"
-  local lang
-  lang=$(messages_lang)
+    local dir="${MESSAGES_DIR:-${_MESSAGES_DIR_DEFAULT:-${BASH_CONFIGURATION_DIR:+$BASH_CONFIGURATION_DIR/messages}}}"
+    local lang
+    lang=$(messages_lang)
 
-  declare -gA MSG_DEBUG MSG_INFO MSG_WARN MSG_ERROR MSG_MAN
-  MSG_DEBUG=() MSG_INFO=() MSG_WARN=() MSG_ERROR=() MSG_MAN=()
+    declare -gA MSG_DEBUG MSG_INFO MSG_WARN MSG_ERROR MSG_MAN
+    MSG_DEBUG=() MSG_INFO=() MSG_WARN=() MSG_ERROR=() MSG_MAN=()
 
-  # shellcheck source=/dev/null
-  [ -f "$dir/messages.${MESSAGES_DEFAULT_LANG}.sh" ] && . "$dir/messages.${MESSAGES_DEFAULT_LANG}.sh"
-  if [ "$lang" != "$MESSAGES_DEFAULT_LANG" ] && [ -f "$dir/messages.${lang}.sh" ]; then
     # shellcheck source=/dev/null
-    . "$dir/messages.${lang}.sh"
-  fi
-  MESSAGES_LOADED_LANG="$lang"
-  MESSAGES_LOADED=1
+    [ -f "$dir/messages.${MESSAGES_DEFAULT_LANG}.sh" ] && . "$dir/messages.${MESSAGES_DEFAULT_LANG}.sh"
+    if [ "$lang" != "$MESSAGES_DEFAULT_LANG" ] && [ -f "$dir/messages.${lang}.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$dir/messages.${lang}.sh"
+    fi
+    MESSAGES_LOADED_LANG="$lang"
+    MESSAGES_LOADED=1
 }
 
 function messages_ensure_loaded() {
-  [ "${MESSAGES_LOADED:-}" = 1 ] || messages_load
+    [ "${MESSAGES_LOADED:-}" = 1 ] || messages_load
 }
 
 export -f messages_lang

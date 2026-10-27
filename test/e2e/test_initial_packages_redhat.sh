@@ -12,13 +12,19 @@ TIMESTAMP="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"
 LOG="$RESULTS_DIR/e2e-initial-packages-redhat.log"
 
 mkdir -p "$RESULTS_DIR"
-: > "$LOG"
+: >"$LOG"
 
 PASS=0
 FAIL=0
 
-_pass() { printf "  ✓ %s\n" "$1"; (( PASS++ )) || true; }
-_fail() { printf "  ✗ %s\n" "$1"; (( FAIL++ )) || true; }
+_pass() {
+    printf "  ✓ %s\n" "$1"
+    ((PASS++)) || true
+}
+_fail() {
+    printf "  ✗ %s\n" "$1"
+    ((FAIL++)) || true
+}
 
 _assert_log_contains() {
     local desc="$1" pattern="$2"
@@ -38,10 +44,10 @@ echo "======================================="
 echo ""
 echo "▶ Budowanie obrazu $E2E_REDHAT_IMAGE..."
 if ! DOCKER_BUILDKIT=0 docker build \
-        --network="${DOCKER_NETWORK:-koziolek-test-net}" \
-        -f "$PROJECT_ROOT/test/Dockerfile-e2e-redhat" \
-        -t "$E2E_REDHAT_IMAGE" \
-        "$PROJECT_ROOT" >> "$LOG" 2>&1; then
+    --network="${DOCKER_NETWORK:-koziolek-test-net}" \
+    -f "$PROJECT_ROOT/test/Dockerfile-e2e-redhat" \
+    -t "$E2E_REDHAT_IMAGE" \
+    "$PROJECT_ROOT" >>"$LOG" 2>&1; then
     echo "  ✗ docker build nieudany — przerwanie"
     echo "  Log: $LOG"
     exit 1
@@ -57,7 +63,7 @@ docker run --rm \
     -e INIT_SCRIPT=/packages/redhat/install.sh \
     -v "$PROJECT_ROOT/test/e2e/entrypoint-test.sh:/entrypoint-test.sh:ro" \
     "$E2E_REDHAT_IMAGE" \
-    bash /entrypoint-test.sh >> "$LOG" 2>&1
+    bash /entrypoint-test.sh >>"$LOG" 2>&1
 CONTAINER_EXIT=$?
 
 # --- Weryfikacja ---

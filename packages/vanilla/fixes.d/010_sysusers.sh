@@ -67,13 +67,22 @@ fix_apply() {
     local sysusers_bin owner_pkg tmp_dir rc=0
     sysusers_bin=$(command -v systemd-sysusers 2>/dev/null) || return 1
     owner_pkg=$(dpkg -S "$sysusers_bin" 2>/dev/null | cut -d: -f1 | head -n1)
-    [ -n "$owner_pkg" ] || { fix_log "nie ustalono pakietu właściciela %s" "$sysusers_bin"; return 1; }
+    [ -n "$owner_pkg" ] || {
+        fix_log "nie ustalono pakietu właściciela %s" "$sysusers_bin"
+        return 1
+    }
 
     tmp_dir=$(mktemp -d) || return 1
     (
         cd "$tmp_dir" || exit 1
-        $SUDO apt-get download "$owner_pkg" >/dev/null 2>&1 || { fix_log "apt-get download %s nie powiodło się" "$owner_pkg"; exit 1; }
-        $SUDO dpkg -i "${owner_pkg}"_*.deb >/dev/null 2>&1 || { fix_log "dpkg -i %s nie powiodło się" "$owner_pkg"; exit 1; }
+        $SUDO apt-get download "$owner_pkg" >/dev/null 2>&1 || {
+            fix_log "apt-get download %s nie powiodło się" "$owner_pkg"
+            exit 1
+        }
+        $SUDO dpkg -i "${owner_pkg}"_*.deb >/dev/null 2>&1 || {
+            fix_log "dpkg -i %s nie powiodło się" "$owner_pkg"
+            exit 1
+        }
     ) || rc=1
     rm -rf "$tmp_dir"
     return $rc

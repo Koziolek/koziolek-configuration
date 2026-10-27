@@ -144,10 +144,11 @@ testBothFlagsMeanBoth() {
     assertNotContains "$(_linthis_args)" "--format-only"
 }
 
-testAlwaysShellLintOnlyNoSavedResults() {
+testAlwaysShellLintOnlySavesResults() {
     : >"$_TMP/f.sh"
     _run --check "$_TMP/f.sh"
-    assertContains "$(_linthis_args)" "--lang shell --checks lint --no-save-result"
+    assertContains "$(_linthis_args)" "--lang shell --checks lint"
+    assertNotContains "$(_linthis_args)" "--no-save-result"
 }
 
 testExplicitFilesBecomeIncludes() {

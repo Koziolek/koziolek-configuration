@@ -38,8 +38,8 @@
 _jar_pkcs11_check_deps() {
     local missing=()
     command -v pkcs11-tool &>/dev/null || missing+=("pkcs11-tool (opensc)")
-    command -v jarsigner   &>/dev/null || missing+=("jarsigner (JDK)")
-    command -v keytool     &>/dev/null || missing+=("keytool (JDK)")
+    command -v jarsigner &>/dev/null || missing+=("jarsigner (JDK)")
+    command -v keytool &>/dev/null || missing+=("keytool (JDK)")
     if [ "${#missing[@]}" -gt 0 ]; then
         log_error maven_signing.jar_missing_dependencies "${missing[*]}"
         log_info maven_signing.jar_linux_apt_yum_install_opensc
@@ -49,7 +49,7 @@ _jar_pkcs11_check_deps() {
 }
 
 _jar_pkcs11_config_dir() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing"; }
-_jar_pkcs11_cfg_path()   { echo "$(_jar_pkcs11_config_dir)/pkcs11.cfg"; }
+_jar_pkcs11_cfg_path() { echo "$(_jar_pkcs11_config_dir)/pkcs11.cfg"; }
 
 # Szuka opensc-pkcs11.so po znanych ścieżkach. Override: $JAR_PKCS11_MODULE.
 _jar_pkcs11_module_path() {
@@ -144,7 +144,7 @@ function jar_pkcs11_setup() {
     cfg=$(_jar_pkcs11_cfg_path)
     mkdir -p "$cfg_dir"
     chmod 700 "$cfg_dir"
-    printf 'name=OpenSC-PIV\nlibrary=%s\n' "$module" > "$cfg"
+    printf 'name=OpenSC-PIV\nlibrary=%s\n' "$module" >"$cfg"
     chmod 600 "$cfg"
 
     log_info maven_signing.jar_pkcs11_configured_module_alias "$cfg" "$module" "$alias"
@@ -159,7 +159,10 @@ function jar_pkcs11_test() {
     _jar_pkcs11_check_deps || return 1
     local cfg alias tmp jar
     cfg=$(_jar_pkcs11_cfg_path)
-    [ -f "$cfg" ] || { log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"; return 1; }
+    [ -f "$cfg" ] || {
+        log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"
+        return 1
+    }
     alias="${JAR_PKCS11_ALIAS:-}"
     if [ -z "$alias" ]; then
         alias=$(_jar_pkcs11_detect_alias "$(_jar_pkcs11_module_path)") || return 1
@@ -167,8 +170,12 @@ function jar_pkcs11_test() {
 
     tmp=$(mktemp -d) || return 1
     jar="$tmp/jar_pkcs11_test.jar"
-    echo "jar_pkcs11_test $(date +%s)" > "$tmp/marker.txt"
-    ( cd "$tmp" && jar cf "$(basename "$jar")" marker.txt ) || { rm -rf "$tmp"; log_error maven_signing.jar_failed_to_build_the_test; return 1; }
+    echo "jar_pkcs11_test $(date +%s)" >"$tmp/marker.txt"
+    (cd "$tmp" && jar cf "$(basename "$jar")" marker.txt) || {
+        rm -rf "$tmp"
+        log_error maven_signing.jar_failed_to_build_the_test
+        return 1
+    }
 
     log_info maven_signing.jar_test_signature_of_with_alias "$jar" "$alias"
     local rc=0
@@ -200,20 +207,34 @@ function jar_sign() {
     local list=0 alias="" jar="" cfg
     while [ $# -gt 0 ]; do
         case "$1" in
-            -l|--list) list=1; shift ;;
-            -k|--key)
-                [ -n "${2:-}" ] || { log_error maven_signing.jar_sign_requires_an_argument "$1"; return 1; }
-                alias="$2"; shift 2 ;;
-            -h|--help)
-                log_info maven_signing.usage_jar_sign_l_list_k
-                return 0 ;;
-            --) shift; break ;;
-            -*)
-                log_error maven_signing.jar_sign_unknown_option "$1"
-                return 1 ;;
-            *)
-                if [ -z "$jar" ]; then jar="$1"; else [ -z "$alias" ] && alias="$1"; fi
-                shift ;;
+        -l | --list)
+            list=1
+            shift
+            ;;
+        -k | --key)
+            [ -n "${2:-}" ] || {
+                log_error maven_signing.jar_sign_requires_an_argument "$1"
+                return 1
+            }
+            alias="$2"
+            shift 2
+            ;;
+        -h | --help)
+            log_info maven_signing.usage_jar_sign_l_list_k
+            return 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            log_error maven_signing.jar_sign_unknown_option "$1"
+            return 1
+            ;;
+        *)
+            if [ -z "$jar" ]; then jar="$1"; else [ -z "$alias" ] && alias="$1"; fi
+            shift
+            ;;
         esac
     done
 
@@ -228,9 +249,15 @@ function jar_sign() {
         log_error maven_signing.usage_jar_sign_l_list_k_2
         return 1
     fi
-    [ -f "$jar" ] || { log_error maven_signing.jar_missing_file "$jar"; return 1; }
+    [ -f "$jar" ] || {
+        log_error maven_signing.jar_missing_file "$jar"
+        return 1
+    }
     cfg=$(_jar_pkcs11_cfg_path)
-    [ -f "$cfg" ] || { log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"; return 1; }
+    [ -f "$cfg" ] || {
+        log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"
+        return 1
+    }
     if [ -z "$alias" ]; then
         alias=$(_jar_pkcs11_detect_alias "$(_jar_pkcs11_module_path)") || return 1
     fi
@@ -249,15 +276,26 @@ function jar_verify() {
     local list=0 jar=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            -l|--list) list=1; shift ;;
-            -h|--help)
-                log_info maven_signing.usage_jar_verify_l_list_file
-                return 0 ;;
-            --) shift; break ;;
-            -*)
-                log_error maven_signing.jar_verify_unknown_option "$1"
-                return 1 ;;
-            *) jar="$1"; shift ;;
+        -l | --list)
+            list=1
+            shift
+            ;;
+        -h | --help)
+            log_info maven_signing.usage_jar_verify_l_list_file
+            return 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            log_error maven_signing.jar_verify_unknown_option "$1"
+            return 1
+            ;;
+        *)
+            jar="$1"
+            shift
+            ;;
         esac
     done
 
@@ -271,7 +309,10 @@ function jar_verify() {
         log_error maven_signing.usage_jar_verify_l_list_file_2
         return 1
     fi
-    [ -f "$jar" ] || { log_error maven_signing.jar_missing_file "$jar"; return 1; }
+    [ -f "$jar" ] || {
+        log_error maven_signing.jar_missing_file "$jar"
+        return 1
+    }
     jarsigner -verify -verbose -certs "$jar"
 }
 
@@ -285,7 +326,10 @@ function jar_maven_setup() {
     _jar_pkcs11_check_deps || return 1
     local cfg alias settings
     cfg=$(_jar_pkcs11_cfg_path)
-    [ -f "$cfg" ] || { log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"; return 1; }
+    [ -f "$cfg" ] || {
+        log_error maven_signing.jar_missing_run_jar_pkcs11_setup "$cfg"
+        return 1
+    }
     alias="${JAR_PKCS11_ALIAS:-}"
     if [ -z "$alias" ]; then
         alias=$(_jar_pkcs11_detect_alias "$(_jar_pkcs11_module_path)") || return 1
@@ -297,7 +341,8 @@ function jar_maven_setup() {
     _maven_settings_ensure_container "$settings" activeProfiles
 
     local profile_block active_block
-    profile_block=$(cat <<XML
+    profile_block=$(
+        cat <<XML
   <profile>
     <id>jar-hw-signing</id>
     <properties>
@@ -309,7 +354,7 @@ function jar_maven_setup() {
     </properties>
   </profile>
 XML
-)
+    )
     active_block="  <activeProfile>jar-hw-signing</activeProfile>"
 
     _maven_settings_upsert_marked_block "$settings" jar-hw-signing-profile profiles "$profile_block"
@@ -326,7 +371,10 @@ XML
 function jar_maven_disable() {
     local settings
     settings=$(_maven_settings_path)
-    [ -f "$settings" ] || { log_warn maven_signing.jar_does_not_exist_nothing_to "$settings"; return 0; }
+    [ -f "$settings" ] || {
+        log_warn maven_signing.jar_does_not_exist_nothing_to "$settings"
+        return 0
+    }
     _maven_settings_remove_marked_block "$settings" jar-hw-signing-profile
     _maven_settings_remove_marked_block "$settings" jar-hw-signing-active
     log_info maven_signing.jar_profile_jar_hw_signing_removed "$settings"
@@ -351,8 +399,8 @@ export -f jar_maven_disable
 #
 # Zmienne: JAR_SW_KEYSTORE (override ścieżki JKS)
 
-_jar_sw_config_dir()    { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing"; }
-_jar_sw_cfg_path()      { echo "$(_jar_sw_config_dir)/jar-sw.cfg"; }
+_jar_sw_config_dir() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing"; }
+_jar_sw_cfg_path() { echo "$(_jar_sw_config_dir)/jar-sw.cfg"; }
 _jar_sw_keystore_path() { echo "${JAR_SW_KEYSTORE:-$(_jar_sw_config_dir)/jar-sw-keystore.jks}"; }
 
 ##
@@ -361,7 +409,10 @@ _jar_sw_keystore_path() { echo "${JAR_SW_KEYSTORE:-$(_jar_sw_config_dir)/jar-sw-
 # Usage: jar_sw_generate <alias> <CN/imię i nazwisko> [dni_ważności]
 ##
 function jar_sw_generate() {
-    command -v keytool &>/dev/null || { log_error maven_signing.jar_sw_keytool_jdk_missing; return 1; }
+    command -v keytool &>/dev/null || {
+        log_error maven_signing.jar_sw_keytool_jdk_missing
+        return 1
+    }
     local alias="${1:-}" cn="${2:-}" days="${3:-1095}" ks
 
     if [ -z "$alias" ] || [ -z "$cn" ]; then
@@ -381,7 +432,7 @@ function jar_sw_generate() {
     }
     chmod 600 "$ks"
 
-    printf 'ALIAS=%s\nKEYSTORE=%s\n' "$alias" "$ks" > "$(_jar_sw_cfg_path)"
+    printf 'ALIAS=%s\nKEYSTORE=%s\n' "$alias" "$ks" >"$(_jar_sw_cfg_path)"
     chmod 600 "$(_jar_sw_cfg_path)"
 
     log_info maven_signing.jar_sw_key_ready_alias_keystore "$alias" "$ks"
@@ -394,18 +445,27 @@ function jar_sw_generate() {
 # Usage: jar_sw_sign <plik.jar> [alias]
 ##
 function jar_sw_sign() {
-    command -v jarsigner &>/dev/null || { log_error maven_signing.jar_sw_jarsigner_jdk_missing; return 1; }
+    command -v jarsigner &>/dev/null || {
+        log_error maven_signing.jar_sw_jarsigner_jdk_missing
+        return 1
+    }
     local jar="${1:-}" alias="${2:-}" ks cfg
 
     if [ -z "$jar" ]; then
         log_error maven_signing.usage_jar_sw_sign_file_jar
         return 1
     fi
-    [ -f "$jar" ] || { log_error maven_signing.jar_sw_missing_file "$jar"; return 1; }
+    [ -f "$jar" ] || {
+        log_error maven_signing.jar_sw_missing_file "$jar"
+        return 1
+    }
 
     cfg=$(_jar_sw_cfg_path)
     ks=$(_jar_sw_keystore_path)
-    [ -f "$ks" ] || { log_error maven_signing.jar_sw_missing_run_jar_sw "$ks"; return 1; }
+    [ -f "$ks" ] || {
+        log_error maven_signing.jar_sw_missing_run_jar_sw "$ks"
+        return 1
+    }
     if [ -z "$alias" ] && [ -f "$cfg" ]; then
         alias=$(awk -F= '/^ALIAS=/ { print $2 }' "$cfg")
     fi
@@ -443,7 +503,8 @@ function jar_sw_maven_setup() {
     _maven_settings_ensure_container "$settings" activeProfiles
 
     local profile_block active_block
-    profile_block=$(cat <<XML
+    profile_block=$(
+        cat <<XML
   <profile>
     <id>jar-sw-signing</id>
     <properties>
@@ -453,7 +514,7 @@ function jar_sw_maven_setup() {
     </properties>
   </profile>
 XML
-)
+    )
     active_block="  <activeProfile>jar-sw-signing</activeProfile>"
 
     _maven_settings_upsert_marked_block "$settings" jar-sw-signing-profile profiles "$profile_block"
@@ -468,7 +529,10 @@ XML
 function jar_sw_maven_disable() {
     local settings
     settings=$(_maven_settings_path)
-    [ -f "$settings" ] || { log_warn maven_signing.jar_sw_does_not_exist_nothing "$settings"; return 0; }
+    [ -f "$settings" ] || {
+        log_warn maven_signing.jar_sw_does_not_exist_nothing "$settings"
+        return 0
+    }
     _maven_settings_remove_marked_block "$settings" jar-sw-signing-profile
     _maven_settings_remove_marked_block "$settings" jar-sw-signing-active
     log_info maven_signing.jar_sw_profile_jar_sw_signing "$settings"
@@ -497,7 +561,7 @@ _maven_settings_ensure_skeleton() {
         return 0
     fi
     mkdir -p "$(dirname "$file")"
-    printf '<settings>\n</settings>\n' > "$file"
+    printf '<settings>\n</settings>\n' >"$file"
 }
 
 # Dopisuje pusty kontener <tag></tag> przed </settings>, jeśli <tag> jeszcze
@@ -508,7 +572,7 @@ _maven_settings_ensure_container() {
     awk -v tag="$tag" '
         /<\/settings>/ && !done { print "  <" tag ">"; print "  </" tag ">"; done=1 }
         { print }
-    ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    ' "$file" >"$file.tmp" && mv "$file.tmp" "$file"
 }
 
 # Usuwa (jeśli jest) i wstawia od nowa oznaczony blok <!-- marker:BEGIN/END -->
@@ -522,7 +586,7 @@ _maven_settings_upsert_marked_block() {
         $0 == b { skip=1 }
         !skip { print }
         $0 == e { skip=0 }
-    ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    ' "$file" >"$file.tmp" && mv "$file.tmp" "$file"
 
     awk -v closetag="</$close_tag>" -v b="$begin" -v e="$end" -v content="$content" '
         index($0, closetag) && !done {
@@ -532,7 +596,7 @@ _maven_settings_upsert_marked_block() {
             done=1
         }
         { print }
-    ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    ' "$file" >"$file.tmp" && mv "$file.tmp" "$file"
 }
 
 # Usuwa oznaczony blok bez wstawiania nowego (kontenery zostają, nawet puste).
@@ -543,7 +607,7 @@ _maven_settings_remove_marked_block() {
         $0 == b { skip=1 }
         !skip { print }
         $0 == e { skip=0 }
-    ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    ' "$file" >"$file.tmp" && mv "$file.tmp" "$file"
 }
 
 # --- GPG software (Maven artifact signing / Maven Central) ------------------
@@ -573,12 +637,15 @@ _maven_settings_remove_marked_block() {
 #   GPG_SW_MAVEN_CONFIRM (T/n)          — pomija pytanie o konfigurację Mavena
 
 _gpg_sw_check_deps() {
-    command -v gpg &>/dev/null || { log_error maven_signing.gpg_sw_gpg_missing_apt_yum; return 1; }
+    command -v gpg &>/dev/null || {
+        log_error maven_signing.gpg_sw_gpg_missing_apt_yum
+        return 1
+    }
     return 0
 }
 
 _gpg_sw_config_dir() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git-configuration-signing"; }
-_gpg_sw_cfg_path()   { echo "$(_gpg_sw_config_dir)/gpg-sw.cfg"; }
+_gpg_sw_cfg_path() { echo "$(_gpg_sw_config_dir)/gpg-sw.cfg"; }
 
 ##
 # Listuje klucze prywatne dostępne w lokalnym keyringu (do wyboru $keyid dla
@@ -624,7 +691,7 @@ function gpg_sw_generate() {
 
     mkdir -p "$(_gpg_sw_config_dir)"
     chmod 700 "$(_gpg_sw_config_dir)"
-    printf 'KEYID=%s\n' "$fpr" > "$(_gpg_sw_cfg_path)"
+    printf 'KEYID=%s\n' "$fpr" >"$(_gpg_sw_cfg_path)"
     chmod 600 "$(_gpg_sw_cfg_path)"
 
     echo "$fpr"
@@ -638,7 +705,10 @@ function gpg_sw_generate() {
 ##
 _gpg_sw_export_openpgp() {
     local keyid="$1" noverify="${2:-}" base="https://keys.openpgp.org/vks/v1"
-    command -v curl &>/dev/null || { log_error maven_signing.gpg_sw_curl_required_to_export; return 1; }
+    command -v curl &>/dev/null || {
+        log_error maven_signing.gpg_sw_curl_required_to_export
+        return 1
+    }
     log_info maven_signing.gpg_sw_exporting_keys_openpgp_org "$keyid"
 
     local json resp
@@ -650,8 +720,11 @@ _gpg_sw_export_openpgp() {
         return 1
     }
     case "$resp" in
-        *'"token"'*|*'"key_fpr"'*) : ;;
-        *) log_error maven_signing.gpg_sw_keys_openpgp_org_rejected "$resp"; return 1 ;;
+    *'"token"'* | *'"key_fpr"'*) : ;;
+    *)
+        log_error maven_signing.gpg_sw_keys_openpgp_org_rejected "$resp"
+        return 1
+        ;;
     esac
     log_info maven_signing.gpg_sw_key_uploaded_to_keys
     [ "$noverify" = noverify ] && return 0
@@ -690,8 +763,11 @@ function gpg_sw_export() {
         return 1
     fi
     case "$target" in
-        ubuntu|openpgp|both) : ;;
-        *) log_error maven_signing.gpg_sw_unknown_export_target_ubuntu "$target"; return 1 ;;
+    ubuntu | openpgp | both) : ;;
+    *)
+        log_error maven_signing.gpg_sw_unknown_export_target_ubuntu "$target"
+        return 1
+        ;;
     esac
     # keyid to hex (8-40 znaków, opcjonalnie 0x) — odrzuca np. wielolinijkowy
     # wynik --list-keys wklejony zamiast fingerprintu
@@ -739,7 +815,8 @@ function gpg_maven_setup() {
     _maven_settings_ensure_container "$settings" activeProfiles
 
     local profile_block active_block
-    profile_block=$(cat <<XML
+    profile_block=$(
+        cat <<XML
   <profile>
     <id>gpg-sw-signing</id>
     <properties>
@@ -747,7 +824,7 @@ function gpg_maven_setup() {
     </properties>
   </profile>
 XML
-)
+    )
     active_block="  <activeProfile>gpg-sw-signing</activeProfile>"
 
     _maven_settings_upsert_marked_block "$settings" gpg-sw-signing-profile profiles "$profile_block"
@@ -763,7 +840,10 @@ XML
 function gpg_maven_disable() {
     local settings
     settings=$(_maven_settings_path)
-    [ -f "$settings" ] || { log_warn maven_signing.gpg_sw_does_not_exist_nothing "$settings"; return 0; }
+    [ -f "$settings" ] || {
+        log_warn maven_signing.gpg_sw_does_not_exist_nothing "$settings"
+        return 0
+    }
     _maven_settings_remove_marked_block "$settings" gpg-sw-signing-profile
     _maven_settings_remove_marked_block "$settings" gpg-sw-signing-active
     log_info maven_signing.gpg_sw_profile_gpg_sw_signing "$settings"
@@ -794,12 +874,18 @@ function gpg_sw_revoke() {
         return 1
     fi
     case "$target" in
-        ubuntu|openpgp|both|none) : ;;
-        *) log_error maven_signing.gpg_sw_unknown_target_ubuntu_openpgp "$target"; return 1 ;;
+    ubuntu | openpgp | both | none) : ;;
+    *)
+        log_error maven_signing.gpg_sw_unknown_target_ubuntu_openpgp "$target"
+        return 1
+        ;;
     esac
     case "$reason" in
-        [0-3]) : ;;
-        *) log_error maven_signing.gpg_sw_gpg_sw_revoke_reason; return 1 ;;
+    [0-3]) : ;;
+    *)
+        log_error maven_signing.gpg_sw_gpg_sw_revoke_reason
+        return 1
+        ;;
     esac
 
     mkdir -p "$(_gpg_sw_config_dir)"
@@ -816,7 +902,7 @@ function gpg_sw_revoke() {
     rev="${GNUPGHOME:-$HOME/.gnupg}/openpgp-revocs.d/${fpr}.rev"
     if [ "$reason" = 0 ] && [ -n "$fpr" ] && [ -f "$rev" ]; then
         log_info maven_signing.gpg_sw_using_the_revocation_certificate "$rev"
-        sed 's/^:-----BEGIN PGP PUBLIC KEY BLOCK-----/-----BEGIN PGP PUBLIC KEY BLOCK-----/' "$rev" > "$cert" || {
+        sed 's/^:-----BEGIN PGP PUBLIC KEY BLOCK-----/-----BEGIN PGP PUBLIC KEY BLOCK-----/' "$rev" >"$cert" || {
             log_error maven_signing.gpg_sw_could_not_read "$rev"
             return 1
         }
@@ -878,8 +964,8 @@ function gpg_sw_delete_all() {
         revoke="${revoke:-T}"
     fi
     case "$revoke" in
-        1|[tTyY]*) revoke=1 ;;
-        *) revoke=0 ;;
+    1 | [tTyY]*) revoke=1 ;;
+    *) revoke=0 ;;
     esac
 
     while IFS= read -r fpr; do
@@ -897,7 +983,7 @@ function gpg_sw_delete_all() {
             log_error maven_signing.gpg_sw_failed_to_delete "$fpr"
             rc=1
         fi
-    done <<< "$fprs"
+    done <<<"$fprs"
 
     if [ "$rc" -ne 0 ]; then
         log_warn maven_signing.gpg_sw_not_all_keys_deleted
@@ -944,8 +1030,8 @@ function gpg_sw_setup() {
         confirm="${confirm:-T}"
     fi
     case "$confirm" in
-        [tTyY]*) gpg_maven_setup "$keyid" ;;
-        *) log_info maven_signing.gpg_sw_maven_configuration_skipped_run "$keyid" ;;
+    [tTyY]*) gpg_maven_setup "$keyid" ;;
+    *) log_info maven_signing.gpg_sw_maven_configuration_skipped_run "$keyid" ;;
     esac
 }
 

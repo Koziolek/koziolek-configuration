@@ -8,41 +8,40 @@
 #
 # Original code https://gist.github.com/damienrg/411f63a5120206bb887929f4830ad0d0
 
-
 hook_type=${BASH_SOURCE##*/}
 
 case "$hook_type" in
-    applypatch-msg \
-        |commit-msg \
-        |fsmonitor-watchman \
-        |post-checkout \
-        |post-commit \
-        |post-merge \
-        |post-update \
-        |pre-applypatch \
-        |pre-commit \
-        |prepare-commit-msg \
-        |pre-push \
-        |pre-rebase \
-        |pre-receive \
-        |update)
-        IFS= read -rd '' stdin
-        shopt -s nullglob
-        hooks=("${BASH_SOURCE[0]}.d"/*)
-        shopt -u nullglob
-        if [ ${#hooks[@]} -eq 0 ]; then
-            echo "no hooks found for $hook_type"
-            exit 0
-        fi
-        for file in "${hooks[@]}"; do
-           if [ -x "$file" ]; then
-               "$file" "$@" <<<"$stdin" || exit 2
-           fi
-        done
+applypatch-msg | \
+    commit-msg | \
+    fsmonitor-watchman | \
+    post-checkout | \
+    post-commit | \
+    post-merge | \
+    post-update | \
+    pre-applypatch | \
+    pre-commit | \
+    prepare-commit-msg | \
+    pre-push | \
+    pre-rebase | \
+    pre-receive | \
+    update)
+    IFS= read -rd '' stdin
+    shopt -s nullglob
+    hooks=("${BASH_SOURCE[0]}.d"/*)
+    shopt -u nullglob
+    if [ ${#hooks[@]} -eq 0 ]; then
+        echo "no hooks found for $hook_type"
         exit 0
-        ;;
-    *)
-        echo "unknown hook type: $hook_type"
-        exit 2
-        ;;
+    fi
+    for file in "${hooks[@]}"; do
+        if [ -x "$file" ]; then
+            "$file" "$@" <<<"$stdin" || exit 2
+        fi
+    done
+    exit 0
+    ;;
+*)
+    echo "unknown hook type: $hook_type"
+    exit 2
+    ;;
 esac

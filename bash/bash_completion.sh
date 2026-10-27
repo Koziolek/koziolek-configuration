@@ -9,12 +9,15 @@ if ! shopt -oq posix; then
             /usr/local/share/bash-completion/bash_completion \
             /usr/local/etc/bash_completion \
             /etc/bash_completion; do
-            [ -f "$_bc" ] && { . "$_bc"; break; }
+            [ -f "$_bc" ] && {
+                . "$_bc"
+                break
+            }
         done
         unset _bc
         if declare -f __git_wrap__git_main &>/dev/null; then
-            complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
-                || complete -o default -o nospace -F __git_wrap__git_main g
+            complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null ||
+                complete -o default -o nospace -F __git_wrap__git_main g
         fi
         declare -f _completion_loader &>/dev/null && _completion_loader "$@"
     }
@@ -27,12 +30,15 @@ _git_lazy() {
         /usr/share/bash-completion/completions/git \
         /opt/homebrew/share/bash-completion/completions/git \
         /usr/local/share/bash-completion/completions/git; do
-        [ -f "$_git_comp" ] && { . "$_git_comp"; break; }
+        [ -f "$_git_comp" ] && {
+            . "$_git_comp"
+            break
+        }
     done
     unset _git_comp
     if declare -f __git_wrap__git_main &>/dev/null; then
-        complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null \
-            || complete -o default -o nospace -F __git_wrap__git_main g
+        complete -o bashdefault -o default -o nospace -F __git_wrap__git_main g 2>/dev/null ||
+            complete -o default -o nospace -F __git_wrap__git_main g
     fi
     unset -f _git_lazy
     declare -f __git_wrap__git_main &>/dev/null && __git_wrap__git_main "$@"

@@ -52,7 +52,7 @@ testLogManPrintsMessageWithoutTag() {
     output=$(log_man "tekst pomocy")
     assertContains 'log_man musi zawierać treść' "$output" 'tekst pomocy'
     # log_man nie dodaje żadnego tagu — sprawdź że nie ma INFO/WARN/ERROR
-    assertNotContains 'log_man nie może zawierać INFO:'  "$output" 'INFO:'
+    assertNotContains 'log_man nie może zawierać INFO:' "$output" 'INFO:'
     assertNotContains 'log_man nie może zawierać ERROR:' "$output" 'ERROR:'
 }
 
@@ -72,7 +72,7 @@ testLogInfoMultipleArgs() {
     local output
     output=$(log_info "część pierwsza" "część druga")
     assertContains 'log_info musi obsługiwać wiele argumentów — część pierwsza' "$output" 'część pierwsza'
-    assertContains 'log_info musi obsługiwać wiele argumentów — część druga'   "$output" 'część druga'
+    assertContains 'log_info musi obsługiwać wiele argumentów — część druga' "$output" 'część druga'
 }
 
 # ---------------------------------------------------------------------------

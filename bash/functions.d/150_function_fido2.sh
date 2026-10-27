@@ -15,7 +15,7 @@
 _fido2_check_deps() {
     local missing=()
     command -v fido2-token &>/dev/null || missing+=("fido2-tools")
-    command -v pamu2fcfg   &>/dev/null || missing+=("libpam-u2f/pamu2fcfg")
+    command -v pamu2fcfg &>/dev/null || missing+=("libpam-u2f/pamu2fcfg")
     if [ "${#missing[@]}" -gt 0 ]; then
         log_error fido2.missing_dependencies "${missing[*]}"
         log_info fido2.install_via_scripts_bezpieczenstwo_01
@@ -226,7 +226,7 @@ function fido2_register_sudo() {
         log_error fido2.failed_to_create_a_temporary
         return 1
     }
-    if pamu2fcfg > "$tmp_keys"; then
+    if pamu2fcfg >"$tmp_keys"; then
         chmod 600 "$tmp_keys"
         mv "$tmp_keys" "$u2f_keys"
         log_info fido2.registered "$u2f_keys"
@@ -258,7 +258,7 @@ function fido2_register_sudo_backup() {
 
     log_info fido2.appending_backup_key_to_sudo "$dev"
     mkdir -p "$u2f_dir"
-    if pamu2fcfg -n >> "$u2f_keys" 2>/dev/null; then
+    if pamu2fcfg -n >>"$u2f_keys" 2>/dev/null; then
         chmod 600 "$u2f_keys"
         log_info fido2.backup_key_appended "$u2f_keys"
         return 0
@@ -285,9 +285,9 @@ function fido2_sudo_keys_list() {
     while IFS= read -r line || [ -n "$line" ]; do
         [ -z "$line" ] && continue
         user="${line%%:*}"
-        count=$(( $(grep -o ':' <<<"$line" | wc -l) ))
+        count=$(($(grep -o ':' <<<"$line" | wc -l)))
         echo "${C_GREEN}$user${C_NC}: $count zarejestrowanych kluczy"
-    done < "$u2f_keys"
+    done <"$u2f_keys"
 }
 
 export -f fido2_list_devices

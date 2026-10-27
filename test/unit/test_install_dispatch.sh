@@ -18,7 +18,7 @@ setUp() {
         cd "$_SRC" || exit 1
         git init -q -b master .
         # Atrapa dispatchera: raportuje, skąd została uruchomiona i na jakiej jest gałęzi.
-        cat > initial_packages.sh <<'SCRIPT'
+        cat >initial_packages.sh <<'SCRIPT'
 #!/usr/bin/env bash
 echo "DISPATCHER dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) branch=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --abbrev-ref HEAD)"
 SCRIPT
@@ -45,7 +45,7 @@ testClonesRepoAndRunsDispatcherFromClone() {
 
 testSecondRunDoesNotTouchExistingClone() {
     _install >/dev/null
-    echo "lokalna zmiana" > "$_HOME/workspace/$PROJECT/local.txt"
+    echo "lokalna zmiana" >"$_HOME/workspace/$PROJECT/local.txt"
     local out
     out=$(_install)
     assertContains "dispatcher dalej uruchomiony" "$out" "DISPATCHER"

@@ -76,12 +76,12 @@ function fake_poweroff() {
     env="$(detect_display_env)"
 
     case "$env" in
-        gnome | x11 | sway | wlroots) ;;
-        *)
-            log_error screen.fake_poweroff_unsupported_env "$env"
-            log_info screen.fake_poweroff_supported_hint
-            return 1
-            ;;
+    gnome | x11 | sway | wlroots) ;;
+    *)
+        log_error screen.fake_poweroff_unsupported_env "$env"
+        log_info screen.fake_poweroff_supported_hint
+        return 1
+        ;;
     esac
 
     _fp_off() {

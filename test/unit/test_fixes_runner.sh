@@ -21,7 +21,7 @@ _mkfix() {
             "$id" "$id" "$phase" "${T_CONTEXTS:-all}" "$root" "$risk"
         printf 'fix_detect() {\n%s\n}\nfix_apply() {\n%s\n}\n' "$detect" "$apply"
         [ -n "$verify" ] && printf 'fix_verify() {\n%s\n}\n' "$verify"
-    } > "$file"
+    } >"$file"
 }
 
 # _run <args run_fixes…> — wynik: $_OUT (stdout raportu), $_ERR (stderr), $_RC (kod run_fixes)
@@ -195,7 +195,7 @@ testPhaseOnlyAndContextFilters() {
 }
 
 testInvalidMetadataIsUnknown() {
-    printf 'FIX_ID=broken\nfix_detect() { return 1; }\n' > "$_REG/010_broken.sh"
+    printf 'FIX_ID=broken\nfix_detect() { return 1; }\n' >"$_REG/010_broken.sh"
     _run all --check --format tsv
     assertContains "unknown" "$_OUT" "$(printf 'broken\tunknown\t')"
     assertContains "powód" "$_OUT" "niepoprawny plik fixa"

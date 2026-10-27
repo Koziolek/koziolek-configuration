@@ -81,7 +81,7 @@ _asdf_tool_apply() {
     local mode="$1" entry="$2"
     local bin="${ASDF_BIN:-$HOME/.local/bin/asdf}"
     local name url version extra
-    IFS='|' read -r name url version extra <<< "$entry"
+    IFS='|' read -r name url version extra <<<"$entry"
     if [ -z "$name" ] || [ -z "$version" ] || [ -n "$extra" ]; then
         echo "⚠️  Niepoprawny wpis ASDF_TOOLS: '$entry' (oczekiwane nazwa|url|wersja)"
         return 1

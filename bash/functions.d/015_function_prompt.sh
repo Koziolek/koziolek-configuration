@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function yes_or_no(){
+function yes_or_no() {
     local default=${1:-"n"}
     local response
     local valid=false
@@ -14,22 +14,21 @@ function yes_or_no(){
 
         response=${response:-$default}
         case ${response,,} in
-            y|yes|Y|Yes)
-                valid=true
-                ;;
-            n|no|N|No)
-                valid=true
-                ;;
-            *)
-                log_man prompt.answer_yn
-                ;;
+        y | yes | Y | Yes)
+            valid=true
+            ;;
+        n | no | N | No)
+            valid=true
+            ;;
+        *)
+            log_man prompt.answer_yn
+            ;;
         esac
     done
     echo "${response}"
 }
 
-
-function are_you_sure(){
+function are_you_sure() {
     local default=${1:-"n"}
     local response
     local valid=false
@@ -43,15 +42,15 @@ function are_you_sure(){
 
         response=${response:-$default}
         case ${response,,} in
-            y|yes|Y|Yes)
-                valid=true
-                ;;
-            n|no|N|No)
-                valid=true
-                ;;
-            *)
-                log_man prompt.answer_yn
-                ;;
+        y | yes | Y | Yes)
+            valid=true
+            ;;
+        n | no | N | No)
+            valid=true
+            ;;
+        *)
+            log_man prompt.answer_yn
+            ;;
         esac
     done
     echo "${response}"

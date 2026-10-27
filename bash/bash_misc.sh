@@ -10,11 +10,9 @@ shopt -s checkwinsize
 
 # sometimes we misspell spell…
 if command -v thefuck >/dev/null 2>&1; then
-  fuck() {
-    unset -f fuck
-    eval "$(thefuck --alias)"
-    fuck "$@"
-  }
+    fuck() {
+        unset -f fuck
+        eval "$(thefuck --alias)"
+        fuck "$@"
+    }
 fi
-
-

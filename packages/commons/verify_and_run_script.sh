@@ -25,13 +25,16 @@ verify_and_run_script() {
 
     if [ -n "$gh_repo" ]; then
         local expected_sha actual_sha size
-        expected_sha=$(curl -sf "https://api.github.com/repos/${gh_repo}/contents/${gh_path}?ref=${gh_ref}" \
-            | grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
+        expected_sha=$(curl -sf "https://api.github.com/repos/${gh_repo}/contents/${gh_path}?ref=${gh_ref}" |
+            grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
         if [ -z "$expected_sha" ]; then
             reason="Nie udało się pobrać oficjalnej sumy kontrolnej z GitHub API dla: $desc"
         else
-            size=$(wc -c < "$tmp_script")
-            actual_sha=$( { printf 'blob %d\0' "$size"; cat "$tmp_script"; } | sha1sum | awk '{print $1}')
+            size=$(wc -c <"$tmp_script")
+            actual_sha=$({
+                printf 'blob %d\0' "$size"
+                cat "$tmp_script"
+            } | sha1sum | awk '{print $1}')
             if [ "$actual_sha" = "$expected_sha" ]; then
                 checksum_ok=true
             else

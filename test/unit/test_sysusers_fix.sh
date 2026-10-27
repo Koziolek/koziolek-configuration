@@ -14,7 +14,7 @@ setUp() {
     _BIN="$_TMP/bin"
     _LOG="$_TMP/calls.log"
     mkdir -p "$_BIN" "$_TMP/sysusers.d"
-    : > "$_LOG"
+    : >"$_LOG"
     local t p
     for t in bash awk grep tr head basename dirname mktemp sort cut rm cat id timeout xargs; do
         p="$(builtin command -v "$t" 2>/dev/null)" && [ -n "$p" ] && ln -s "$p" "$_BIN/$t"
@@ -36,9 +36,12 @@ setUp() {
 
 tearDown() { rm -rf "$_TMP"; }
 
-_mock() { printf '#!%s\n%s\n' "$_BIN/bash" "$2" > "$_BIN/$1"; chmod +x "$_BIN/$1"; }
-_ver() { echo "$1" > "$SYSUSERS_VER_FILE"; }
-_conf() { printf '%s\n' "$2" > "$_TMP/sysusers.d/$1"; }
+_mock() {
+    printf '#!%s\n%s\n' "$_BIN/bash" "$2" >"$_BIN/$1"
+    chmod +x "$_BIN/$1"
+}
+_ver() { echo "$1" >"$SYSUSERS_VER_FILE"; }
+_conf() { printf '%s\n' "$2" >"$_TMP/sysusers.d/$1"; }
 _calls() { cat "$_LOG"; }
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
 _wrap() { PATH="$_BIN" "$_BIN/bash" -c 'ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }; SUDO=""; . "$1"; apply_fixes post-update' _ "$APPLY" 2>&1; }
@@ -100,7 +103,7 @@ testApplyDownloadsAndInstallsOwnerPackage() {
 testApplyIsIdempotentAfterFix() {
     _conf pcscd.conf 'u! pcscd - "PC/SC"'
     _run post-update --only sysusers >/dev/null
-    : > "$_LOG"
+    : >"$_LOG"
     local out
     out="$(_run post-update --only sysusers --format tsv)"
     assertContains "ok po naprawie" "$out" "sysusers	ok"

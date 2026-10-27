@@ -66,13 +66,13 @@ testTmuxMainLoadsWithoutError() {
 }
 
 testTmuxMainCreatesSymlink() {
-    _source_tmux_main > /dev/null
+    _source_tmux_main >/dev/null
     assertTrue '~/.tmux.conf musi być symlinklem po załadowaniu tmux/main.sh' \
         '[ -L "$_FAKE_HOME/.tmux.conf" ]'
 }
 
 testTmuxMainSymlinkPointsToRepoConf() {
-    _source_tmux_main > /dev/null
+    _source_tmux_main >/dev/null
     local target
     target="$(readlink "$_FAKE_HOME/.tmux.conf" 2>/dev/null)"
     assertEquals 'symlink musi wskazywać na tmux/tmux.conf w repo' \
@@ -80,8 +80,8 @@ testTmuxMainSymlinkPointsToRepoConf() {
 }
 
 testTmuxMainIsIdempotent() {
-    _source_tmux_main > /dev/null
-    _source_tmux_main > /dev/null
+    _source_tmux_main >/dev/null
+    _source_tmux_main >/dev/null
     assertTrue '~/.tmux.conf musi istnieć po dwukrotnym wywołaniu' \
         '[ -L "$_FAKE_HOME/.tmux.conf" ]'
     local target

@@ -7,18 +7,18 @@
 # przed czymkolwiek innym, niezależnie od tej wspólnej listy.
 
 system_tools=(
-  git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
-  postgresql-client-common postgresql-client-16
+    git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
+    postgresql-client-common postgresql-client-16
 )
 
 security_tools=(
-  gnupg gnupg2 apt-transport-https ca-certificates libpam-u2f fido2-tools
-  scdaemon pcscd openssh-client opensc
+    gnupg gnupg2 apt-transport-https ca-certificates libpam-u2f fido2-tools
+    scdaemon pcscd openssh-client opensc
 )
 
 graphics_libs=(
-  libatomic1 libgl1-mesa-dri libglx-mesa0
-  mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
+    libatomic1 libgl1-mesa-dri libglx-mesa0
+    mesa-utils mesa-utils-extra libglvnd0 libglx0 libegl1 libgles2 libvulkan1
 )
 
 # GConf (GNOME 2) zniknął z Debiana/Ubuntu lata temu — usunięty stąd
@@ -28,25 +28,25 @@ graphics_libs=(
 # ubuntu/install.sh/vanilla/install.sh) poprawnie go pomija
 # z ostrzeżeniem zamiast wywalać całą instalację, patrz #124.
 gui_libs=(
-  libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
+    libgdk-pixbuf2.0-0 libxcb-xtest0 libxcb-xinerama0
 )
 
 image_tools=(
-  libheif-examples
+    libheif-examples
 )
 
 diag_tools=(
-  memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli gdb
-  libinput-tools rocminfo
-  gddrescue mdadm pv testdisk
+    memtester stress-ng dmidecode pciutils lm-sensors smartmontools nvme-cli gdb
+    libinput-tools rocminfo
+    gddrescue mdadm pv testdisk
 )
 
 # Kompilatory i biblioteki do budowania toolchainów z asdf: ghc (plugin ghcup) wymaga gcc, gmp, ncurses,
 # libffi, a cargo/cabal budują pakiety z `lang_packages.sh` (#172). curl jest w `minimal_tools`.
 build_libs=(
-  build-essential libffi-dev libgmp-dev libncurses-dev pkg-config xz-utils zlib1g-dev
+    build-essential libffi-dev libgmp-dev libncurses-dev pkg-config xz-utils zlib1g-dev
 )
 
 boxes_vm=(
-  gnome-boxes qemu-kvm libvirt-daemon-system
+    gnome-boxes qemu-kvm libvirt-daemon-system
 )

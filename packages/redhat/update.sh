@@ -8,7 +8,7 @@ set -Eeuo pipefail
 trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 
 SUDO=''
-if (( EUID != 0 )); then
+if ((EUID != 0)); then
     SUDO='sudo'
 fi
 
@@ -46,10 +46,10 @@ C_RED='\033[0;31m'
 C_YELLOW='\033[0;33m'
 C_NC='\033[0m'
 
-ok()      { printf "${C_GREEN}✓${C_NC} %s\n" "$*"; }
+ok() { printf "${C_GREEN}✓${C_NC} %s\n" "$*"; }
 missing() { printf "${C_RED}✗${C_NC} %s\n" "$*"; }
-warn()    { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
-info()    { printf "  %s\n" "$*"; }
+warn() { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
+info() { printf "  %s\n" "$*"; }
 
 yum_installed() {
     rpm -q "$1" >/dev/null 2>&1
@@ -211,8 +211,8 @@ update_docker() {
 
     info "Aktualizacja ctop..."
     local ctop_version
-    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
-        | grep '"tag_name":' | cut -d '"' -f 4)
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest |
+        grep '"tag_name":' | cut -d '"' -f 4)
     if [ -z "$ctop_version" ]; then
         warn "Nie udało się pobrać wersji ctop"
     else
@@ -221,10 +221,10 @@ update_docker() {
         tmp_dir=$(mktemp -d)
 
         if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
-                -o "$tmp_dir/$ctop_bin"; then
+            -o "$tmp_dir/$ctop_bin"; then
             warn "Nie udało się pobrać ctop ${ctop_version}, pomijam aktualizację"
         elif ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
-                -o "$tmp_dir/sha256sums.txt"; then
+            -o "$tmp_dir/sha256sums.txt"; then
             warn "Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam aktualizację"
         elif ! (cd "$tmp_dir" && grep " ${ctop_bin}\$" sha256sums.txt | sha256sum -c - --status); then
             warn "Suma sha256 ctop ${ctop_version} nie zgadza się z release'em — pomijam aktualizację"
@@ -250,10 +250,10 @@ update_kubectl() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
-            -o "$tmp_dir/kubectl"; then
+        -o "$tmp_dir/kubectl"; then
         warn "Nie udało się pobrać kubectl ${kubectl_version}, pomijam aktualizację"
     elif ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
-            -o "$tmp_dir/kubectl.sha256"; then
+        -o "$tmp_dir/kubectl.sha256"; then
         warn "Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam aktualizację"
     elif ! (cd "$tmp_dir" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum -c - --status); then
         warn "Suma sha256 kubectl ${kubectl_version} nie zgadza się z release'em — pomijam aktualizację"
@@ -296,8 +296,8 @@ update_calibre() {
     echo "=== calibre ==="
     calibre_install_deps
     info "Instalacja/aktualizacja calibre (oficjalny instalator uruchamiany ponownie)..."
-    if { [ -z "$SUDO" ] || $SUDO -v; } \
-        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin; then
+    if { [ -z "$SUDO" ] || $SUDO -v; } &&
+        wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin; then
         ok "calibre zainstalowany/zaktualizowany"
     else
         warn "Instalacja/aktualizacja calibre zakończona błędem — sprawdź ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
@@ -315,8 +315,8 @@ update_asdf() {
 
     local current_version latest_tag
     current_version=$("$asdf_bin" version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo '')
-    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest \
-        | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest |
+        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$latest_tag" ]; then
         warn "Nie udało się pobrać najnowszej wersji asdf"

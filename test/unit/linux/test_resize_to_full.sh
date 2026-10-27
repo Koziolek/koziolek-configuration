@@ -26,21 +26,21 @@ _detect() {
 testWaylandXwaylandNotDetectedAsX11() {
     local out
     out="$(_detect 'WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=sway' \
-                   'swaymsg() { :; }; export -f swaymsg')"
+        'swaymsg() { :; }; export -f swaymsg')"
     assertEquals 'sesja Wayland nie może być wykryta jako x11' 'sway' "$out"
 }
 
 testWaylandGnomeDetectedAsGnome() {
     local out
     out="$(_detect 'WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME' \
-                   'gdbus() { :; }; export -f gdbus')"
+        'gdbus() { :; }; export -f gdbus')"
     assertEquals 'GNOME/Wayland => gnome' 'gnome' "$out"
 }
 
 testWaylandWithoutToolsFallsBackToWayland() {
     local out
     out="$(_detect 'WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME' \
-                   'PATH=/nonexistent')"
+        'PATH=/nonexistent')"
     assertEquals 'Wayland bez gdbus/swaymsg => wayland' 'wayland' "$out"
 }
 

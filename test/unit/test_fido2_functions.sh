@@ -45,11 +45,15 @@ testResolveDeviceNoneDetectedFails() {
 
 testResolveDeviceMultiplePromptsAndPicksByNumber() {
     # kilka kluczy — menu na stderr, wybór po numerze, stdout tylko ze ścieżką
-    _fido2_all_devices() { echo "/dev/hidraw0"; echo "/dev/hidraw1"; }
+    _fido2_all_devices() {
+        echo "/dev/hidraw0"
+        echo "/dev/hidraw1"
+    }
     _fido2_device_desc() { echo "TestVendor"; }
     local out err
     out=$(_fido2_resolve_device <<<"2" 2>/tmp/fido2_test_err.$$)
-    err=$(cat /tmp/fido2_test_err.$$); rm -f /tmp/fido2_test_err.$$
+    err=$(cat /tmp/fido2_test_err.$$)
+    rm -f /tmp/fido2_test_err.$$
     assertEquals '/dev/hidraw1' "$out"
     assertContains 'menu wyboru musi wypisać obie ścieżki na stderr' "$err" '/dev/hidraw0'
     assertContains 'menu wyboru musi wypisać obie ścieżki na stderr' "$err" '/dev/hidraw1'
@@ -57,7 +61,10 @@ testResolveDeviceMultiplePromptsAndPicksByNumber() {
 }
 
 testResolveDeviceMultipleRetriesOnInvalidChoice() {
-    _fido2_all_devices() { echo "/dev/hidraw0"; echo "/dev/hidraw1"; }
+    _fido2_all_devices() {
+        echo "/dev/hidraw0"
+        echo "/dev/hidraw1"
+    }
     _fido2_device_desc() { echo "TestVendor"; }
     local out
     out=$(_fido2_resolve_device 2>/dev/null <<<"9

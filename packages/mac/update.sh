@@ -37,10 +37,10 @@ C_RED='\033[0;31m'
 C_YELLOW='\033[0;33m'
 C_NC='\033[0m'
 
-ok()      { printf "${C_GREEN}✓${C_NC} %s\n" "$*"; }
+ok() { printf "${C_GREEN}✓${C_NC} %s\n" "$*"; }
 missing() { printf "${C_RED}✗${C_NC} %s\n" "$*"; }
-warn()    { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
-info()    { printf "  %s\n" "$*"; }
+warn() { printf "${C_YELLOW}⚠${C_NC} %s\n" "$*"; }
+info() { printf "  %s\n" "$*"; }
 
 brew_installed() {
     brew list "$1" &>/dev/null
@@ -143,7 +143,7 @@ refresh_brew_state() {
     # Warn about issues but don't abort — many brew doctor warnings are cosmetic
     while IFS= read -r line; do
         [[ "$line" =~ ^Warning ]] && warn "$line"
-    done <<< "$doctor_output"
+    done <<<"$doctor_output"
 
     # Repair broken taps
     local broken_taps
@@ -156,7 +156,7 @@ refresh_brew_state() {
         while IFS= read -r tap; do
             brew untap "$tap" 2>/dev/null || true
             brew tap "$tap" 2>/dev/null || warn "Nie udało się naprawić tap: $tap"
-        done <<< "$broken_taps"
+        done <<<"$broken_taps"
     fi
 
     info "brew update..."
@@ -252,8 +252,8 @@ update_asdf() {
 
     local current_version latest_tag
     current_version=$("$asdf_bin" version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo '')
-    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest \
-        | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest |
+        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$latest_tag" ]; then
         warn "Nie udało się pobrać najnowszej wersji asdf"

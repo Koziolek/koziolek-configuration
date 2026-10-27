@@ -119,7 +119,7 @@ if [ "${#files[@]}" -eq 0 ]; then
     exit 0
 fi
 
-args=(--lang shell --checks lint --no-save-result)
+args=(--lang shell --checks lint)
 [ "$do_check" -eq 1 ] && [ "$do_format" -eq 0 ] && args+=(--check-only)
 [ "$do_format" -eq 1 ] && [ "$do_check" -eq 0 ] && args+=(--format-only)
 for f in "${files[@]}"; do

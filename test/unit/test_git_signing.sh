@@ -26,7 +26,7 @@ oneTimeSetUp() {
 
     # Fixture zbliżona do realnego `gpg --card-status --with-colons` (gpg 2.4, YubiKey 5).
     # URL z ':' uciekniętym jako \x3a — tak robi gpg w trybie colons.
-    cat > "$_FIX/card_ok" <<EOF
+    cat >"$_FIX/card_ok" <<EOF
 Reader:1050:0407:X:0:
 version:0304:
 vendor:0006:Yubico:
@@ -48,10 +48,10 @@ fpr:${SIG_FPR,,}:FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000:1111000011110000111100
 fprtime:1700000000:1700000000:1700000000:
 EOF
     # Karta bez URL i z pustym slotem podpisu
-    sed -e 's/^url:.*/url::/' "$_FIX/card_ok" > "$_FIX/card_nourl"
-    sed -e 's/^fpr:.*/fpr::::/' "$_FIX/card_ok" > "$_FIX/card_empty"
+    sed -e 's/^url:.*/url::/' "$_FIX/card_ok" >"$_FIX/card_nourl"
+    sed -e 's/^fpr:.*/fpr::::/' "$_FIX/card_ok" >"$_FIX/card_empty"
 
-    cat > "$_BIN/gpg" <<'MOCK'
+    cat >"$_BIN/gpg" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 case "$*" in
@@ -79,10 +79,10 @@ esac
 exit 0
 MOCK
     chmod +x "$_BIN/gpg"
-    printf '#!/bin/sh\necho "gpgconf $*" >> "$MOCK_STATE/calls"\n' > "$_BIN/gpgconf"
+    printf '#!/bin/sh\necho "gpgconf $*" >> "$MOCK_STATE/calls"\n' >"$_BIN/gpgconf"
     chmod +x "$_BIN/gpgconf"
 
-    cat > "$_BIN/ssh-keygen" <<MOCK
+    cat >"$_BIN/ssh-keygen" <<MOCK
 #!/usr/bin/env bash
 echo "\$*" >> "\$MOCK_STATE/calls"
 args=("\$@")
@@ -104,7 +104,7 @@ esac
 exit 0
 MOCK
     chmod +x "$_BIN/ssh-keygen"
-    printf '#!/bin/sh\necho "gh $*" >> "$MOCK_STATE/calls"\n' > "$_BIN/gh"
+    printf '#!/bin/sh\necho "gh $*" >> "$MOCK_STATE/calls"\n' >"$_BIN/gh"
     chmod +x "$_BIN/gh"
 }
 oneTimeTearDown() { rm -rf "$_BIN" "$_FIX"; }
@@ -127,7 +127,8 @@ _KEY() { echo "$_HOME/.ssh/id_ed25519_sk_git"; }
 
 # _run_gpg <karta: fixture|none> <fn-wywołanie...>
 _run_gpg() {
-    local card="$1"; shift
+    local card="$1"
+    shift
     [ "$card" = none ] || card="$_FIX/$card"
     HOME="$_HOME" MOCK_STATE="$_STATE" MOCK_CARD="$card" PATH="$_BIN:$PATH" \
         XDG_CONFIG_HOME="$_HOME/.config" \
@@ -305,7 +306,8 @@ testUsePcscdIsIdempotent() {
 testCreateUsesResidentVerifyRequiredAndApplication() {
     _run_ssh ssh_sk_key_create >/dev/null 2>&1
     assertEquals 0 $?
-    local call; call=$(grep -- '-t ed25519-sk' "$_STATE/calls")
+    local call
+    call=$(grep -- '-t ed25519-sk' "$_STATE/calls")
     assertContains "$call" '-O resident'
     assertContains "$call" '-O application=ssh:git-signing'
     assertContains "$call" '-O verify-required'
@@ -320,7 +322,8 @@ testCreateWithoutVerifyWhenDisabled() {
 }
 
 testCreateRefusesToOverwriteExistingStub() {
-    mkdir -p "$_HOME/.ssh"; echo old > "$(_KEY)"
+    mkdir -p "$_HOME/.ssh"
+    echo old >"$(_KEY)"
     local out rc=0
     out=$(_run_ssh ssh_sk_key_create 2>&1) || rc=$?
     assertNotEquals 0 "$rc"
@@ -354,7 +357,9 @@ testLoadFailsWhenDeviceHasNoSigningKey() {
 }
 
 testLoadSkipsDeviceWhenStubExists() {
-    mkdir -p "$_HOME/.ssh"; echo s > "$(_KEY)"; echo "$PUB_BLOB" > "$(_KEY).pub"
+    mkdir -p "$_HOME/.ssh"
+    echo s >"$(_KEY)"
+    echo "$PUB_BLOB" >"$(_KEY).pub"
     _run_ssh ssh_sk_key_load >/dev/null 2>&1
     assertEquals 0 $?
     assertFalse 'nie powinien pytać urządzenia' "grep -qF -- '-K' '$_STATE/calls'"
@@ -378,8 +383,8 @@ testLoadDefaultApplicationIgnoresOtherApplications() {
 
 testUseExistingConfiguresGitWithGivenSkKey() {
     mkdir -p "$_HOME/.ssh"
-    echo stub > "$_HOME/.ssh/id_ed25519_sk"
-    echo "$PUB_BLOB login" > "$_HOME/.ssh/id_ed25519_sk.pub"
+    echo stub >"$_HOME/.ssh/id_ed25519_sk"
+    echo "$PUB_BLOB login" >"$_HOME/.ssh/id_ed25519_sk.pub"
     local out
     out=$(_run_ssh "ssh_sk_use_existing '$_HOME/.ssh/id_ed25519_sk.pub'" 2>&1)
     assertEquals 0 $?
@@ -391,8 +396,8 @@ testUseExistingConfiguresGitWithGivenSkKey() {
 
 testUseExistingRefusesDiskKey() {
     mkdir -p "$_HOME/.ssh"
-    echo priv > "$_HOME/.ssh/id_ed25519"
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMOCK me" > "$_HOME/.ssh/id_ed25519.pub"
+    echo priv >"$_HOME/.ssh/id_ed25519"
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMOCK me" >"$_HOME/.ssh/id_ed25519.pub"
     local out rc=0
     out=$(_run_ssh "ssh_sk_use_existing '$_HOME/.ssh/id_ed25519'" 2>&1) || rc=$?
     assertNotEquals 0 "$rc"
@@ -419,7 +424,7 @@ testSshSetupIsIdempotentForAllowedSigners() {
     MOCK_RK='id_ed25519_sk_rk_git-signing' _run_ssh ssh_sk_git_setup >/dev/null 2>&1
     _run_ssh ssh_sk_git_setup >/dev/null 2>&1
     assertEquals 0 $?
-    assertEquals 1 "$(wc -l < "$_HOME/.config/git/allowed_signers")"
+    assertEquals 1 "$(wc -l <"$_HOME/.config/git/allowed_signers")"
 }
 
 testSshSetupFailsWithoutKeyAndLeavesGitUntouched() {
@@ -495,7 +500,7 @@ testSwGitSetupConfiguresGitSigning() {
 
 testSwGitSetupUsesDefaultFromCfg() {
     mkdir -p "$_HOME/.config/git-configuration-signing"
-    printf 'KEYID=CAFEBABE\n' > "$_HOME/.config/git-configuration-signing/gpg-sw.cfg"
+    printf 'KEYID=CAFEBABE\n' >"$_HOME/.config/git-configuration-signing/gpg-sw.cfg"
     _run_gpg none gpg_sw_git_setup >/dev/null 2>&1
     assertEquals 0 $?
     assertEquals 'CAFEBABE' "$(_gitcfg user.signingkey)"

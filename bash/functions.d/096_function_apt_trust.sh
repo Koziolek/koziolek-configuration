@@ -14,7 +14,7 @@ KEYRING_DIR="/etc/apt/keyrings"
 ##
 function refresh_apt_gpg_keys() {
     local sudo_cmd=''
-    (( EUID != 0 )) && sudo_cmd='sudo'
+    ((EUID != 0)) && sudo_cmd='sudo'
 
     log_info apt_trust.checking
     $sudo_cmd mkdir -p "$KEYRING_DIR"
@@ -27,10 +27,10 @@ function refresh_apt_gpg_keys() {
         if gpg --show-keys --with-colons "$keyfile" 2>/dev/null | awk -F: '$1 == "pub" && $2 == "e" {f=1} END {exit !f}'; then
             log_warn apt_trust.removing_expired "$(basename "$keyfile")"
             $sudo_cmd rm -f "$keyfile"
-            (( removed++ )) || true
+            ((removed++)) || true
         fi
     done
-    (( removed > 0 )) && log_info apt_trust.removed_count "$removed"
+    ((removed > 0)) && log_info apt_trust.removed_count "$removed"
 
     local update_output
     update_output=$($sudo_cmd apt-get update 2>&1 || true)
@@ -46,17 +46,18 @@ function refresh_apt_gpg_keys() {
 
     if [ "${#dead_repos[@]}" -gt 0 ]; then
         log_warn apt_trust.dead_repos
-        local r; for r in "${dead_repos[@]}"; do log_warn "  - $r"; done
+        local r
+        for r in "${dead_repos[@]}"; do log_warn "  - $r"; done
     fi
 
     # Parse "GPG error" lines to pair each missing key with the repo URL that
     # reported it — needed to scope signed-by= to that one repo, not all of apt.
     local pairs
-    pairs=$(echo "$update_output" \
-        | grep -E 'GPG error' \
-        | grep -oE '[a-zA-Z]+://[^ ]+ .*NO_PUBKEY [0-9A-F]+' \
-        | sed -E 's#^([a-zA-Z]+://[^ ]+) .*NO_PUBKEY ([0-9A-F]+).*#\2 \1#' \
-        | sort -u)
+    pairs=$(echo "$update_output" |
+        grep -E 'GPG error' |
+        grep -oE '[a-zA-Z]+://[^ ]+ .*NO_PUBKEY [0-9A-F]+' |
+        sed -E 's#^([a-zA-Z]+://[^ ]+) .*NO_PUBKEY ([0-9A-F]+).*#\2 \1#' |
+        sort -u)
 
     if [[ -z "$pairs" ]]; then
         log_info apt_trust.no_problems
@@ -76,7 +77,7 @@ function refresh_apt_gpg_keys() {
         if ! gpg --no-default-keyring --keyring "$tmp_keyring" --keyserver "$KEYSERVER" --recv-keys "$key" 2>/dev/null; then
             log_error apt_trust.fetch_failed "$key"
             rm -f "$tmp_keyring" "${tmp_keyring}~"
-            (( failed++ )) || true
+            ((failed++)) || true
             continue
         fi
 
@@ -92,8 +93,8 @@ function refresh_apt_gpg_keys() {
         fi
 
         local keyring_file="$KEYRING_DIR/imported-${key}.gpg"
-        gpg --no-default-keyring --keyring "$tmp_keyring" --export "$key" \
-            | $sudo_cmd tee "$keyring_file" > /dev/null
+        gpg --no-default-keyring --keyring "$tmp_keyring" --export "$key" |
+            $sudo_cmd tee "$keyring_file" >/dev/null
         $sudo_cmd chmod 644 "$keyring_file"
         rm -f "$tmp_keyring" "${tmp_keyring}~"
 
@@ -121,20 +122,20 @@ function refresh_apt_gpg_keys() {
         if [[ $bound -eq 0 ]]; then
             log_warn apt_trust.no_source_file "$repo_url" "$keyring_file"
             log_warn apt_trust.bind_manually "$keyring_file"
-            (( unbound++ )) || true
+            ((unbound++)) || true
         fi
 
-        (( fixed++ )) || true
+        ((fixed++)) || true
     done <<<"$pairs"
 
-    if (( fixed > 0 )); then
+    if ((fixed > 0)); then
         log_info apt_trust.updating
         $sudo_cmd apt-get -qq update 2>&1 | grep -v '^Pobieranie\|^Stary\|^Zign\|^Hit' || true
     fi
 
-    (( unbound > 0 )) && log_warn apt_trust.unbound_warning "$unbound"
+    ((unbound > 0)) && log_warn apt_trust.unbound_warning "$unbound"
 
-    (( failed == 0 ))
+    ((failed == 0))
 }
 
 export -f refresh_apt_gpg_keys

@@ -38,7 +38,7 @@ oneTimeSetUp() {
         [[ \"\$OS_TYPE\" == 'Linux' ]] && echo 'IS_LINUX=ok'
         [[ \"\$OS_TYPE\" != 'Darwin' ]] && echo 'NOT_DARWIN=ok'
         [[ -z \"\${HOMEBREW_PREFIX:-}\" ]] && echo 'NO_BREW_PREFIX=ok'
-    " > "$_OUT" 2>/dev/null
+    " >"$_OUT" 2>/dev/null
 }
 
 oneTimeTearDown() {

@@ -12,11 +12,11 @@ GIT_CONFIG_GENERATED="$HOME/.gitconfig.generated"
 GIT_CONFIG_STUB="$HOME/.gitconfig"
 
 if [ ! -e "$GIT_CONFIG_GENERATED" ] || [ "$GIT_CONFIG_TEMPLATE" -nt "$GIT_CONFIG_GENERATED" ]; then
-  envsubst '$GIT_CONFIGURATION_DIR' < "$GIT_CONFIG_TEMPLATE" > "$GIT_CONFIG_GENERATED"
+    envsubst '$GIT_CONFIGURATION_DIR' <"$GIT_CONFIG_TEMPLATE" >"$GIT_CONFIG_GENERATED"
 fi
 
 if [ ! -e "$GIT_CONFIG_STUB" ]; then
-  printf '[include]\n\tpath = %s\n' "$GIT_CONFIG_GENERATED" > "$GIT_CONFIG_STUB"
+    printf '[include]\n\tpath = %s\n' "$GIT_CONFIG_GENERATED" >"$GIT_CONFIG_STUB"
 fi
 
 unset GIT_CONFIG_TEMPLATE GIT_CONFIG_GENERATED GIT_CONFIG_STUB

@@ -48,22 +48,25 @@ _lang_has_tool() {
 
 # cargo instaluje do ${CARGO_HOME:-~/.cargo}/bin, którego skrypt instalacyjny nie ma w PATH
 _lang_binary_present() {
-    command -v "$1" >/dev/null 2>&1 \
-        || [ -x "$(_lang_bin_dir)/$1" ] \
-        || [ -x "${CARGO_HOME:-$HOME/.cargo}/bin/$1" ]
+    command -v "$1" >/dev/null 2>&1 ||
+        [ -x "$(_lang_bin_dir)/$1" ] ||
+        [ -x "${CARGO_HOME:-$HOME/.cargo}/bin/$1" ]
 }
 
 # $1 = cargo|go|cabal; $2 = wpis listy → "pakiet binarka" (spacja; pakiet/ścieżka nie ma spacji)
 _lang_parse_entry() {
     local kind="$1" entry="$2" pkg bin extra
-    IFS='|' read -r pkg bin extra <<< "$entry"
+    IFS='|' read -r pkg bin extra <<<"$entry"
     if [ -z "$pkg" ] || [ -n "$extra" ]; then
         return 1
     fi
     if [ -z "$bin" ]; then
         case "$kind" in
-            go) bin="${pkg%@*}"; bin="${bin##*/}" ;;
-            *) bin="$(echo "$pkg" | tr '[:upper:]' '[:lower:]')" ;;
+        go)
+            bin="${pkg%@*}"
+            bin="${bin##*/}"
+            ;;
+        *) bin="$(echo "$pkg" | tr '[:upper:]' '[:lower:]')" ;;
         esac
     fi
     echo "$pkg $bin"
@@ -96,7 +99,7 @@ _lang_packages_run() {
             failed+=("$entry")
             continue
         fi
-        read -r pkg bin <<< "$parsed"
+        read -r pkg bin <<<"$parsed"
         if [ "$mode" = install ] && _lang_binary_present "$bin"; then
             echo "$kind: $pkg już zainstalowany"
             continue
@@ -116,30 +119,30 @@ _lang_package_install() {
     local kind="$1" pkg="$2" dir
     dir="$(_lang_bin_dir)"
     case "$kind" in
-        cargo) _lang_run cargo install --locked "$pkg" ;;
-        go)
-            mkdir -p "$dir" || return 1
-            GOBIN="$dir" _lang_run go install "$pkg"
-            ;;
-        cabal)
-            mkdir -p "$dir" || return 1
-            # indeks Hackage odświeżany raz na przebieg i tylko, gdy coś faktycznie się instaluje
-            if [ -z "$_LANG_CABAL_INDEX_REFRESHED" ]; then
-                _LANG_CABAL_INDEX_REFRESHED=1
-                _lang_run cabal update >/dev/null 2>&1 || true
-            fi
-            # Kompilator wskazany wprost: shim `ghc` jest wspólny z pluginem `haskell` (stack), który
-            # wygrywa, gdy ma wersję w ~/.tool-versions — cabal budowałby wtedy ze starym ghc.
-            local ghc_dir
-            ghc_dir="$("${ASDF_BIN:-$HOME/.local/bin/asdf}" where ghc 2>/dev/null)" || ghc_dir=""
-            if [ -z "$ghc_dir" ] || [ ! -x "$ghc_dir/bin/ghc" ]; then
-                echo "⚠️  ghc z asdf niedostępny — nie instaluję $pkg"
-                return 1
-            fi
-            _lang_run cabal install --with-compiler="$ghc_dir/bin/ghc" \
-                --install-method=copy --overwrite-policy=always --installdir="$dir" "$pkg"
-            ;;
-        *) return 1 ;;
+    cargo) _lang_run cargo install --locked "$pkg" ;;
+    go)
+        mkdir -p "$dir" || return 1
+        GOBIN="$dir" _lang_run go install "$pkg"
+        ;;
+    cabal)
+        mkdir -p "$dir" || return 1
+        # indeks Hackage odświeżany raz na przebieg i tylko, gdy coś faktycznie się instaluje
+        if [ -z "$_LANG_CABAL_INDEX_REFRESHED" ]; then
+            _LANG_CABAL_INDEX_REFRESHED=1
+            _lang_run cabal update >/dev/null 2>&1 || true
+        fi
+        # Kompilator wskazany wprost: shim `ghc` jest wspólny z pluginem `haskell` (stack), który
+        # wygrywa, gdy ma wersję w ~/.tool-versions — cabal budowałby wtedy ze starym ghc.
+        local ghc_dir
+        ghc_dir="$("${ASDF_BIN:-$HOME/.local/bin/asdf}" where ghc 2>/dev/null)" || ghc_dir=""
+        if [ -z "$ghc_dir" ] || [ ! -x "$ghc_dir/bin/ghc" ]; then
+            echo "⚠️  ghc z asdf niedostępny — nie instaluję $pkg"
+            return 1
+        fi
+        _lang_run cabal install --with-compiler="$ghc_dir/bin/ghc" \
+            --install-method=copy --overwrite-policy=always --installdir="$dir" "$pkg"
+        ;;
+    *) return 1 ;;
     esac
 }
 

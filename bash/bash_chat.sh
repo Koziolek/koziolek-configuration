@@ -15,18 +15,18 @@ CHATGPT_MODEL_ENDPOINT="https://api.openai.com/v1/models"
 
 # Main function
 function dżepetto() {
-    local prompt model temperature max_tokens;
-    local OPTIND opt;
+    local prompt model temperature max_tokens
+    local OPTIND opt
     # Get list of models names
     function models() {
-       response=$(curl -s -X GET "$CHATGPT_MODEL_ENDPOINT" -H "Authorization: Bearer $CHATGPT_API_KEY")
-       readarray -t models < <(echo "$response" | jq -r '.data[].id')
+        response=$(curl -s -X GET "$CHATGPT_MODEL_ENDPOINT" -H "Authorization: Bearer $CHATGPT_API_KEY")
+        readarray -t models < <(echo "$response" | jq -r '.data[].id')
 
-       # Now 'models' is a bash array containing all the IDs
-       echo "Available models:"
-       for model in "${models[@]}"; do
-         echo "  $model"
-       done
+        # Now 'models' is a bash array containing all the IDs
+        echo "Available models:"
+        for model in "${models[@]}"; do
+            echo "  $model"
+        done
     }
 
     # Execute query to given model
@@ -109,13 +109,22 @@ function dżepetto() {
     # Parse arguments
     while getopts "p:m:t:k:Mh" opt; do
         case $opt in
-            p) prompt="$OPTARG" ;;
-            m) model="$OPTARG" ;;
-            t) temperature="$OPTARG" ;;
-            k) max_tokens="$OPTARG" ;;
-            M) models; return 0 ;;
-            h) usage; return 0 ;;
-            *) usage; return 1 ;;
+        p) prompt="$OPTARG" ;;
+        m) model="$OPTARG" ;;
+        t) temperature="$OPTARG" ;;
+        k) max_tokens="$OPTARG" ;;
+        M)
+            models
+            return 0
+            ;;
+        h)
+            usage
+            return 0
+            ;;
+        *)
+            usage
+            return 1
+            ;;
         esac
     done
 

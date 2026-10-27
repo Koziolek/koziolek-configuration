@@ -35,7 +35,7 @@ Obsługiwane systemy (patrz „Konteksty" niżej): **Ubuntu/Debian**, **macOS**,
 (nie sourcuje niczego z repo), więc nadaje się do skopiowania do innych projektów; konfigurację bierze z projektu: `.shellcheckrc` (dialekt `bash`, wstępna lista wyłączeń
 z uzasadnieniami) i `.editorconfig` (shfmt: 4 spacje). Bez opcji robi format + check; **format zmienia pliki w miejscu**, a `--check` ich nie rusza. Zakres bez `PLIK…`:
 pliki `*.sh`/`*.bash` zmienione względem merge-base z gałęzią domyślną origin (commity, working tree, nowe niezignorowane) — całe repo nie zostanie przeformatowane
-przypadkiem; `--all` = wszystkie śledzone, `--base REF` = inny punkt odniesienia. Wywołuje `linthis --lang shell --checks lint --no-save-result` (+ `--check-only`/`--format-only`).
+przypadkiem; `--all` = wszystkie śledzone, `--base REF` = inny punkt odniesienia. Wywołuje `linthis --lang shell --checks lint` (+ `--check-only`/`--format-only`); wyniki są zapisywane, więc `linthis report show` je widzi.
 Kody wyjścia (od linthis): `error` ShellChecka → 1, `warning` → 2, `info`/`style` → 0 (wypisywane, ale nie wywalają); skrypt sam zwraca 64 za zły argument i 127 za brak narzędzia. Brak `linthis`/`shellcheck`/`shfmt`
 w PATH = kod 127 z odesłaniem do instalacji (`packages/commons/lang_packages.sh`). Repo ma dziś wiele plików niezgodnych z 4 spacjami (stare mają 2) — nie formatujemy ich hurtem,
 tylko przy okazji zmian. Test: `test/unit/test_lint_shell.sh` (atrapy narzędzi w hermetycznym PATH + prawdziwe repozytoria git; testy z prawdziwym linthis pomijają się, gdy go brak).

@@ -23,7 +23,7 @@ oneTimeSetUp() {
     _FAKE_HOME="$(mktemp -d)"
     mkdir -p "$_FAKE_HOME/.config"
 
-    cat > "$_FAKE_HOME/.config/git-context" <<'EOF'
+    cat >"$_FAKE_HOME/.config/git-context" <<'EOF'
 [work]
 name  = Jan Kowalski
 email = jan@firma.pl
@@ -36,7 +36,7 @@ EOF
     _FAKE_REPO="$(mktemp -d)"
     git -C "$_FAKE_REPO" init -q
     git -C "$_FAKE_REPO" config user.email "stary@test.pl"
-    git -C "$_FAKE_REPO" config user.name  "Stary Uzytkownik"
+    git -C "$_FAKE_REPO" config user.name "Stary Uzytkownik"
 }
 
 oneTimeTearDown() {
@@ -45,25 +45,27 @@ oneTimeTearDown() {
 
 setUp() {
     # Czyść lokalne sekcje między testami
-    git -C "$_FAKE_REPO" config --local --remove-section user    2>/dev/null || true
+    git -C "$_FAKE_REPO" config --local --remove-section user 2>/dev/null || true
     git -C "$_FAKE_REPO" config --local --remove-section project 2>/dev/null || true
 }
 
 # Uruchamia git_context cicho — używany gdy interesuje tylko kod wyjścia lub zmiany w git config.
 _run_gc() {
     local input="$1"
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf '%b' "$input" | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf '%b' "$input" | git_context
     ) >/dev/null 2>/dev/null
 }
 
 # Uruchamia git_context i zwraca stdout — używany gdy sprawdzamy zawartość wyjścia.
 _run_gc_out() {
     local input="$1"
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf '%b' "$input" | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf '%b' "$input" | git_context
     ) 2>/dev/null
 }
 
@@ -72,7 +74,7 @@ _run_gc_out() {
 testListsAvailableContexts() {
     local output
     output="$(_run_gc_out "0\n")"
-    assertContains 'output musi zawierać kontekst "work"'     "$output" 'work'
+    assertContains 'output musi zawierać kontekst "work"' "$output" 'work'
     assertContains 'output musi zawierać kontekst "personal"' "$output" 'personal'
 }
 
@@ -95,7 +97,7 @@ testSecondContextSetsCorrectData() {
     local name email
     name="$(git -C "$_FAKE_REPO" config --local user.name 2>/dev/null || true)"
     email="$(git -C "$_FAKE_REPO" config --local user.email 2>/dev/null || true)"
-    assertEquals 'user.name musi być z kontekstu personal' 'janek99'         "$name"
+    assertEquals 'user.name musi być z kontekstu personal' 'janek99' "$name"
     assertEquals 'user.email musi być z kontekstu personal' 'janek@example.com' "$email"
 }
 
@@ -126,9 +128,10 @@ testCancelReturnsNonZero() {
 testDoesNotRunOutsideGitRepo() {
     local not_a_repo rc=0
     not_a_repo="$(mktemp -d)"
-    ( export HOME="$_FAKE_HOME"
-      cd "$not_a_repo"
-      printf '' | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$not_a_repo"
+        printf '' | git_context
     ) >/dev/null 2>/dev/null || rc=$?
     rm -rf "$not_a_repo"
     assertNotEquals 'wywołanie poza repo git musi zwrócić kod błędu' 0 "$rc"
@@ -142,9 +145,10 @@ testRefusesCreationReturnsNonZero() {
     local cfg="$_FAKE_HOME/.config/git-context"
     mv "$cfg" "$cfg.bak"
     local rc=0
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf 'n\n' | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf 'n\n' | git_context
     ) >/dev/null 2>/dev/null || rc=$?
     mv "$cfg.bak" "$cfg"
     assertNotEquals 'odmowa tworzenia pliku musi zwrócić kod błędu' 0 "$rc"
@@ -153,9 +157,10 @@ testRefusesCreationReturnsNonZero() {
 testConfirmsCreationMakesFile() {
     local cfg="$_FAKE_HOME/.config/git-context"
     mv "$cfg" "$cfg.bak"
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
     ) >/dev/null 2>/dev/null || true
     local created=false
     [[ -f "$cfg" ]] && created=true
@@ -166,9 +171,10 @@ testConfirmsCreationMakesFile() {
 testConfirmsCreationWritesDefaultSection() {
     local cfg="$_FAKE_HOME/.config/git-context"
     mv "$cfg" "$cfg.bak"
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf 't\nJan Kowalski\njan@example.com\n0\n' | git_context
     ) >/dev/null 2>/dev/null || true
     local ok=false
     grep -qE '^\[default\]' "$cfg" 2>/dev/null && ok=true
@@ -184,9 +190,10 @@ testAddWithoutConfigFileReturnsNonZero() {
     local cfg="$_FAKE_HOME/.config/git-context"
     mv "$cfg" "$cfg.bak"
     local rc=0
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf '' | git_context --add
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf '' | git_context --add
     ) >/dev/null 2>/dev/null || rc=$?
     mv "$cfg.bak" "$cfg"
     assertNotEquals '--add bez pliku konfiguracyjnego musi zwrócić kod błędu' 0 "$rc"
@@ -197,9 +204,10 @@ testAddAppendsNewProfile() {
     local tmp_cfg
     tmp_cfg="$(mktemp)"
     cp "$cfg" "$tmp_cfg"
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf 'newprofile\nJan Pracownik\njan@firma.pl\n' | git_context --add
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf 'newprofile\nJan Pracownik\njan@firma.pl\n' | git_context --add
     ) >/dev/null 2>/dev/null || true
     local ok=false
     grep -qE '^\[newprofile\]' "$cfg" 2>/dev/null && ok=true
@@ -210,9 +218,10 @@ testAddAppendsNewProfile() {
 
 testAddDuplicateProfileReturnsNonZero() {
     local rc=0
-    ( export HOME="$_FAKE_HOME"
-      cd "$_FAKE_REPO"
-      printf 'work\n' | git_context --add
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$_FAKE_REPO"
+        printf 'work\n' | git_context --add
     ) >/dev/null 2>/dev/null || rc=$?
     assertNotEquals '--add z duplikatem nazwy musi zwrócić kod błędu' 0 "$rc"
 }
@@ -220,9 +229,10 @@ testAddDuplicateProfileReturnsNonZero() {
 testAddOutsideGitRepoReturnsNonZero() {
     local not_a_repo rc=0
     not_a_repo="$(mktemp -d)"
-    ( export HOME="$_FAKE_HOME"
-      cd "$not_a_repo"
-      printf '' | git_context --add
+    (
+        export HOME="$_FAKE_HOME"
+        cd "$not_a_repo"
+        printf '' | git_context --add
     ) >/dev/null 2>/dev/null || rc=$?
     rm -rf "$not_a_repo"
     assertNotEquals '--add poza repo git musi zwrócić kod błędu' 0 "$rc"

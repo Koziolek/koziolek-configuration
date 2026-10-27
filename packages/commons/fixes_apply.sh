@@ -36,19 +36,19 @@ _apply_fixes_report() {
     local line id state risk detail
     while IFS= read -r line; do
         case "$line" in
-            '#'*|'') ;;
-            *)
-                IFS=$'\t' read -r id state _ risk detail <<<"$line"
-                case "$state" in
-                    ok) ok "[$id] w porządku" ;;
-                    na) ;;
-                    fixed) ok "[$id] naprawiono" ;;
-                    failed) warn "[$id] naprawa nieudana${detail:+: $detail}" ;;
-                    skipped) warn "[$id] pominięto${detail:+: $detail}" ;;
-                    unknown) warn "[$id] nie udało się sprawdzić${detail:+: $detail}" ;;
-                    *) warn "[$id] ${state}${detail:+: $detail}" ;;
-                esac
-                ;;
+        '#'* | '') ;;
+        *)
+            IFS=$'\t' read -r id state _ risk detail <<<"$line"
+            case "$state" in
+            ok) ok "[$id] w porządku" ;;
+            na) ;;
+            fixed) ok "[$id] naprawiono" ;;
+            failed) warn "[$id] naprawa nieudana${detail:+: $detail}" ;;
+            skipped) warn "[$id] pominięto${detail:+: $detail}" ;;
+            unknown) warn "[$id] nie udało się sprawdzić${detail:+: $detail}" ;;
+            *) warn "[$id] ${state}${detail:+: $detail}" ;;
+            esac
+            ;;
         esac
     done
 }
@@ -64,29 +64,32 @@ apply_fixes() {
 
     for line in ${rows[@]+"${rows[@]}"}; do
         case "$line" in
-            '#dead_repo'$'\t'*)
-                declare -p REPOS_DEAD >/dev/null 2>&1 && REPOS_DEAD+=("${line#*$'\t'}")
-                ;;
-            '#'*|'') ;;
-            *)
-                IFS=$'\t' read -r id state _ risk detail <<<"$line"
-                if [ "$state" = detected ] && [ "$risk" = high ]; then
-                    warn "[$id] wymaga zgody (ryzyko high): ${detail:-brak szczegółów}"
-                    reply=n
-                    read -r -p "Zastosować naprawę '$id'? [y/N]: " -n 1 reply || reply=n
-                    echo
-                    if [[ ! "$reply" =~ ^[YyTt]$ ]]; then
-                        info "[$id] pominięto (brak zgody)"
-                        continue
-                    fi
+        '#dead_repo'$'\t'*)
+            declare -p REPOS_DEAD >/dev/null 2>&1 && REPOS_DEAD+=("${line#*$'\t'}")
+            ;;
+        '#'* | '') ;;
+        *)
+            IFS=$'\t' read -r id state _ risk detail <<<"$line"
+            if [ "$state" = detected ] && [ "$risk" = high ]; then
+                warn "[$id] wymaga zgody (ryzyko high): ${detail:-brak szczegółów}"
+                reply=n
+                read -r -p "Zastosować naprawę '$id'? [y/N]: " -n 1 reply || reply=n
+                echo
+                if [[ ! "$reply" =~ ^[YyTt]$ ]]; then
+                    info "[$id] pominięto (brak zgody)"
+                    continue
                 fi
-                ids+=("$id")
-                ;;
+            fi
+            ids+=("$id")
+            ;;
         esac
     done
 
     [ "${#ids[@]}" -gt 0 ] || return 0
-    only=$(IFS=,; echo "${ids[*]}")
+    only=$(
+        IFS=,
+        echo "${ids[*]}"
+    )
     # Apply z kluczami z keyservera i `apt-get update` potrafi trwać dłużej niż domyślne 120 s.
     # --allow-high dostają wyłącznie ids po kontroli zgody powyżej. Komunikaty fixów (stderr) idą
     # na terminal na bieżąco, raport (stdout) tłumaczymy po zakończeniu.

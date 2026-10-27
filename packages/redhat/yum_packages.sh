@@ -13,38 +13,38 @@
 # poza samym EPEL; `safe_yum_install` pomija je z ostrzeżeniem, nie przerywa.
 
 system_tools=(
-  git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql
+    git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql
 )
 
 security_tools=(
-  gnupg2 ca-certificates pam-u2f fido2-tools pcsc-lite openssh-clients opensc
+    gnupg2 ca-certificates pam-u2f fido2-tools pcsc-lite openssh-clients opensc
 )
 
 graphics_libs=(
-  libatomic mesa-dri-drivers mesa-libGL mesa-libGLU mesa-libEGL mesa-libgbm
-  mesa-vulkan-drivers vulkan-loader
+    libatomic mesa-dri-drivers mesa-libGL mesa-libGLU mesa-libEGL mesa-libgbm
+    mesa-vulkan-drivers vulkan-loader
 )
 
 gui_libs=(
-  GConf2 gdk-pixbuf2 libxcb
+    GConf2 gdk-pixbuf2 libxcb
 )
 
 image_tools=(
-  libheif-tools
+    libheif-tools
 )
 
 diag_tools=(
-  memtester stress-ng dmidecode pciutils lm_sensors smartmontools nvme-cli gdb
-  libinput-utils
-  ddrescue mdadm pv testdisk
+    memtester stress-ng dmidecode pciutils lm_sensors smartmontools nvme-cli gdb
+    libinput-utils
+    ddrescue mdadm pv testdisk
 )
 
 # Kompilatory i biblioteki do budowania toolchainów z asdf (ghc z pluginu ghcup, cargo, cabal) — mirror
 # build_libs z apt_packages.sh (#172).
 build_libs=(
-  gcc gcc-c++ make perl gmp-devel ncurses-devel libffi-devel pkgconf-pkg-config xz zlib-devel
+    gcc gcc-c++ make perl gmp-devel ncurses-devel libffi-devel pkgconf-pkg-config xz zlib-devel
 )
 
 boxes_vm=(
-  gnome-boxes qemu-kvm libvirt-daemon libvirt-daemon-config-network
+    gnome-boxes qemu-kvm libvirt-daemon libvirt-daemon-config-network
 )

@@ -45,9 +45,9 @@ git_bug_installed_version() {
 # Architektura wydania: amd64 | arm64; inna = kod 1.
 git_bug_arch() {
     case "$(uname -m)" in
-        x86_64|amd64)  echo amd64 ;;
-        aarch64|arm64) echo arm64 ;;
-        *) return 1 ;;
+    x86_64 | amd64) echo amd64 ;;
+    aarch64 | arm64) echo arm64 ;;
+    *) return 1 ;;
     esac
 }
 
@@ -81,8 +81,8 @@ _git_bug_install_docs() {
 
     if [ -f "$src/completion/bash/git-bug" ]; then
         mkdir -p "$comp_dir"
-        install -m 644 "$src/completion/bash/git-bug" "$comp_dir/.git-bug.new" \
-            && mv -f "$comp_dir/.git-bug.new" "$comp_dir/git-bug"
+        install -m 644 "$src/completion/bash/git-bug" "$comp_dir/.git-bug.new" &&
+            mv -f "$comp_dir/.git-bug.new" "$comp_dir/git-bug"
     else
         echo "⚠️  git-bug: brak bash completion w wydaniu — pomijam"
     fi
@@ -132,13 +132,13 @@ install_git_bug() {
         local src="$tmp_dir/git-bug_${latest}_linux_${arch}"
         mkdir -p "$install_dir"
         # `install` do pliku tymczasowego + mv: podmiana atomowa, działa też gdy stara binarka jest uruchomiona.
-        install -m 755 "$src/git-bug" "$install_dir/.git-bug.new" \
-            && mv -f "$install_dir/.git-bug.new" "$install_dir/git-bug"
+        install -m 755 "$src/git-bug" "$install_dir/.git-bug.new" &&
+            mv -f "$install_dir/.git-bug.new" "$install_dir/git-bug"
         _git_bug_install_docs "$src"
         echo "✓ git-bug v$latest zainstalowany w $install_dir (suma sha256 zweryfikowana)"
         case ":$PATH:" in
-            *":$install_dir:"*) ;;
-            *) echo "ℹ️  $install_dir nie jest w PATH — dodaj go, aby używać 'git bug'" ;;
+        *":$install_dir:"*) ;;
+        *) echo "ℹ️  $install_dir nie jest w PATH — dodaj go, aby używać 'git bug'" ;;
         esac
     fi
     rm -rf "$tmp_dir"

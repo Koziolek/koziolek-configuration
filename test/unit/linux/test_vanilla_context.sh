@@ -49,9 +49,9 @@ testFunctionsUseDockerCliIndirection() {
 # idzie przez `script` (pseudo-terminal). $1 = TERM, $2 = dodatkowe export/mocki.
 _run_console_font() {
     local log="$1" term="$2" extra="${3:-}" runner
-    : > "$log"
+    : >"$log"
     runner="$(mktemp)"
-    cat > "$runner" <<EOS
+    cat >"$runner" <<EOS
 export HOME='$(mktemp -d)' TERM='$term'
 setfont() { echo "setfont \$*" >> '$log'; }
 $extra
@@ -62,21 +62,24 @@ EOS
 }
 
 testConsoleFontSetOnLinuxVt() {
-    local log; log="$(mktemp)"
+    local log
+    log="$(mktemp)"
     _run_console_font "$log" linux
     assertEquals 'setfont Lat2-Terminus16' "$(cat "$log")"
     rm -f "$log"
 }
 
 testConsoleFontSkippedInTmux() {
-    local log; log="$(mktemp)"
+    local log
+    log="$(mktemp)"
     _run_console_font "$log" tmux-256color
     assertEquals '' "$(cat "$log")"
     rm -f "$log"
 }
 
 testConsoleFontOverrideAndDisable() {
-    local log; log="$(mktemp)"
+    local log
+    log="$(mktemp)"
     _run_console_font "$log" linux "export VANILLA_CONSOLE_FONT=Lat2-Terminus20x10"
     assertEquals 'setfont Lat2-Terminus20x10' "$(cat "$log")"
     _run_console_font "$log" linux "export VANILLA_CONSOLE_FONT="

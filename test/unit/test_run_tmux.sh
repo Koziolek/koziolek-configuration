@@ -26,7 +26,7 @@ tearDown() {
 _make_fake_tmux() {
     local has_session_rc="${1:-0}"
     local log="$_CALL_LOG"
-    cat > "$_FAKE_BIN/tmux" << EOF
+    cat >"$_FAKE_BIN/tmux" <<EOF
 #!/usr/bin/env bash
 echo "\$*" >> "$log"
 case "\$1" in
@@ -101,29 +101,29 @@ testRunTmuxDoesNothingWhenTmuxNotInstalled() {
 # ---------------------------------------------------------------------------
 
 testRunTmuxCallsSessionInitWhenSessionMissing() {
-    _make_fake_tmux 1  # has-session → 1 (sesja nie istnieje)
-    _run_in_subshell "" > /dev/null 2>&1 || true
+    _make_fake_tmux 1 # has-session → 1 (sesja nie istnieje)
+    _run_in_subshell "" >/dev/null 2>&1 || true
     assertTrue 'gdy brak sesji run_tmux musi wywołać tmux new-session przez session-init.sh' \
         "grep -q 'new-session' '$_CALL_LOG'"
 }
 
 testRunTmuxSkipsSessionInitWhenSessionExists() {
-    _make_fake_tmux 0  # has-session → 0 (sesja istnieje)
-    _run_in_subshell "" > /dev/null 2>&1 || true
+    _make_fake_tmux 0 # has-session → 0 (sesja istnieje)
+    _run_in_subshell "" >/dev/null 2>&1 || true
     assertFalse 'gdy sesja istnieje tmux new-session nie może być wywołany' \
         "grep -q 'new-session' '$_CALL_LOG'"
 }
 
 testRunTmuxAlwaysCallsAttachSession() {
     _make_fake_tmux 0
-    _run_in_subshell "" > /dev/null 2>&1 || true
+    _run_in_subshell "" >/dev/null 2>&1 || true
     assertTrue 'run_tmux musi zawsze wywołać tmux attach-session' \
         "grep -q 'attach-session' '$_CALL_LOG'"
 }
 
 testRunTmuxAttachesToSessionNamedMain() {
     _make_fake_tmux 0
-    _run_in_subshell "" > /dev/null 2>&1 || true
+    _run_in_subshell "" >/dev/null 2>&1 || true
     assertTrue 'run_tmux musi dołączyć do sesji o nazwie main' \
         "grep -q 'attach-session.*main' '$_CALL_LOG'"
 }

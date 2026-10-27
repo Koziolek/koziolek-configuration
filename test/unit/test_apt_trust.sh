@@ -29,13 +29,13 @@ setUp() {
         f="${*: -1}"
         if [ "$colons" = 1 ]; then
             case "$f" in
-                *-expired.gpg) echo "pub:e:255:22:AAAA:1500000000:1600000000::-:::sc::::::23::0:" ;;
-                *) echo "pub:-:255:22:BBBB:1500000000:::-:::scESC::::::23::0:" ;;
+            *-expired.gpg) echo "pub:e:255:22:AAAA:1500000000:1600000000::-:::sc::::::23::0:" ;;
+            *) echo "pub:-:255:22:BBBB:1500000000:::-:::scESC::::::23::0:" ;;
             esac
         else
             case "$f" in
-                *-expired.gpg) echo "pub   rsa4096 2017-07-14 [SC] [expired: 2020-09-13]" ;;
-                *) echo "pub   rsa4096 2017-07-14 [SC]" ;;
+            *-expired.gpg) echo "pub   rsa4096 2017-07-14 [SC] [expired: 2020-09-13]" ;;
+            *) echo "pub   rsa4096 2017-07-14 [SC]" ;;
             esac
         fi
     }

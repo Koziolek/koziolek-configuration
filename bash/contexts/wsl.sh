@@ -14,6 +14,6 @@ elif command -v explorer.exe >/dev/null 2>&1; then
 fi
 
 # Schowek Windows z powłoki (gdy dostępne mostki .exe).
-command -v clip.exe       >/dev/null 2>&1 && alias clip='clip.exe'
-command -v powershell.exe >/dev/null 2>&1 && \
+command -v clip.exe >/dev/null 2>&1 && alias clip='clip.exe'
+command -v powershell.exe >/dev/null 2>&1 &&
     alias paste='powershell.exe -NoProfile -Command Get-Clipboard'

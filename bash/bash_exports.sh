@@ -48,12 +48,12 @@ export CLAUDE_SKILL_CONFIG=$WORKSPACE/ai/claude/config.json
 
 # Export „secrets”
 if [ -f $HOME/.senv ]; then
-  . $HOME/.senv
+    . $HOME/.senv
 else
-  echo 'Secret file $HOME/.senv not exist yet. Creating…'
-  echo > $HOME/.senv
-  chmod 400 $HOME/.senv
-  echo 'Secret file $HOME/.senv has been created. It is user readonly file!'
+    echo 'Secret file $HOME/.senv not exist yet. Creating…'
+    echo >$HOME/.senv
+    chmod 400 $HOME/.senv
+    echo 'Secret file $HOME/.senv has been created. It is user readonly file!'
 fi
 export SDKMAN_DIR="$HOME/.sdkman"
 
@@ -62,9 +62,9 @@ if [ -d "$SDKMAN_DIR/candidates" ]; then
         [ -d "$_cdir/bin" ] && export PATH="$_cdir/bin:$PATH"
     done
     unset _cdir
-    [ -d "$SDKMAN_DIR/candidates/java/current" ]   && export JAVA_HOME="$SDKMAN_DIR/candidates/java/current"
-    [ -d "$SDKMAN_DIR/candidates/maven/current" ]  && export MAVEN_HOME="$SDKMAN_DIR/candidates/maven/current"
-    [ -d "$SDKMAN_DIR/candidates/mvnd/current" ]   && export MVND_HOME="$SDKMAN_DIR/candidates/mvnd/current"
+    [ -d "$SDKMAN_DIR/candidates/java/current" ] && export JAVA_HOME="$SDKMAN_DIR/candidates/java/current"
+    [ -d "$SDKMAN_DIR/candidates/maven/current" ] && export MAVEN_HOME="$SDKMAN_DIR/candidates/maven/current"
+    [ -d "$SDKMAN_DIR/candidates/mvnd/current" ] && export MVND_HOME="$SDKMAN_DIR/candidates/mvnd/current"
     [ -d "$SDKMAN_DIR/candidates/quarkus/current" ] && export QUARKUS_HOME="$SDKMAN_DIR/candidates/quarkus/current"
 fi
 

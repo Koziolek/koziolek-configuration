@@ -181,7 +181,7 @@ cron_schedule() {
         return 0
     fi
 
-    _cron_time() {  # ustawia h, m z dopasowania: grupy 3 i 5 względem offsetu $1
+    _cron_time() { # ustawia h, m z dopasowania: grupy 3 i 5 względem offsetu $1
         h="${BASH_REMATCH[$1]:-0}"
         m="${BASH_REMATCH[$(($1 + 2))]:-0}"
         m=$((10#$m))
@@ -252,10 +252,22 @@ cron_add() {
     local name="" log=1
     while [[ "${1:-}" == -* ]]; do
         case "$1" in
-        -n | --name) name="${2:-}"; shift 2 || shift ;;
-        --no-log) log=0; shift ;;
-        --) shift; break ;;
-        *) log_error cron.unknown_option "$1"; return 1 ;;
+        -n | --name)
+            name="${2:-}"
+            shift 2 || shift
+            ;;
+        --no-log)
+            log=0
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            log_error cron.unknown_option "$1"
+            return 1
+            ;;
         esac
     done
     if [ $# -lt 2 ]; then
@@ -340,7 +352,10 @@ cron_remove() {
         _cron_is_job "$l" || continue
         n=$((n + 1))
         if [[ "$key" =~ ^[0-9]+$ ]]; then
-            [ "$n" -eq "$key" ] && { matches+=("$i"); match_nr+=("$n"); }
+            [ "$n" -eq "$key" ] && {
+                matches+=("$i")
+                match_nr+=("$n")
+            }
         elif [[ "$l" == *"$key"* ]]; then
             matches+=("$i")
             match_nr+=("$n")
@@ -368,7 +383,10 @@ cron_remove() {
     local in_block=0 jobs_in_block=0
     for l in "${lines[@]}"; do
         if [ "$l" = "$_CRON_BEGIN" ]; then
-            in_block=1; jobs_in_block=0; block=("$l"); continue
+            in_block=1
+            jobs_in_block=0
+            block=("$l")
+            continue
         fi
         if [ "$in_block" = 1 ]; then
             block+=("$l")
@@ -471,7 +489,10 @@ cron_list() {
     case "${1:-}" in
     -o | --own) only_own=1 ;;
     "") ;;
-    *) log_error cron.unknown_option "$1"; return 1 ;;
+    *)
+        log_error cron.unknown_option "$1"
+        return 1
+        ;;
     esac
     _cron_check_cli || return 1
 

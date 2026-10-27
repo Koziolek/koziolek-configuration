@@ -4,7 +4,7 @@
 # Converts all *.heic files in the current directory to PNGs
 # Requires heif-convert
 ##
-function heif_to_png () {
+function heif_to_png() {
     if ! command -v heif-convert >/dev/null 2>&1; then
         echo "Error: 'heif-convert' is not installed or not found in PATH."
         return 1
@@ -13,7 +13,10 @@ function heif_to_png () {
     local count=0
     for i in *.heic; do
         # If no *.heic files exist, stop
-        [ -e "$i" ] || { echo "No .heic files found."; return 0; }
+        [ -e "$i" ] || {
+            echo "No .heic files found."
+            return 0
+        }
 
         heif-convert "$i" "$(basename -s .heic "$i").png"
         ((count++))
@@ -21,10 +24,9 @@ function heif_to_png () {
     echo "Converted $count file(s) from .heic to .png."
 }
 
-
 function resize_png() {
     # Argumenty: $1 - nazwa pliku, $2 - skala w procentach
-    local scale=${2:-50}  # Skala domyślna to 50% (jeśli brak podano)
+    local scale=${2:-50} # Skala domyślna to 50% (jeśli brak podano)
 
     # Sprawdź, czy podano poprawną wartość skali (liczby całkowite)
     if ! [[ "$scale" =~ ^[0-9]+$ ]] || [ "$scale" -le 0 ] || [ "$scale" -gt 100 ]; then
@@ -58,7 +60,7 @@ function resize_png() {
 
 function resize_jpg() {
     # Argumenty: $1 - nazwa pliku, $2 - skala w procentach
-    local scale=${2:-50}  # Skala domyślna to 50% (jeśli brak podano)
+    local scale=${2:-50} # Skala domyślna to 50% (jeśli brak podano)
 
     # Sprawdź, czy podano poprawną wartość skali (liczby całkowite)
     if ! [[ "$scale" =~ ^[0-9]+$ ]] || [ "$scale" -le 0 ] || [ "$scale" -gt 100 ]; then

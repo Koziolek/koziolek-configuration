@@ -4,24 +4,24 @@
 # Sets up environment variables to use sudo if not already root
 ##
 function make_me_sudo() {
-  export SUDO=''
-  export RESET_SUDO=0
-  if ((EUID != 0)); then
-    SUDO='sudo'
-    RESET_SUDO=1
-  fi
-  return 0
+    export SUDO=''
+    export RESET_SUDO=0
+    if ((EUID != 0)); then
+        SUDO='sudo'
+        RESET_SUDO=1
+    fi
+    return 0
 }
 
 ##
 # Revokes sudo privileges set by make_me_sudo
 ##
 function unmake_me_sudo() {
-  if ((RESET_SUDO != 0)); then
-    $SUDO -K
-  fi
-  unset SUDO
-  unset RESET_SUDO
+    if ((RESET_SUDO != 0)); then
+        $SUDO -K
+    fi
+    unset SUDO
+    unset RESET_SUDO
 }
 
 ##
@@ -30,36 +30,36 @@ function unmake_me_sudo() {
 # (Same as order66)
 ##
 function exterminatus() {
-  if [ $# -lt 1 ]; then
-    log_man process.exterminatus_usage
-    return 1
-  fi
+    if [ $# -lt 1 ]; then
+        log_man process.exterminatus_usage
+        return 1
+    fi
 
-  local root_mode=false
-  local pattern
+    local root_mode=false
+    local pattern
 
-  # Check if the first argument is --sudo
-  if [ "$1" == "--sudo" ]; then
-    root_mode=true
-    shift # Remove the --sudo argument
-  fi
+    # Check if the first argument is --sudo
+    if [ "$1" == "--sudo" ]; then
+        root_mode=true
+        shift # Remove the --sudo argument
+    fi
 
-  pattern="$1"
-  if $root_mode; then
-    make_me_sudo
-  fi
-  log_exterminatus "process of ${pattern}"
-  local _pids
-  _pids=$(pgrep -f "$pattern")
-  if [ -n "$_pids" ]; then
-    log_info process.killed_header
-    pgrep -af "$pattern" | while IFS= read -r _line; do log_info "  $_line"; done
-    echo "$_pids" | $SUDO xargs kill -9
-  fi
+    pattern="$1"
+    if $root_mode; then
+        make_me_sudo
+    fi
+    log_exterminatus "process of ${pattern}"
+    local _pids
+    _pids=$(pgrep -f "$pattern")
+    if [ -n "$_pids" ]; then
+        log_info process.killed_header
+        pgrep -af "$pattern" | while IFS= read -r _line; do log_info "  $_line"; done
+        echo "$_pids" | $SUDO xargs kill -9
+    fi
 
-  if $root_mode; then
-    unmake_me_sudo
-  fi
+    if $root_mode; then
+        unmake_me_sudo
+    fi
 }
 
 ##
@@ -68,8 +68,8 @@ function exterminatus() {
 # Wymaga ustawionego $SUDO (make_me_sudo w wołającym).
 ##
 function _listening_socket_pairs() {
-  $SUDO ss -tulpn 2>/dev/null \
-    | awk 'NR>1 {
+    $SUDO ss -tulpn 2>/dev/null |
+        awk 'NR>1 {
         split($5, a, ":")
         p = a[length(a)]
         gsub(/[^0-9]/, "", p)
@@ -84,95 +84,95 @@ function _listening_socket_pairs() {
 # List processes that use given PORT if --sudo is set then run it as sudo.
 ##
 function who_use_port() {
-  if [ $# -lt 1 ]; then
-    log_man process.who_use_port_usage
-    return 1
-  fi
-
-  local root_mode=false
-  local port
-
-  # Check if the first argument is --sudo
-  if [ "$1" == "--sudo" ]; then
-    root_mode=true
-    shift # Remove the --sudo argument
-  fi
-
-  port="$1"
-
-  if [ -z "$port" ]; then
-    log_man process.who_use_port_usage
-    return 1
-  fi
-
-  if $root_mode; then
-    make_me_sudo
-  fi
-
-  # Zbiera pary PID:PORT niezależnie od narzędzia (ss/lsof) i dopasowania (dokładne
-  # vs podciąg) — dawne "grep PORT" na całej linii ss łapało też przypadkowe trafienia
-  # w PID-zie czy nazwie procesu, nie tylko w numerze portu.
-  local pairs
-  pairs=$(_listening_socket_pairs | sort -u)
-
-  if $root_mode; then
-    unmake_me_sudo
-  fi
-
-  if [ -z "$pairs" ]; then
-    log_info process.no_listeners
-    return 0
-  fi
-
-  local exact=() partial=()
-  local pid pport
-  while IFS=: read -r pid pport; do
-    [ -z "$pport" ] && continue
-    if [[ "$pport" == "$port" ]]; then
-      exact+=("$pid:$pport")
-    elif [[ "$pport" == *"$port"* ]]; then
-      partial+=("$pid:$pport")
+    if [ $# -lt 1 ]; then
+        log_man process.who_use_port_usage
+        return 1
     fi
-  done <<<"$pairs"
 
-  if [ ${#exact[@]} -eq 0 ] && [ ${#partial[@]} -eq 0 ]; then
-    log_info process.no_listener_on_port "$port"
-    return 0
-  fi
+    local root_mode=false
+    local port
 
-  printf "%-10s %-10s\n" "PID" "PORT"
-  local entry
-  for entry in "${exact[@]}"; do
-    printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
-  done
-  for entry in "${partial[@]}"; do
-    printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
-  done
+    # Check if the first argument is --sudo
+    if [ "$1" == "--sudo" ]; then
+        root_mode=true
+        shift # Remove the --sudo argument
+    fi
+
+    port="$1"
+
+    if [ -z "$port" ]; then
+        log_man process.who_use_port_usage
+        return 1
+    fi
+
+    if $root_mode; then
+        make_me_sudo
+    fi
+
+    # Zbiera pary PID:PORT niezależnie od narzędzia (ss/lsof) i dopasowania (dokładne
+    # vs podciąg) — dawne "grep PORT" na całej linii ss łapało też przypadkowe trafienia
+    # w PID-zie czy nazwie procesu, nie tylko w numerze portu.
+    local pairs
+    pairs=$(_listening_socket_pairs | sort -u)
+
+    if $root_mode; then
+        unmake_me_sudo
+    fi
+
+    if [ -z "$pairs" ]; then
+        log_info process.no_listeners
+        return 0
+    fi
+
+    local exact=() partial=()
+    local pid pport
+    while IFS=: read -r pid pport; do
+        [ -z "$pport" ] && continue
+        if [[ "$pport" == "$port" ]]; then
+            exact+=("$pid:$pport")
+        elif [[ "$pport" == *"$port"* ]]; then
+            partial+=("$pid:$pport")
+        fi
+    done <<<"$pairs"
+
+    if [ ${#exact[@]} -eq 0 ] && [ ${#partial[@]} -eq 0 ]; then
+        log_info process.no_listener_on_port "$port"
+        return 0
+    fi
+
+    printf "%-10s %-10s\n" "PID" "PORT"
+    local entry
+    for entry in "${exact[@]}"; do
+        printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
+    done
+    for entry in "${partial[@]}"; do
+        printf "%-10s %-10s\n" "${entry%%:*}" "${entry#*:}"
+    done
 }
 
 ##
 # Clear swap by turn it off then on.
 ##
 function reswap() {
-  make_me_sudo
+    make_me_sudo
 
-  $SUDO swapoff -a
-  $SUDO swapon -a
+    $SUDO swapoff -a
+    $SUDO swapon -a
 
-  unmake_me_sudo
+    unmake_me_sudo
 }
 
 ##
 # Shows who use swap
 ##
 function who_use_swap() {
-  for pid in /proc/[0-9]*; do
-    name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
-    swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)
-    if [ -n "$swap" ] && [ "$swap" -gt 0 ]; then
-      printf "%8d KB  %-20s  %s\n" "$swap" "$name" "$pid"
-    fi
-  done | sort -nr | head
+    for pid in /proc/[0-9]*; do
+        name=$(awk '/Name/ {print $2}' "$pid/status" 2>/dev/null)
+        swap=$(awk '/VmSwap/ {print $2}' "$pid/status" 2>/dev/null)
+        if [ -n "$swap" ] && [ "$swap" -gt 0 ]; then
+            printf "%8d KB  %-20s  %s\n" "$swap" "$name" "$pid"
+        fi
+    done | sort -nr | head
 }
 
 export -f exterminatus

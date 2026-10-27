@@ -28,7 +28,7 @@ setUp() {
     unset KEYTOOL_FAIL_IMPORT
 
     mkdir -p "$_TEST_DIR/bin"
-    cat > "$_TEST_DIR/bin/keytool" <<'EOF'
+    cat >"$_TEST_DIR/bin/keytool" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "$KEYTOOL_LOG"
 for a in "$@"; do
@@ -47,13 +47,13 @@ tearDown() {
 }
 
 _make_cert() {
-    printf 'fake-cert' > "$NGINX_DATA/ssl/nginx.crt"
+    printf 'fake-cert' >"$NGINX_DATA/ssl/nginx.crt"
 }
 
 _make_jdk() {
     # $1 = nazwa katalogu JDK
     mkdir -p "$SDKMAN_DIR/candidates/java/$1/lib/security"
-    printf 'fake-cacerts' > "$SDKMAN_DIR/candidates/java/$1/lib/security/cacerts"
+    printf 'fake-cacerts' >"$SDKMAN_DIR/candidates/java/$1/lib/security/cacerts"
 }
 
 # ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ testImportsCertToEachJdk() {
     _make_jdk "21.0.1-tem"
     ln -s "17.0.9-tem" "$SDKMAN_DIR/candidates/java/current"
 
-    update_sdkman_jdk_certs > /dev/null
+    update_sdkman_jdk_certs >/dev/null
 
     local calls
     calls="$(grep -c -- '-importcert' "$KEYTOOL_LOG")"

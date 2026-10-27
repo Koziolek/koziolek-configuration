@@ -29,12 +29,12 @@ run_suite() {
         name="$(basename "$test_file")"
         echo "▶ $suite_name/$name"
 
-        if bash "$test_file" >> "$RESULTS_DIR/results.log" 2>&1; then
+        if bash "$test_file" >>"$RESULTS_DIR/results.log" 2>&1; then
             echo "  ✓ OK"
-            (( PASS++ )) || true
+            ((PASS++)) || true
         else
             echo "  ✗ FAIL"
-            (( FAIL++ )) || true
+            ((FAIL++)) || true
             ERRORS+=("$suite_name/$name")
         fi
     done
@@ -49,20 +49,20 @@ run_suite() {
 } | tee "$RESULTS_DIR/results.log"
 
 # Testy wspólne (cross-platform)
-run_suite "$SCRIPT_DIR/unit"        "unit"
+run_suite "$SCRIPT_DIR/unit" "unit"
 run_suite "$SCRIPT_DIR/integration" "integration"
 
 # Testy dedykowane dla bieżącego OS
 if [[ "$CURRENT_OS" == "Darwin" ]]; then
     echo ""
     echo "--- Testy macOS (darwin) ---"
-    run_suite "$SCRIPT_DIR/unit/darwin"        "unit/darwin"
+    run_suite "$SCRIPT_DIR/unit/darwin" "unit/darwin"
     run_suite "$SCRIPT_DIR/integration/darwin" "integration/darwin"
 else
     echo ""
     echo "--- Testy Linux (linux) ---"
-    run_suite "$SCRIPT_DIR/unit/linux"         "unit/linux"
-    run_suite "$SCRIPT_DIR/integration/linux"  "integration/linux"
+    run_suite "$SCRIPT_DIR/unit/linux" "unit/linux"
+    run_suite "$SCRIPT_DIR/integration/linux" "integration/linux"
 fi
 
 {

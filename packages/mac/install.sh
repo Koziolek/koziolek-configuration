@@ -79,8 +79,8 @@ install_asdf() {
 
     echo "Pobieranie najnowszej wersji asdf..."
     local latest_tag
-    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest \
-        | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    latest_tag=$(curl -sf https://api.github.com/repos/asdf-vm/asdf/releases/latest |
+        grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$latest_tag" ]; then
         echo "Błąd: nie udało się pobrać wersji asdf"
@@ -168,7 +168,7 @@ prepare_bashrc() {
     fi
     # On Mac, .bash_profile sources .bashrc if it exists
     if [ ! -f "$HOME/.bash_profile" ]; then
-        cat > "$HOME/.bash_profile" <<'EOF'
+        cat >"$HOME/.bash_profile" <<'EOF'
 if [ -f "$HOME/.bashrc" ]; then
     . "$HOME/.bashrc"
 fi
