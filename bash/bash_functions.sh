@@ -113,6 +113,42 @@ Available functions:
   jar_maven_setup                 – wystawia profil jar-hw-signing jako domyślny w ~/.m2/settings.xml
   jar_maven_disable               – usuwa profil jar-hw-signing z ~/.m2/settings.xml
 
+  [JAR software — podpisywanie plików JAR keystorem JKS na dysku]
+  jar_sw_generate ALIAS CN        – generuje klucz RSA w keystore JKS (self-signed), zapisuje jar-sw.cfg
+  jar_sw_sign PLIK.jar [ALIAS]    – podpisuje JAR kluczem z keystore (alias z configu, gdy pominięty)
+  jar_sw_maven_setup              – wystawia profil jar-sw-signing jako domyślny w ~/.m2/settings.xml
+  jar_sw_maven_disable            – usuwa profil jar-sw-signing z ~/.m2/settings.xml
+
+  [GPG software — klucz PGP na dysku: commity git i artefakty Mavena]
+  gpg_sw_setup                    – jedno polecenie: generuje klucz, eksportuje na keyserver, dopina do Mavena
+  gpg_sw_generate [NAZWA EMAIL]   – generuje klucz ed25519 (sign-only), zapisuje gpg-sw.cfg
+  gpg_sw_list_keys                – lista kluczy w keyringu
+  gpg_sw_export KEYID TARGET [noverify] – wysyła klucz na keyserver (ubuntu|openpgp|both)
+  gpg_sw_git_setup [KEYID]        – konfiguruje git do podpisywania kluczem software
+  gpg_sw_git_disable              – wyłącza podpisywanie kluczem software
+  gpg_sw_test                     – próbny podpis (--clearsign)
+  gpg_maven_setup                 – wystawia profil gpg-sw-signing jako domyślny w ~/.m2/settings.xml
+  gpg_maven_disable               – usuwa profil gpg-sw-signing z ~/.m2/settings.xml
+  gpg_sw_revoke KEYID [TARGET]    – generuje certyfikat odwołania, importuje i publikuje (ubuntu|openpgp|both|none)
+  gpg_sw_delete_all               – NIEODWRACALNIE usuwa wszystkie klucze, gpg-sw.cfg i profil Mavena
+
+  [Cron]
+  cron_list [-o]                  – zadania własne z numerami + dostępne zadania innych użytkowników i systemu (-o: tylko własne)
+  cron_add [-n NAZWA] [--no-log] HARMONOGRAM POLECENIE – dodaje zadanie do bloku koziolek-cron
+  cron_remove NR|WZORZEC          – usuwa własne zadanie
+  cron_edit                       – edytuje crontab w \$VISUAL/\$EDITOR z walidacją składni
+  cron_schedule OPIS              – tłumaczy opis ("co 5 min", "codziennie o 03:00") na składnię cron
+
+  [Diagnostyka]
+  hwinfo                          – zrzut CPU / płyta główna + BIOS / RAM / GPU
+  run_diagnostic                  – uruchamia pre-analyze.sh z repo fix-comp z dowolnego katalogu
+  detect_display_env              – wykrywa środowisko graficzne (gnome/sway/wlroots/x11/wayland)
+
+  [Konteksty systemowe]
+  detect_context                  – wykrywa system: darwin/ubuntu/debian/vanilla/wsl/redhat/linux
+  context_is NAZWA                – czy NAZWA jest w łańcuchu kontekstów bieżącego systemu
+  vanilla_console_font            – ustawia czcionkę Lat2-Terminus16 na konsoli VT (Vanilla OS)
+
 EOF
 }
 
