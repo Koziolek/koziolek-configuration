@@ -7,12 +7,12 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 setUp() {
     _TMP="$(mktemp -d)"
     _LOG="$_TMP/calls.log"
-    : > "$_LOG"
+    : >"$_LOG"
     export SDKMAN_DIR="$_TMP/sdkman"
     mkdir -p "$SDKMAN_DIR/bin" "$SDKMAN_DIR/candidates"
     export ASDF_BIN="$_TMP/asdf"
     export ASDF_PLUGINS_FILE="$_TMP/plugins"
-    : > "$ASDF_PLUGINS_FILE"
+    : >"$ASDF_PLUGINS_FILE"
     unset SDK_FAIL ASDF_FAIL ASDF_NO_SET
     # shellcheck source=/dev/null
     . "$PROJECT_ROOT/packages/commons/sdk_tools_apply.sh"
@@ -28,7 +28,7 @@ tearDown() {
 _mock_sdkman() {
     # Prawdziwy sdkman-init.sh wczytuje do SDKMAN_CANDIDATES listę WSZYSTKICH dostępnych kandydatów
     # (var/candidates) — nasza lista nie może mieć tej nazwy (#174).
-    cat > "$SDKMAN_DIR/bin/sdkman-init.sh" <<MOCK
+    cat >"$SDKMAN_DIR/bin/sdkman-init.sh" <<MOCK
 SDKMAN_CANDIDATES=(activemq ant asciidoctorj bld java maven mvnd quarkus)
 sdk() {
     echo "sdk \$1 \${2:-}" >> "$_LOG"
@@ -40,7 +40,7 @@ MOCK
 }
 
 _mock_asdf() {
-    cat > "$ASDF_BIN" <<MOCK
+    cat >"$ASDF_BIN" <<MOCK
 #!/usr/bin/env bash
 echo "asdf \$*" >> "$_LOG"
 case "\$1 \$2" in
@@ -80,7 +80,8 @@ testSdkmanFailureOfOneDoesNotStopOthers() {
     _mock_sdkman
     SDK_FAIL="maven"
     local out rc
-    out="$(install_sdkman_tools)"; rc=$?
+    out="$(install_sdkman_tools)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$(_calls)" "sdk install mvnd"
     assertContains "$out" "nie udało się: maven"
@@ -88,7 +89,8 @@ testSdkmanFailureOfOneDoesNotStopOthers() {
 
 testSdkmanMissingIsWarningNotError() {
     local out rc
-    out="$(install_sdkman_tools)"; rc=$?
+    out="$(install_sdkman_tools)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "SDKMAN nie zainstalowany"
     assertEquals "" "$(_calls)"
@@ -128,7 +130,7 @@ testSdkmanInstallIsIdempotentCallPattern() {
     _mock_sdkman
     install_sdkman_tools >/dev/null
     install_sdkman_tools >/dev/null
-    assertEquals 6 "$(wc -l < "$_LOG")"
+    assertEquals 6 "$(wc -l <"$_LOG")"
 }
 
 # ---------------------------------------------------------------- asdf
@@ -156,7 +158,7 @@ testAsdfFallsBackToGlobalForOldAsdf() {
 testAsdfPluginAddedOnlyOnce() {
     _mock_asdf
     install_asdf_tools >/dev/null
-    : > "$_LOG"
+    : >"$_LOG"
     install_asdf_tools >/dev/null
     assertNotContains "drugie uruchomienie nie dodaje pluginu" "$(_calls)" "plugin add"
     assertContains "$(_calls)" "asdf install rust latest"
@@ -164,7 +166,7 @@ testAsdfPluginAddedOnlyOnce() {
 
 testAsdfUpdateRefreshesPlugin() {
     _mock_asdf
-    echo rust > "$ASDF_PLUGINS_FILE"
+    echo rust >"$ASDF_PLUGINS_FILE"
     update_asdf_tools >/dev/null
     assertContains "$(_calls)" "asdf plugin update rust"
     assertContains "$(_calls)" "asdf install rust latest"
@@ -172,7 +174,7 @@ testAsdfUpdateRefreshesPlugin() {
 
 testAsdfInstallDoesNotUpdatePlugin() {
     _mock_asdf
-    echo rust > "$ASDF_PLUGINS_FILE"
+    echo rust >"$ASDF_PLUGINS_FILE"
     install_asdf_tools >/dev/null
     assertNotContains "$(_calls)" "plugin update"
 }
@@ -197,7 +199,8 @@ testAsdfFailureOfOneDoesNotStopOthers() {
     ASDF_TOOLS=("rust|https://example.invalid/r.git|latest" "shfmt||latest")
     export ASDF_FAIL="rust"
     local out rc
-    out="$(install_asdf_tools)"; rc=$?
+    out="$(install_asdf_tools)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$(_calls)" "asdf install shfmt latest"
     assertContains "$out" "nie udało się: rust"
@@ -214,7 +217,8 @@ testAsdfInvalidEntryIsReportedAndSkipped() {
 
 testAsdfMissingIsWarningNotError() {
     local out rc
-    out="$(install_asdf_tools)"; rc=$?
+    out="$(install_asdf_tools)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "asdf nie zainstalowany"
 }

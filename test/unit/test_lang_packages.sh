@@ -9,13 +9,14 @@ LIST_FILE="$PROJECT_ROOT/packages/commons/lang_packages.sh"
 setUp() {
     _TMP="$(mktemp -d)"
     _LOG="$_TMP/calls.log"
-    : > "$_LOG"
+    : >"$_LOG"
     export ASDF_BIN="$_TMP/asdf"
     export LANG_PACKAGES_BIN_DIR="$_TMP/bin"
     export ASDF_DATA_DIR="$_TMP/asdf-data"
     _OLD_PATH="$PATH"
     mkdir -p "$_TMP/path" "$_TMP/ghc-install/bin"
-    : > "$_TMP/ghc-install/bin/ghc"; chmod +x "$_TMP/ghc-install/bin/ghc"
+    : >"$_TMP/ghc-install/bin/ghc"
+    chmod +x "$_TMP/ghc-install/bin/ghc"
     # Hermetyczny PATH: tylko symlinki do podstawowych poleceń. Prawdziwe difft/shfmt/shellcheck/linthis
     # hosta (np. shellcheck w /usr/bin na runnerze CI) nie mogą udawać zainstalowanych.
     local t src
@@ -39,7 +40,7 @@ tearDown() {
 
 # $ASDF_MISSING — toolchainy, których `asdf which` nie zna; $ASDF_FAIL — pakiety, przy których `exec` pada.
 _mock_asdf() {
-    cat > "$ASDF_BIN" <<MOCK
+    cat >"$ASDF_BIN" <<MOCK
 #!/usr/bin/env bash
 case "\$1" in
     which) echo "asdf which \$2" >> "$_LOG"; case " \${ASDF_MISSING:-} " in *" \$2 "*) exit 1;; esac; exit 0;;
@@ -111,7 +112,8 @@ exec cargo install --locked linthis" "$(_calls)"
 
 testCargoInstallSkipsPresentBinary() {
     _mock_asdf
-    : > "$_TMP/path/difft"; chmod +x "$_TMP/path/difft"
+    : >"$_TMP/path/difft"
+    chmod +x "$_TMP/path/difft"
     install_cargo_packages >/dev/null
     assertEquals "tylko linthis" "exec cargo install --locked linthis" "$(_calls)"
 }
@@ -120,7 +122,8 @@ testCargoInstallSkipsBinaryInCargoHomeOutsidePath() {
     _mock_asdf
     export CARGO_HOME="$_TMP/cargo"
     mkdir -p "$CARGO_HOME/bin"
-    : > "$CARGO_HOME/bin/linthis"; chmod +x "$CARGO_HOME/bin/linthis"
+    : >"$CARGO_HOME/bin/linthis"
+    chmod +x "$CARGO_HOME/bin/linthis"
     install_cargo_packages >/dev/null
     unset CARGO_HOME
     assertEquals "tylko difftastic" "exec cargo install --locked difftastic" "$(_calls)"
@@ -128,7 +131,8 @@ testCargoInstallSkipsBinaryInCargoHomeOutsidePath() {
 
 testCargoUpdateAlwaysRunsInstall() {
     _mock_asdf
-    : > "$_TMP/path/difft"; chmod +x "$_TMP/path/difft"
+    : >"$_TMP/path/difft"
+    chmod +x "$_TMP/path/difft"
     update_cargo_packages >/dev/null
     assertContains "$(_calls)" "exec cargo install --locked difftastic"
     assertContains "$(_calls)" "exec cargo install --locked linthis"
@@ -144,7 +148,8 @@ testCargoMissingToolchainWarnsAndSkips() {
     _mock_asdf
     export ASDF_MISSING="cargo"
     local out rc
-    out="$(install_cargo_packages)"; rc=$?
+    out="$(install_cargo_packages)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "cargo niedostępne w asdf"
     assertEquals "" "$(_calls)"
@@ -154,7 +159,8 @@ testCargoFailureOfOneDoesNotStopOthers() {
     _mock_asdf
     export ASDF_FAIL="difftastic"
     local out rc
-    out="$(install_cargo_packages)"; rc=$?
+    out="$(install_cargo_packages)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$(_calls)" "exec cargo install --locked linthis"
     assertContains "$out" "nie udało się: difftastic"
@@ -179,7 +185,7 @@ testGoInstallSetsGobinAndCreatesBinary() {
 testGoSecondInstallDoesNothing() {
     _mock_asdf
     install_go_packages >/dev/null
-    : > "$_LOG"
+    : >"$_LOG"
     local out
     out="$(install_go_packages)"
     assertEquals "" "$(_calls)"
@@ -189,7 +195,7 @@ testGoSecondInstallDoesNothing() {
 testGoUpdateReinstalls() {
     _mock_asdf
     install_go_packages >/dev/null
-    : > "$_LOG"
+    : >"$_LOG"
     update_go_packages >/dev/null
     assertEquals "exec go install mvdan.cc/sh/v3/cmd/shfmt@latest" "$(_calls)"
 }
@@ -216,7 +222,8 @@ testCabalWithoutGhcWarnsAndDoesNotInstall() {
     _mock_asdf
     export ASDF_MISSING="ghc"
     local out rc
-    out="$(install_cabal_packages)"; rc=$?
+    out="$(install_cabal_packages)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "ghc z asdf niedostępny"
     assertContains "$out" "nie udało się: ShellCheck"
@@ -226,7 +233,7 @@ testCabalWithoutGhcWarnsAndDoesNotInstall() {
 testCabalSecondInstallDoesNothing() {
     _mock_asdf
     install_cabal_packages >/dev/null
-    : > "$_LOG"
+    : >"$_LOG"
     install_cabal_packages >/dev/null
     assertEquals "" "$(_calls)"
 }
@@ -260,7 +267,8 @@ testUpdateWrapperRunsAllThree() {
 
 testAsdfMissingIsWarningNotError() {
     local out rc
-    out="$(install_lang_packages)"; rc=$?
+    out="$(install_lang_packages)"
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "asdf nie zainstalowany"
 }

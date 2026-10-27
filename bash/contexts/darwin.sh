@@ -24,7 +24,8 @@ if [ -n "${HOMEBREW_PREFIX:-}" ]; then
     _rest=":$PATH:"
     _rest="${_rest//:$_local_bin:/:}"
     _rest="${_rest//:$_asdf_shims:/:}"
-    _rest="${_rest#:}"; _rest="${_rest%:}"
+    _rest="${_rest#:}"
+    _rest="${_rest%:}"
     export PATH="$_local_bin:$_asdf_shims:$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$_rest"
     unset _local_bin _asdf_shims _rest
 fi
@@ -56,8 +57,8 @@ command -v gtime >/dev/null 2>&1 && alias time="gtime -f '\t%E real,\t%U user,\t
 
 # who_use_port: część zbierająca gniazda — na macOS lsof zamiast ss.
 _listening_socket_pairs() {
-    $SUDO lsof -iTCP -iUDP -sTCP:LISTEN -n -P 2>/dev/null \
-      | awk 'NR>1 && match($0, /:[0-9]+[[:space:]]*\(LISTEN\)/) {
+    $SUDO lsof -iTCP -iUDP -sTCP:LISTEN -n -P 2>/dev/null |
+        awk 'NR>1 && match($0, /:[0-9]+[[:space:]]*\(LISTEN\)/) {
           seg = substr($0, RSTART, RLENGTH)
           p = seg
           gsub(/[^0-9]/, "", p)
@@ -124,14 +125,38 @@ hwinfo_gpu() {
 # detect_display_env: wersja z functions.d/ nie zna macOS (usunęliśmy guard uname).
 detect_display_env() { echo "darwin"; }
 
-reswap() { log_warn darwin.reswap_unavailable; return 1; }
-who_use_swap() { log_warn darwin.who_use_swap_unavailable; return 1; }
-turn_async_profiler_on() { log_warn darwin.async_profiler_on_unavailable; return 1; }
-turn_async_profiler_off() { log_warn darwin.async_profiler_off_unavailable; return 1; }
-start_x() { log_warn darwin.start_x_unavailable; return 1; }
-fake_poweroff() { log_warn darwin.fake_poweroff_unavailable; return 1; }
-netconf_diag() { log_warn darwin.netconf_diag_unavailable; return 1; }
-refresh_apt_gpg_keys() { log_warn darwin.refresh_apt_gpg_keys_unavailable; return 1; }
+reswap() {
+    log_warn darwin.reswap_unavailable
+    return 1
+}
+who_use_swap() {
+    log_warn darwin.who_use_swap_unavailable
+    return 1
+}
+turn_async_profiler_on() {
+    log_warn darwin.async_profiler_on_unavailable
+    return 1
+}
+turn_async_profiler_off() {
+    log_warn darwin.async_profiler_off_unavailable
+    return 1
+}
+start_x() {
+    log_warn darwin.start_x_unavailable
+    return 1
+}
+fake_poweroff() {
+    log_warn darwin.fake_poweroff_unavailable
+    return 1
+}
+netconf_diag() {
+    log_warn darwin.netconf_diag_unavailable
+    return 1
+}
+refresh_apt_gpg_keys() {
+    log_warn darwin.refresh_apt_gpg_keys_unavailable
+    return 1
+}
 
 # ssh-keygen Apple (/usr/bin) jest zbudowany bez obsługi kluczy FIDO (-sk) —
 # 155_function_git_signing.sh (sekcja SSH-sk) musi użyć openssh z Homebrew.
@@ -143,15 +168,21 @@ fi
 # z edytora) — ustawiamy pinentry-mac w gpg-agent.conf (idempotentnie).
 _gpg_pinentry_setup() {
     local pinentry gnupg_home conf
-    pinentry=$(command -v pinentry-mac) || { log_warn darwin.pinentry_missing; return 1; }
+    pinentry=$(command -v pinentry-mac) || {
+        log_warn darwin.pinentry_missing
+        return 1
+    }
     gnupg_home="${GNUPGHOME:-$HOME/.gnupg}"
     conf="$gnupg_home/gpg-agent.conf"
     mkdir -p "$gnupg_home" && chmod 700 "$gnupg_home"
     touch "$conf"
     grep -qxF "pinentry-program $pinentry" "$conf" && return 0
     # grep -v + mv zamiast `sed -i ''` — w PATH może być gnu-sed z brew (inna składnia -i)
-    { grep -v '^pinentry-program ' "$conf" || true; echo "pinentry-program $pinentry"; } > "$conf.tmp" \
-        && mv "$conf.tmp" "$conf"
+    {
+        grep -v '^pinentry-program ' "$conf" || true
+        echo "pinentry-program $pinentry"
+    } >"$conf.tmp" &&
+        mv "$conf.tmp" "$conf"
     gpgconf --kill gpg-agent
 }
 

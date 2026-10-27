@@ -10,17 +10,18 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 SUPPRESS_SOURCING=1 . "$PROJECT_ROOT/git/git_functions.sh" 2>/dev/null || true
 
 # Komunikaty do pliku jako "klucz argumenty" (jak w innych testach mockujących log_*).
-log_info()  { echo "INFO $*" >> "$_LOG"; }
-log_warn()  { echo "WARN $*" >> "$_LOG"; }
-log_error() { echo "ERROR $*" >> "$_LOG"; }
-log_debug() { echo "DEBUG $*" >> "$_LOG"; }
-log_man()   { :; }
+log_info() { echo "INFO $*" >>"$_LOG"; }
+log_warn() { echo "WARN $*" >>"$_LOG"; }
+log_error() { echo "ERROR $*" >>"$_LOG"; }
+log_debug() { echo "DEBUG $*" >>"$_LOG"; }
+log_man() { :; }
 
 setUp() {
     _TMP="$(mktemp -d)"
     _LOG="$_TMP/log"
-    : > "$_LOG"
-    export HOME="$_TMP/home"; mkdir -p "$HOME"
+    : >"$_LOG"
+    export HOME="$_TMP/home"
+    mkdir -p "$HOME"
     export GIT_CONFIG_GLOBAL="$_TMP/gitconfig"
     git config --global user.name tester
     git config --global user.email tester@example.invalid
@@ -32,7 +33,7 @@ setUp() {
     git init -q --bare "$_ORIGIN"
     git clone -q "$_ORIGIN" "$_REPO" 2>/dev/null
     cd "$_REPO" || return 1
-    echo base > base.txt
+    echo base >base.txt
     git add base.txt && git commit -q -m base
     git push -q -u origin master
     git remote set-head origin master >/dev/null
@@ -48,7 +49,7 @@ tearDown() {
 _new_wt() {
     local b="$1" f="${2:-$1.txt}"
     git worktree add -q -b "$b" ".worktrees/$b" origin/master
-    echo "$b" > ".worktrees/$b/$f"
+    echo "$b" >".worktrees/$b/$f"
     git -C ".worktrees/$b" add "$f"
     git -C ".worktrees/$b" commit -q -m "$b"
     git -C ".worktrees/$b" push -q -u origin "$b" 2>/dev/null
@@ -70,8 +71,8 @@ _regular_merge() {
     git -C "$clone" push -q origin master
 }
 
-_wt_exists()     { [ -d "$_REPO/.worktrees/$1" ]; }
-_local_branch()  { git -C "$_REPO" show-ref --verify -q "refs/heads/$1"; }
+_wt_exists() { [ -d "$_REPO/.worktrees/$1" ]; }
+_local_branch() { git -C "$_REPO" show-ref --verify -q "refs/heads/$1"; }
 _remote_branch() { git -C "$_ORIGIN" show-ref --verify -q "refs/heads/$1"; }
 
 testRemovesSquashMergedWorktree() {
@@ -122,7 +123,7 @@ testKeepsFreshWorktreeWithoutOwnCommits() {
 testKeepsMergedBranchWithNewCommitAfterMerge() {
     _new_wt feat-c
     _squash_merge feat-c
-    echo more > .worktrees/feat-c/more.txt
+    echo more >.worktrees/feat-c/more.txt
     git -C .worktrees/feat-c add more.txt
     git -C .worktrees/feat-c commit -q -m more
     git_exterminatus_worktree
@@ -143,7 +144,7 @@ testDryRunRemovesNothing() {
 testDirtyWorktreeIsKeptWithWarning() {
     _new_wt feat-e
     _squash_merge feat-e
-    echo wip > .worktrees/feat-e/untracked.txt
+    echo wip >.worktrees/feat-e/untracked.txt
     git_exterminatus_worktree
     assertTrue 'brudny worktree zostaje' "_wt_exists feat-e"
     assertTrue 'gałąź zostaje' "_local_branch feat-e"
@@ -177,7 +178,7 @@ testMainCheckoutBranchIsNeverRemoved() {
 
 testLocalOnlyBranchWithoutRemoteIsRemovedLocally() {
     git worktree add -q -b local-only .worktrees/local-only origin/master
-    echo x > .worktrees/local-only/x.txt
+    echo x >.worktrees/local-only/x.txt
     git -C .worktrees/local-only add x.txt
     git -C .worktrees/local-only commit -q -m x
     _squash_merge_local() {
@@ -208,7 +209,7 @@ testOutsideRepoFails() {
 testNoRemoteUsesLocalDefaultBranch() {
     git remote remove origin
     git worktree add -q -b loc .worktrees/loc master
-    echo y > .worktrees/loc/y.txt
+    echo y >.worktrees/loc/y.txt
     git -C .worktrees/loc add y.txt
     git -C .worktrees/loc commit -q -m y
     git merge -q --no-ff -m "merge loc" loc >/dev/null 2>&1

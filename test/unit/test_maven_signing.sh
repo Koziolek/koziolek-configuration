@@ -29,7 +29,7 @@ oneTimeSetUp() {
 
     # pkcs11-tool: -L (sloty), -O (obiekty/certy - MOCK_CERTS = lista aliasów
     # rozdzielona spacją; puste = brak certu na karcie)
-    cat > "$_BIN/pkcs11-tool" <<'MOCK'
+    cat >"$_BIN/pkcs11-tool" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 case " $* " in
@@ -50,7 +50,7 @@ MOCK
 
     # jarsigner: podpis nieudany gdy MOCK_FAIL=sign, weryfikacja nieudana gdy
     # MOCK_FAIL=verify (jar musi zawierać "signed" żeby -verify przeszła).
-    cat > "$_BIN/jarsigner" <<'MOCK'
+    cat >"$_BIN/jarsigner" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 args=("$@")
@@ -72,7 +72,7 @@ MOCK
 
     # keytool: -genkeypair tworzy plik keystore (MOCK_FAIL=keygen -> błąd),
     # tak żeby dalsze [ -f "$ks" ] w jar_sw_sign/jar_sw_maven_setup przeszło.
-    cat > "$_BIN/keytool" <<'MOCK'
+    cat >"$_BIN/keytool" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 args=("$@")
@@ -87,13 +87,13 @@ exit 0
 MOCK
     chmod +x "$_BIN/keytool"
 
-    printf '#!/bin/sh\ntouch "$(pwd)/${2:-out.jar}"\n' > "$_BIN/jar"
+    printf '#!/bin/sh\ntouch "$(pwd)/${2:-out.jar}"\n' >"$_BIN/jar"
     chmod +x "$_BIN/jar"
 
     # gpg: --quick-generate-key (MOCK_FAIL=generate → błąd), --list-secret-keys
     # (--with-colons → jedna linia fpr:...:MOCK_FPR:), --send-keys
     # (MOCK_FAIL=export_ubuntu → błąd), --export (wypisuje fejkowe bajty klucza).
-    cat > "$_BIN/gpg" <<'MOCK'
+    cat >"$_BIN/gpg" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 case " $* " in
@@ -132,7 +132,7 @@ exit 0
 MOCK
     chmod +x "$_BIN/gpg"
 
-    cat > "$_BIN/curl" <<'MOCK'
+    cat >"$_BIN/curl" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_STATE/calls"
 cat >/dev/null
@@ -168,7 +168,7 @@ tearDown() {
 }
 
 _realistic_settings() {
-    cat > "$1" <<'XML'
+    cat >"$1" <<'XML'
 <settings>
   <!-- prawdziwa konfiguracja Nexusa, nie ruszac -->
   <mirrors>
@@ -299,7 +299,7 @@ testJarVerifyReportsUnsigned() {
 }
 
 testJarVerifyReportsSigned() {
-    echo signed > "$_WORK/x.jar"
+    echo signed >"$_WORK/x.jar"
     local out
     out=$(jar_verify "$_WORK/x.jar" 2>&1)
     assertContains "$out" "verified"
@@ -308,14 +308,14 @@ testJarVerifyReportsSigned() {
 testPkcs11TestSignsAndVerifiesThrowawayJar() {
     export MOCK_CERTS="SIGN"
     jar_pkcs11_setup >/dev/null 2>&1
-    ( cd "$_WORK" && jar_pkcs11_test >/dev/null 2>&1 )
+    (cd "$_WORK" && jar_pkcs11_test >/dev/null 2>&1)
     assertEquals 0 $?
 }
 
 testPkcs11TestFailsWhenSignFails() {
     export MOCK_CERTS="SIGN"
     jar_pkcs11_setup >/dev/null 2>&1
-    ( cd "$_WORK" && MOCK_FAIL=sign jar_pkcs11_test >/dev/null 2>&1 )
+    (cd "$_WORK" && MOCK_FAIL=sign jar_pkcs11_test >/dev/null 2>&1)
     assertEquals 1 $?
 }
 
@@ -601,7 +601,8 @@ testGenerateStdoutIsOnlyFingerprint() {
 }
 
 testDeleteAllDeletesEachKeyAndCfgWithAssumeYes() {
-    mkdir -p "$(_gpg_sw_config_dir)"; echo KEYID=X > "$(_gpg_sw_cfg_path)"
+    mkdir -p "$(_gpg_sw_config_dir)"
+    echo KEYID=X >"$(_gpg_sw_cfg_path)"
     GPG_SW_REVOKE=0 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
     assertEquals 0 $?
     assertContains "$(cat "$_STATE/calls")" "--delete-secret-and-public-keys DEADBEEF1234567890DEADBEEF1234567890ABCD"
@@ -651,7 +652,7 @@ testRevokeUsesPregeneratedRevocCertWhenPresent() {
     local gh="$_WORK/gnupg"
     mkdir -p "$gh/openpgp-revocs.d"
     printf 'opis\n:-----BEGIN PGP PUBLIC KEY BLOCK-----\nDATA\n-----END PGP PUBLIC KEY BLOCK-----\n' \
-        > "$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
+        >"$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
     GNUPGHOME="$gh" gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
     assertEquals 0 $?
     assertNotContains "$(cat "$_STATE/calls")" "--gen-revoke"
@@ -663,7 +664,7 @@ testRevokeUsesPregeneratedRevocCertWhenPresent() {
 testRevokeWithCustomReasonSkipsPregeneratedCert() {
     local gh="$_WORK/gnupg"
     mkdir -p "$gh/openpgp-revocs.d"
-    echo x > "$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
+    echo x >"$gh/openpgp-revocs.d/DEADBEEF1234567890DEADBEEF1234567890ABCD.rev"
     GNUPGHOME="$gh" GPG_SW_REVOKE_REASON=1 gpg_sw_revoke DEADBEEF1234 none >/dev/null 2>&1
     assertContains "$(cat "$_STATE/calls")" "--gen-revoke"
 }
@@ -676,7 +677,8 @@ testRevokeGenRevokeIsNotBatch() {
 }
 
 testDeleteAllKeepsCfgWhenRevokeFails() {
-    mkdir -p "$(_gpg_sw_config_dir)"; echo KEYID=X > "$(_gpg_sw_cfg_path)"
+    mkdir -p "$(_gpg_sw_config_dir)"
+    echo KEYID=X >"$(_gpg_sw_cfg_path)"
     MOCK_FAIL=revoke GPG_SW_REVOKE=1 GPG_SW_ASSUME_YES=1 gpg_sw_delete_all >/dev/null 2>&1
     assertTrue "cfg skasowany mimo błędu" "[ -f \"$(_gpg_sw_cfg_path)\" ]"
 }

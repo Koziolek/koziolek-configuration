@@ -11,7 +11,7 @@ setUp() {
     _REG="$_TMP/reg"
     _MARK="$_TMP/applied"
     mkdir -p "$_REG"
-    : > "$_MARK"
+    : >"$_MARK"
     export FIXES_SUDO='' FIXES_DIRS="$_REG" MARK="$_MARK"
     unset FIXES_CONTEXT CONFIG_CONTEXT
 }
@@ -21,11 +21,12 @@ tearDown() { rm -rf "$_TMP"; }
 # _mkfix <plik> <id> <fazy> <ryzyko> <detect-body> [apply-body]
 _mkfix() {
     printf 'FIX_ID=%s\nFIX_DESC="opis %s"\nFIX_PHASE=%q\nFIX_CONTEXTS=all\nFIX_NEEDS_ROOT=0\nFIX_RISK=%s\nfix_detect() {\n%s\n}\nfix_apply() {\n%s\n}\n' \
-        "$2" "$2" "$3" "$4" "$5" "${6:-echo "$2" >> "$MARK"}" > "$_REG/$1.sh"
+        "$2" "$2" "$3" "$4" "$5" "${6:-echo "$2" >> "$MARK"}" >"$_REG/$1.sh"
 }
 # Wywołanie jak w update.sh: set -Eeuo pipefail + trap ERR; $1 = stdin (odpowiedź na pytanie), reszta = faza.
 _apply() {
-    local answer="$1"; shift
+    local answer="$1"
+    shift
     printf '%s' "$answer" | bash -c '
         set -Eeuo pipefail; trap "echo ERRTRAP" ERR
         ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }
@@ -125,7 +126,7 @@ testMissingReposDeadArrayIsFine() {
 testRefreshAptLogWritesLogAndExportsPath() {
     local bin="$_TMP/bin" out
     mkdir -p "$bin"
-    printf '#!%s\necho "Pobrano 0 B"\n' "$(command -v bash)" > "$bin/apt-get"
+    printf '#!%s\necho "Pobrano 0 B"\n' "$(command -v bash)" >"$bin/apt-get"
     chmod +x "$bin/apt-get"
     out="$(FIX_APT_UPDATE_LOG="$_TMP/sub/apt.log" PATH="$bin:$PATH" bash -c 'SUDO=""; . "$1"; fixes_refresh_apt_log; echo "LOG=$FIX_APT_UPDATE_LOG"' _ "$APPLY")"
     assertContains "ścieżka logu" "$out" "LOG=$_TMP/sub/apt.log"

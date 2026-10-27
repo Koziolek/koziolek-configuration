@@ -13,15 +13,16 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 _STUB_DIR="$(mktemp -d)"
 mkdir -p "$_STUB_DIR/functions.d"
 BASH_CONFIGURATION_DIR="$_STUB_DIR" . "$PROJECT_ROOT/bash/bash_functions.sh"
-rm -rf "$_STUB_DIR"; unset _STUB_DIR
+rm -rf "$_STUB_DIR"
+unset _STUB_DIR
 
 _LOG_MESSAGES=()
 _ORIG_MAIN_DIR=''
 _TMP_DIR=''
 
-log_info()  { _LOG_MESSAGES+=("INFO: $*"); }
+log_info() { _LOG_MESSAGES+=("INFO: $*"); }
 log_error() { _LOG_MESSAGES+=("ERROR: $*"); }
-log_warn()  { _LOG_MESSAGES+=("WARN: $*"); }
+log_warn() { _LOG_MESSAGES+=("WARN: $*"); }
 
 oneTimeSetUp() {
     _ORIG_MAIN_DIR="${MAIN_CONFIGURATION_DIR:-}"
@@ -113,17 +114,18 @@ testMainShIsDirectoryLogsError() {
 # ---------------------------------------------------------------------------
 
 testSuccessfulReloadReturnsZero() {
-    printf 'true\n' > "$_TMP_DIR/main.sh"
+    printf 'true\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     local rc=99
-    reload_config 2>/dev/null; rc=$?
+    reload_config 2>/dev/null
+    rc=$?
     assertEquals 'poprawny reload musi zwrócić 0' 0 "$rc"
 }
 
 testSuccessfulReloadSourcesMainSh() {
     local marker="$_TMP_DIR/sourced"
     export SOURCED_MARKER="$marker"
-    printf 'touch "${SOURCED_MARKER}"\n' > "$_TMP_DIR/main.sh"
+    printf 'touch "${SOURCED_MARKER}"\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     reload_config 2>/dev/null
     assertTrue 'main.sh musi być faktycznie sourcowany' "[ -f '$marker' ]"
@@ -131,7 +133,7 @@ testSuccessfulReloadSourcesMainSh() {
 }
 
 testSuccessfulReloadLogsInfo() {
-    printf '' > "$_TMP_DIR/main.sh"
+    printf '' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     _LOG_MESSAGES=()
     reload_config 2>/dev/null
@@ -140,7 +142,7 @@ testSuccessfulReloadLogsInfo() {
 }
 
 testVariablesFromMainShVisibleAfterReload() {
-    printf 'export RELOAD_TEST_VAR="hello_from_reload"\n' > "$_TMP_DIR/main.sh"
+    printf 'export RELOAD_TEST_VAR="hello_from_reload"\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     unset RELOAD_TEST_VAR
     reload_config 2>/dev/null
@@ -156,7 +158,7 @@ testVariablesFromMainShVisibleAfterReload() {
 testBashFunctionsLoadedClearedBeforeSource() {
     local reset_marker="$_TMP_DIR/reset_check"
     export RESET_MARKER="$reset_marker"
-    printf '[[ -z "$BASH_FUNCTIONS_LOADED" ]] && touch "${RESET_MARKER}"\n' > "$_TMP_DIR/main.sh"
+    printf '[[ -z "$BASH_FUNCTIONS_LOADED" ]] && touch "${RESET_MARKER}"\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     export BASH_FUNCTIONS_LOADED=1
     reload_config 2>/dev/null
@@ -169,7 +171,7 @@ testBashFunctionsLoadedClearedBeforeSource() {
 # ---------------------------------------------------------------------------
 
 testFailingMainShReturnsOne() {
-    printf 'return 1\n' > "$_TMP_DIR/main.sh"
+    printf 'return 1\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     local rc=0
     reload_config 2>/dev/null || rc=$?
@@ -177,7 +179,7 @@ testFailingMainShReturnsOne() {
 }
 
 testFailingMainShLogsError() {
-    printf 'return 1\n' > "$_TMP_DIR/main.sh"
+    printf 'return 1\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
@@ -186,7 +188,7 @@ testFailingMainShLogsError() {
 }
 
 testFailingMainShDoesNotLogInfo() {
-    printf 'return 1\n' > "$_TMP_DIR/main.sh"
+    printf 'return 1\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     _LOG_MESSAGES=()
     reload_config 2>/dev/null || true
@@ -199,9 +201,9 @@ testFailingMainShDoesNotLogInfo() {
 
 testMultipleReloadsCallMainShEachTime() {
     local count_file="$_TMP_DIR/count"
-    echo "0" > "$count_file"
+    echo "0" >"$count_file"
     export COUNT_FILE="$count_file"
-    printf 'n=$(cat "$COUNT_FILE"); echo $((n+1)) > "$COUNT_FILE"\n' > "$_TMP_DIR/main.sh"
+    printf 'n=$(cat "$COUNT_FILE"); echo $((n+1)) > "$COUNT_FILE"\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     reload_config 2>/dev/null
     reload_config 2>/dev/null
@@ -217,7 +219,7 @@ testMultipleReloadsCallMainShEachTime() {
 testSuppressSourceingIsResetBeforeSource() {
     local marker="$_TMP_DIR/sourced"
     export SOURCED_MARKER="$marker"
-    printf 'touch "${SOURCED_MARKER}"\n' > "$_TMP_DIR/main.sh"
+    printf 'touch "${SOURCED_MARKER}"\n' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     export SUPPRESS_SOURCING=1
     reload_config 2>/dev/null
@@ -226,7 +228,7 @@ testSuppressSourceingIsResetBeforeSource() {
 }
 
 testSuppressSourceingRestoredToZeroAfterReload() {
-    printf '' > "$_TMP_DIR/main.sh"
+    printf '' >"$_TMP_DIR/main.sh"
     export MAIN_CONFIGURATION_DIR="$_TMP_DIR"
     export SUPPRESS_SOURCING=1
     reload_config 2>/dev/null

@@ -14,8 +14,8 @@ _run_debian_ctx() {
     local hub_state="$1" bin calls
     bin="$(mktemp -d)"
     calls="$bin/calls"
-    printf '#!/bin/sh\necho "apt-get $*" >> "%s"\nexit 0\n' "$calls" > "$bin/apt-get"
-    printf '#!/bin/sh\nexec "$@"\n' > "$bin/sudo"
+    printf '#!/bin/sh\necho "apt-get $*" >> "%s"\nexit 0\n' "$calls" >"$bin/apt-get"
+    printf '#!/bin/sh\nexec "$@"\n' >"$bin/sudo"
     chmod +x "$bin/apt-get" "$bin/sudo"
 
     PATH="$bin:$PATH" bash --norc --noprofile -c "

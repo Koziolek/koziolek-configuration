@@ -13,8 +13,8 @@ _run_redhat_ctx() {
     local hub_state="$1" bin calls
     bin="$(mktemp -d)"
     calls="$bin/calls"
-    printf '#!/bin/sh\necho "yum $*" >> "%s"\nexit 0\n' "$calls" > "$bin/yum"
-    printf '#!/bin/sh\nexec "$@"\n' > "$bin/sudo"
+    printf '#!/bin/sh\necho "yum $*" >> "%s"\nexit 0\n' "$calls" >"$bin/yum"
+    printf '#!/bin/sh\nexec "$@"\n' >"$bin/sudo"
     chmod +x "$bin/yum" "$bin/sudo"
 
     PATH="$bin:$PATH" bash --norc --noprofile -c "

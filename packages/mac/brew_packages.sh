@@ -8,36 +8,36 @@
 # do packages/commons/apt_packages.sh dla Linuksa).
 
 system_tools=(
-  git vim unzip zip tree tmux htop neofetch hub
-  libpq
-  kubernetes-cli
-  pam-u2f
-  libfido2
-  gnupg
-  pinentry-mac
-  openssh
-  opensc
-  git-bug
+    git vim unzip zip tree tmux htop neofetch hub
+    libpq
+    kubernetes-cli
+    pam-u2f
+    libfido2
+    gnupg
+    pinentry-mac
+    openssh
+    opensc
+    git-bug
 )
 
 shell_tools=(
-  bash
-  thefuck
-  fd
-  gnu-time
-  gnu-sed
-  coreutils
+    bash
+    thefuck
+    fd
+    gnu-time
+    gnu-sed
+    coreutils
 )
 
 image_tools=(
-  libheif
-  imagemagick
+    libheif
+    imagemagick
 )
 
 diag_tools=(
-  smartmontools
-  gdb
-  ddrescue
-  pv
-  testdisk
+    smartmontools
+    gdb
+    ddrescue
+    pv
+    testdisk
 )

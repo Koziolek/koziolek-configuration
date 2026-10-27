@@ -53,17 +53,51 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all)        RUN_E2E=true; RUN_E2E_LOCAL=true; RUN_E2E_REDHAT=true; RUN_E2E_VANILLA=true; RUN_E2E_CERTS=true; shift ;;
-        --e2e)        RUN_E2E=true; shift ;;
-        --e2e-local)  RUN_E2E_LOCAL=true; shift ;;
-        --e2e-redhat) RUN_E2E_REDHAT=true; shift ;;
-        --e2e-vanilla) RUN_E2E_VANILLA=true; shift ;;
-        --e2e-certs)  RUN_E2E_CERTS=true; shift ;;
-        --native)     RUN_NATIVE=true; shift ;;
-        --filter)     TEST_FILTER="$2"; shift 2 ;;
-        --rebuild)    REBUILD=true; shift ;;
-        --help|-h)    usage ;;
-        *) echo "Nieznana opcja: $1"; exit 1 ;;
+    --all)
+        RUN_E2E=true
+        RUN_E2E_LOCAL=true
+        RUN_E2E_REDHAT=true
+        RUN_E2E_VANILLA=true
+        RUN_E2E_CERTS=true
+        shift
+        ;;
+    --e2e)
+        RUN_E2E=true
+        shift
+        ;;
+    --e2e-local)
+        RUN_E2E_LOCAL=true
+        shift
+        ;;
+    --e2e-redhat)
+        RUN_E2E_REDHAT=true
+        shift
+        ;;
+    --e2e-vanilla)
+        RUN_E2E_VANILLA=true
+        shift
+        ;;
+    --e2e-certs)
+        RUN_E2E_CERTS=true
+        shift
+        ;;
+    --native)
+        RUN_NATIVE=true
+        shift
+        ;;
+    --filter)
+        TEST_FILTER="$2"
+        shift 2
+        ;;
+    --rebuild)
+        REBUILD=true
+        shift
+        ;;
+    --help | -h) usage ;;
+    *)
+        echo "Nieznana opcja: $1"
+        exit 1
+        ;;
     esac
 done
 
@@ -72,8 +106,8 @@ mkdir -p "$RESULTS_DIR"
 # ---------------------------------------------------------------------------
 # Helpery
 
-_ok()   { printf "  ✓ %s\n" "$1"; }
-_fix()  { printf "  ⚙ %s\n" "$1"; }
+_ok() { printf "  ✓ %s\n" "$1"; }
+_fix() { printf "  ⚙ %s\n" "$1"; }
 _fail() { printf "  ✗ %s\n" "$1"; }
 
 _check_docker() {
@@ -123,9 +157,9 @@ _check_test_image() {
     fi
 
     if DOCKER_BUILDKIT=0 docker build \
-            --network="$DOCKER_NETWORK" \
-            -f "$dockerfile" -t "$tag" \
-            "$PROJECT_ROOT" >/dev/null 2>&1; then
+        --network="$DOCKER_NETWORK" \
+        -f "$dockerfile" -t "$tag" \
+        "$PROJECT_ROOT" >/dev/null 2>&1; then
         _ok "Obraz testowy $tag zbudowany"
     else
         _fail "Budowanie $tag nieudane"
@@ -146,7 +180,7 @@ _preflight_docker() {
     _check_network
 
     local base_ok=true
-    _check_base_image "alpine:latest"   || base_ok=false
+    _check_base_image "alpine:latest" || base_ok=false
     if $RUN_E2E || $RUN_E2E_LOCAL; then
         _check_base_image "ubuntu:24.04" || base_ok=false
     fi
@@ -159,7 +193,11 @@ _preflight_docker() {
     if $RUN_E2E_CERTS; then
         _check_base_image "eclipse-temurin:21-jdk" || base_ok=false
     fi
-    $base_ok || { echo ""; echo "  Brakujące obrazy bazowe — przerwanie."; exit 1; }
+    $base_ok || {
+        echo ""
+        echo "  Brakujące obrazy bazowe — przerwanie."
+        exit 1
+    }
 
     _check_test_image "$UNIT_IMAGE" "$TEST_DIR/Dockerfile-unit"
     if $RUN_E2E || $RUN_E2E_LOCAL; then
@@ -186,10 +224,11 @@ _e2e_start() {
     # kilka równoległych `docker build`/`docker run` przeplatałoby output na
     # terminalu w nieczytelny sposób. Wynik odtwarzany po kolei w _e2e_finish,
     # dopiero gdy wszystkie zadania się zakończą (patrz #128).
-    local key="$1"; shift
+    local key="$1"
+    shift
     local log="$RESULTS_DIR/.e2e-parallel-${key}.log"
-    : > "$log"
-    ( "$@" ) >"$log" 2>&1 &
+    : >"$log"
+    ("$@") >"$log" 2>&1 &
     _E2E_JOB_PID[$key]=$!
     _E2E_JOB_LOG[$key]=$log
 }

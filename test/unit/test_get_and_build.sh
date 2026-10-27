@@ -28,8 +28,11 @@ oneTimeTearDown() {
 
 setUp() {
     _WORK_DIR="$(mktemp -d)"
-    : > "$_GIT_LOG"
-    git() { echo "GIT $*" >> "$_GIT_LOG"; return 0; }
+    : >"$_GIT_LOG"
+    git() {
+        echo "GIT $*" >>"$_GIT_LOG"
+        return 0
+    }
 }
 
 tearDown() {
@@ -112,11 +115,11 @@ testSkipPullSkipsGit() {
 testListShowsAllPlugins() {
     local output
     output="$(get_and_build -l 2>&1)"
-    assertContains 'lista pluginów musi zawierać maven'  "$output" 'maven'
+    assertContains 'lista pluginów musi zawierać maven' "$output" 'maven'
     assertContains 'lista pluginów musi zawierać gradle' "$output" 'gradle'
-    assertContains 'lista pluginów musi zawierać mix'    "$output" 'mix'
-    assertContains 'lista pluginów musi zawierać npm'    "$output" 'npm'
-    assertContains 'lista pluginów musi zawierać cargo'  "$output" 'cargo'
+    assertContains 'lista pluginów musi zawierać mix' "$output" 'mix'
+    assertContains 'lista pluginów musi zawierać npm' "$output" 'npm'
+    assertContains 'lista pluginów musi zawierać cargo' "$output" 'cargo'
 }
 
 testUnknownBuildSystemReturnsError() {
@@ -129,7 +132,7 @@ testUnknownBuildSystemReturnsError() {
 testCustomPluginDirIsUsed() {
     local custom_dir
     custom_dir="$(mktemp -d)"
-    cat > "$custom_dir/10-sbt.sh" <<'EOF'
+    cat >"$custom_dir/10-sbt.sh" <<'EOF'
 PLUGIN_NAME="sbt"
 PLUGIN_DETECT="build.sbt"
 PLUGIN_CMD="sbt clean test"

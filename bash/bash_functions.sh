@@ -162,7 +162,6 @@ function __log_or_echo_error() {
     fi
 }
 
-
 ##
 # Sources a file from a specified directory or $BASH_CONFIGURATION_DIR if it exists
 # Usage: source_if_exists filename [directory]
@@ -193,25 +192,25 @@ function source_if_exists() {
 # Source all files from the specified directory in alphabetical order
 # Usage: source_directory <directory_path>
 function source_directory() {
-  local dir="$1"
+    local dir="$1"
 
-  [[ -z "$dir" ]] && {
-    __log_or_echo_error "Directory path required"
-    return 1
-  }
-
-  [[ ! -d "$dir" ]] && {
-    __log_or_echo_error "Directory not found: $dir"
-    return 1
-  }
-
-  local file
-  for file in "$dir"/[0-9][0-9][0-9]_*.sh; do
-    [[ ! -f "$file" ]] && continue
-    source "$file" || {
-      __log_or_echo_error "Failed to source: $file"
+    [[ -z "$dir" ]] && {
+        __log_or_echo_error "Directory path required"
+        return 1
     }
-  done
+
+    [[ ! -d "$dir" ]] && {
+        __log_or_echo_error "Directory not found: $dir"
+        return 1
+    }
+
+    local file
+    for file in "$dir"/[0-9][0-9][0-9]_*.sh; do
+        [[ ! -f "$file" ]] && continue
+        source "$file" || {
+            __log_or_echo_error "Failed to source: $file"
+        }
+    done
 }
 
 ##
@@ -220,30 +219,33 @@ function source_directory() {
 ##
 function parse_git_branch() {
     local branch
-    branch=$(git symbolic-ref --short -q HEAD 2>/dev/null) && { printf ' (%s)' "$branch"; return; }
+    branch=$(git symbolic-ref --short -q HEAD 2>/dev/null) && {
+        printf ' (%s)' "$branch"
+        return
+    }
     branch=$(git rev-parse --short HEAD 2>/dev/null) && printf ' (HEAD detached at %s)' "$branch"
 }
 
 function check_workspace() {
-  ENV_DIRS=(WORKSPACE WORKSPACE_TOOLS SERVICES_DATA POSTGRES_DATA NGINX_DATA)
-  ENV_VARS=(DOCKER_COMPOSE)
+    ENV_DIRS=(WORKSPACE WORKSPACE_TOOLS SERVICES_DATA POSTGRES_DATA NGINX_DATA)
+    ENV_VARS=(DOCKER_COMPOSE)
 
-  for name in "${ENV_DIRS[@]}"; do
-    if [ -z "${!name}" ]; then
-      log_warn bash.var_not_set "$name"
-    elif [ ! -d "${!name}" ]; then
-      log_warn bash.dir_missing "${!name}"
-      mkdir -p "${!name}"
-    fi
-  done
+    for name in "${ENV_DIRS[@]}"; do
+        if [ -z "${!name}" ]; then
+            log_warn bash.var_not_set "$name"
+        elif [ ! -d "${!name}" ]; then
+            log_warn bash.dir_missing "${!name}"
+            mkdir -p "${!name}"
+        fi
+    done
 
-  for name in "${ENV_VARS[@]}"; do
-    if [ -z "${!name}" ] \
-       && { command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1; }; then
-      # Ostrzegaj tylko o realnym braku: silnik kontenerowy jest, a compose nie ustawione.
-      log_warn bash.var_not_set "$name"
-    fi
-  done
+    for name in "${ENV_VARS[@]}"; do
+        if [ -z "${!name}" ] &&
+            { command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1; }; then
+            # Ostrzegaj tylko o realnym braku: silnik kontenerowy jest, a compose nie ustawione.
+            log_warn bash.var_not_set "$name"
+        fi
+    done
 
 }
 

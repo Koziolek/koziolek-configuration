@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
 export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 
-hub() { :; }  # nie instaluj huba przez brew podczas testów
+hub() { :; } # nie instaluj huba przez brew podczas testów
 
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/bash/functions.d/010_function_log.sh"

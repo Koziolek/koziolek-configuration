@@ -55,7 +55,7 @@ GPG_CARD_GITHUB_USER="${GPG_CARD_GITHUB_USER:-Koziolek}"
 
 _gpg_card_check_deps() {
     local missing=()
-    command -v gpg     &>/dev/null || missing+=("gnupg")
+    command -v gpg &>/dev/null || missing+=("gnupg")
     command -v gpgconf &>/dev/null || missing+=("gpgconf (gnupg)")
     if [ "${#missing[@]}" -gt 0 ]; then
         log_error git_signing.gpg_missing_dependencies "${missing[*]}"
@@ -74,8 +74,8 @@ _gpg_card_status_colons() {
 # jako "\x3a" (czasem "%3a") — odwracamy to, żeby URL był używalny.
 _gpg_card_field() {
     local record="$1" status="$2"
-    awk -F: -v r="$record" '$1 == r { print $2; exit }' <<<"$status" \
-        | sed -e 's/\\x3[aA]/:/g' -e 's/%3[aA]/:/g'
+    awk -F: -v r="$record" '$1 == r { print $2; exit }' <<<"$status" |
+        sed -e 's/\\x3[aA]/:/g' -e 's/%3[aA]/:/g'
 }
 
 # Fingerprint podklucza SIGNATURE z karty (pierwsze pole rekordu `fpr:`).
@@ -175,7 +175,10 @@ function gpg_card_import_pubkey() {
 ##
 function gpg_git_setup() {
     _gpg_card_check_deps || return 1
-    command -v git &>/dev/null || { log_error git_signing.gpg_git_missing; return 1; }
+    command -v git &>/dev/null || {
+        log_error git_signing.gpg_git_missing
+        return 1
+    }
 
     gpg_card_import_pubkey || return 1
 
@@ -218,7 +221,10 @@ function gpg_card_test() {
     local status fpr
     status=$(_gpg_card_require) || return 1
     fpr=$(_gpg_card_signing_fpr "$status")
-    [ -n "$fpr" ] || { log_error git_signing.gpg_the_signature_slot_on_the_2; return 1; }
+    [ -n "$fpr" ] || {
+        log_error git_signing.gpg_the_signature_slot_on_the_2
+        return 1
+    }
 
     log_info git_signing.gpg_test_signature_with_key_enter "$fpr"
     if echo "gpg_card_test $(date +%s)" | gpg --local-user "${fpr}!" --clearsign >/dev/null; then
@@ -253,7 +259,7 @@ function gpg_card_use_pcscd() {
     chmod 700 "$gnupg_home"
     touch "$conf"
     for line in disable-ccid pcsc-shared; do
-        grep -qxF "$line" "$conf" || echo "$line" >> "$conf"
+        grep -qxF "$line" "$conf" || echo "$line" >>"$conf"
     done
     log_info git_signing.gpg_scdaemon_uses_pcscd_run_gpg "$conf"
 }
@@ -299,8 +305,8 @@ export -f gpg_card_use_pcscd
 #   SSH_SK_APPLICATION  — aplikacja FIDO klucza (domyślnie ssh:git-signing)
 #   SSH_SK_VERIFY       — 1 (domyślnie): verify-required; 0: wystarczy dotyk
 
-_ssh_sk_keygen()      { echo "${SSH_KEYGEN:-ssh-keygen}"; }
-_ssh_sk_key_file()    { echo "${SSH_SK_KEY_FILE:-$HOME/.ssh/id_ed25519_sk_git}"; }
+_ssh_sk_keygen() { echo "${SSH_KEYGEN:-ssh-keygen}"; }
+_ssh_sk_key_file() { echo "${SSH_SK_KEY_FILE:-$HOME/.ssh/id_ed25519_sk_git}"; }
 _ssh_sk_application() { echo "${SSH_SK_APPLICATION:-ssh:git-signing}"; }
 _ssh_sk_allowed_signers() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/git/allowed_signers"; }
 
@@ -308,7 +314,7 @@ _ssh_sk_check_deps() {
     local missing=() keygen
     keygen=$(_ssh_sk_keygen)
     command -v "$keygen" &>/dev/null || missing+=("ssh-keygen (openssh)")
-    command -v git       &>/dev/null || missing+=("git")
+    command -v git &>/dev/null || missing+=("git")
     if [ "${#missing[@]}" -gt 0 ]; then
         log_error git_signing.ssh_sk_missing_dependencies "${missing[*]}"
         log_info git_signing.ssh_sk_linux_openssh_client_libfido2
@@ -399,7 +405,10 @@ function ssh_sk_key_load() {
         candidates=("$tmp/id_ed25519_sk_rk")
     fi
     for f in "${candidates[@]}"; do
-        [ -f "$f" ] && [ "${f%.pub}" = "$f" ] && { found="$f"; break; }
+        [ -f "$f" ] && [ "${f%.pub}" = "$f" ] && {
+            found="$f"
+            break
+        }
     done
     if [ -z "$found" ] || [ ! -f "$found.pub" ]; then
         rm -rf "$tmp"
@@ -438,7 +447,7 @@ function ssh_sk_git_setup() {
     mkdir -p "$(dirname "$signers")"
     touch "$signers"
     if ! grep -qF "$blob" "$signers"; then
-        printf '%s namespaces="git" %s\n' "$email" "$blob" >> "$signers"
+        printf '%s namespaces="git" %s\n' "$email" "$blob" >>"$signers"
     fi
 
     git config --global gpg.format ssh
@@ -474,17 +483,17 @@ function ssh_sk_use_existing() {
     local type
     type=$(awk '{ print $1; exit }' "$key_file.pub")
     case "$type" in
-        sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) ;;
-        *)
-            log_error git_signing.ssh_sk_is_a_key_the "$key_file" "$type"
-            log_info git_signing.ssh_sk_use_an_sk_key
-            return 1
-            ;;
+    sk-ssh-ed25519@openssh.com | sk-ecdsa-sha2-nistp256@openssh.com) ;;
+    *)
+        log_error git_signing.ssh_sk_is_a_key_the "$key_file" "$type"
+        log_info git_signing.ssh_sk_use_an_sk_key
+        return 1
+        ;;
     esac
 
     SSH_SK_KEY_FILE="$key_file" ssh_sk_git_setup "${2:-}" || return 1
     log_warn git_signing.ssh_sk_persist_in_senv_so
-    log_man  "export SSH_SK_KEY_FILE=$key_file"
+    log_man "export SSH_SK_KEY_FILE=$key_file"
     log_info git_signing.ssh_sk_on_github_add_the
     log_info git_signing.ssh_sk_on_a_new_machine
 }
@@ -496,7 +505,7 @@ function ssh_sk_use_existing() {
 function ssh_sk_git_disable() {
     local k
     for k in commit.gpgsign tag.gpgSign user.signingkey gpg.format \
-             gpg.ssh.program gpg.ssh.allowedSignersFile; do
+        gpg.ssh.program gpg.ssh.allowedSignersFile; do
         git config --global --unset "$k" 2>/dev/null || true
     done
     log_info git_signing.ssh_sk_commit_signing_disabled_on
@@ -513,15 +522,18 @@ function ssh_sk_test() {
     key_file=$(_ssh_sk_key_file)
     signers=$(_ssh_sk_allowed_signers)
     keygen=$(_ssh_sk_keygen)
-    [ -s "$key_file" ] || { log_error git_signing.ssh_sk_missing_stub_run_ssh "$key_file"; return 1; }
+    [ -s "$key_file" ] || {
+        log_error git_signing.ssh_sk_missing_stub_run_ssh "$key_file"
+        return 1
+    }
 
     tmp=$(mktemp -d) || return 1
-    echo "ssh_sk_test $(date +%s)" > "$tmp/msg"
+    echo "ssh_sk_test $(date +%s)" >"$tmp/msg"
     log_info git_signing.ssh_sk_test_signature_touch_the
     if ! "$keygen" -Y sign -n git -f "$key_file" "$tmp/msg" >/dev/null; then
         log_error git_signing.ssh_sk_signature_failed
         rc=1
-    elif ! "$keygen" -Y verify -n git -f "$signers" -I "$email" -s "$tmp/msg.sig" < "$tmp/msg" >/dev/null; then
+    elif ! "$keygen" -Y verify -n git -f "$signers" -I "$email" -s "$tmp/msg.sig" <"$tmp/msg" >/dev/null; then
         log_error git_signing.ssh_sk_signature_created_but_verification "$signers"
         rc=1
     else
@@ -538,8 +550,14 @@ function ssh_sk_test() {
 function ssh_sk_github_upload() {
     local key_file
     key_file=$(_ssh_sk_key_file)
-    command -v gh &>/dev/null || { log_error git_signing.ssh_sk_gh_github_cli_missing; return 1; }
-    [ -s "$key_file.pub" ] || { log_error git_signing.ssh_sk_missing_pub_run_ssh "$key_file"; return 1; }
+    command -v gh &>/dev/null || {
+        log_error git_signing.ssh_sk_gh_github_cli_missing
+        return 1
+    }
+    [ -s "$key_file.pub" ] || {
+        log_error git_signing.ssh_sk_missing_pub_run_ssh "$key_file"
+        return 1
+    }
     gh ssh-key add "$key_file.pub" --type signing --title "git-signing ($(_ssh_sk_application))"
 }
 
@@ -583,8 +601,14 @@ _gpg_sw_default_keyid() {
 # Usage: gpg_sw_git_setup [keyid]   (bez argumentu: keyid z gpg_sw_generate)
 ##
 function gpg_sw_git_setup() {
-    command -v gpg &>/dev/null || { log_error git_signing.gpg_sw_gpg_missing; return 1; }
-    command -v git &>/dev/null || { log_error git_signing.gpg_sw_git_missing; return 1; }
+    command -v gpg &>/dev/null || {
+        log_error git_signing.gpg_sw_gpg_missing
+        return 1
+    }
+    command -v git &>/dev/null || {
+        log_error git_signing.gpg_sw_git_missing
+        return 1
+    }
 
     local keyid="${1:-}"
     [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
@@ -620,10 +644,16 @@ function gpg_sw_git_disable() {
 # Usage: gpg_sw_test [keyid]
 ##
 function gpg_sw_test() {
-    command -v gpg &>/dev/null || { log_error git_signing.gpg_sw_gpg_missing; return 1; }
+    command -v gpg &>/dev/null || {
+        log_error git_signing.gpg_sw_gpg_missing
+        return 1
+    }
     local keyid="${1:-}"
     [ -z "$keyid" ] && keyid=$(_gpg_sw_default_keyid)
-    [ -n "$keyid" ] || { log_error git_signing.gpg_sw_missing_keyid_pass_it; return 1; }
+    [ -n "$keyid" ] || {
+        log_error git_signing.gpg_sw_missing_keyid_pass_it
+        return 1
+    }
 
     log_info git_signing.gpg_sw_test_signature_with_key "$keyid"
     if echo "gpg_sw_test $(date +%s)" | gpg --local-user "$keyid" --clearsign >/dev/null; then

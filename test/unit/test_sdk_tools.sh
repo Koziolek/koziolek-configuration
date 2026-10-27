@@ -44,7 +44,10 @@ testAsdfListHasOnlyToolchains() {
 _asdf_pos() {
     local i=1 e
     for e in "${ASDF_TOOLS[@]}"; do
-        [ "${e%%|*}" = "$1" ] && { echo "$i"; return; }
+        [ "${e%%|*}" = "$1" ] && {
+            echo "$i"
+            return
+        }
         i=$((i + 1))
     done
     echo 0
@@ -69,8 +72,8 @@ testSdkmanCandidatesAreValidAndUnique() {
 testAsdfEntriesHaveThreeFieldsWithNameAndVersion() {
     local e name url version extra
     for e in "${ASDF_TOOLS[@]}"; do
-        assertEquals "trzy pola w '$e'" 2 "$(grep -o '|' <<< "$e" | wc -l)"
-        IFS='|' read -r name url version extra <<< "$e"
+        assertEquals "trzy pola w '$e'" 2 "$(grep -o '|' <<<"$e" | wc -l)"
+        IFS='|' read -r name url version extra <<<"$e"
         assertNotEquals "nazwa niepusta w '$e'" "" "$name"
         assertNotEquals "wersja niepusta w '$e'" "" "$version"
         assertEquals "brak czwartego pola w '$e'" "" "$extra"

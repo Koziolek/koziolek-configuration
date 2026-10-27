@@ -48,17 +48,17 @@ _apt_gpg_log_fresh() {
 # _apt_gpg_pairs — "<klucz> <url repo>" z logu apt-get update (posortowane, unikalne).
 _apt_gpg_pairs() {
     _apt_gpg_log_fresh || return 0
-    grep -E 'GPG error' "$(_apt_gpg_log)" 2>/dev/null \
-        | grep -oE '[a-zA-Z]+://[^ ]+ .*NO_PUBKEY [0-9A-F]+' \
-        | sed -E 's#^([a-zA-Z]+://[^ ]+) .*NO_PUBKEY ([0-9A-F]+).*#\2 \1#' \
-        | sort -u
+    grep -E 'GPG error' "$(_apt_gpg_log)" 2>/dev/null |
+        grep -oE '[a-zA-Z]+://[^ ]+ .*NO_PUBKEY [0-9A-F]+' |
+        sed -E 's#^([a-zA-Z]+://[^ ]+) .*NO_PUBKEY ([0-9A-F]+).*#\2 \1#' |
+        sort -u
 }
 
 # _apt_gpg_dead — URL-e martwych repo (404 / brak pliku Release) z logu.
 _apt_gpg_dead() {
     _apt_gpg_log_fresh || return 0
-    grep -E '404|nie ma pliku Release|does not have a Release file' "$(_apt_gpg_log)" 2>/dev/null \
-        | grep -oE 'https?://[^[:space:]]+' | sort -u
+    grep -E '404|nie ma pliku Release|does not have a Release file' "$(_apt_gpg_log)" 2>/dev/null |
+        grep -oE 'https?://[^[:space:]]+' | sort -u
 }
 
 # _apt_gpg_key_expired <plik> — czy keyring zawiera wygasły klucz. Własny GNUPGHOME, żeby `gpg` nie
@@ -137,7 +137,10 @@ fix_apply() {
     while read -r key repo_url; do
         [ -n "$key" ] || continue
         fix_log "pobieram klucz %s z %s" "$key" "$keyserver"
-        tmp_keyring=$(mktemp) || { rc=1; continue; }
+        tmp_keyring=$(mktemp) || {
+            rc=1
+            continue
+        }
         if ! gpg --no-default-keyring --keyring "$tmp_keyring" --keyserver "$keyserver" --recv-keys "$key" >/dev/null 2>&1; then
             fix_log "klucz %s: nie udało się pobrać z keyservera" "$key"
             rm -f "$tmp_keyring" "${tmp_keyring}~"

@@ -47,7 +47,7 @@ _TLS_PORT=''
 
 oneTimeSetUp() {
     _CLASS_DIR="$(mktemp -d)"
-    cat > "$_CLASS_DIR/TlsCheck.java" <<'JAVA'
+    cat >"$_CLASS_DIR/TlsCheck.java" <<'JAVA'
 import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
 
@@ -107,8 +107,8 @@ _cacerts() {
 
 _check_trust() {
     java -Djavax.net.ssl.trustStore="$(_cacerts)" \
-         -Djavax.net.ssl.trustStorePassword=changeit \
-         -cp "$_CLASS_DIR" TlsCheck "https://127.0.0.1:$_TLS_PORT/" 2>/dev/null
+        -Djavax.net.ssl.trustStorePassword=changeit \
+        -cp "$_CLASS_DIR" TlsCheck "https://127.0.0.1:$_TLS_PORT/" 2>/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -148,8 +148,8 @@ testReimportIsIdempotent() {
     update_sdkman_jdk_certs >/dev/null 2>&1
 
     local count
-    count="$(keytool -list -keystore "$(_cacerts)" -storepass changeit 2>/dev/null \
-        | grep -c 'koziolek-nexus')"
+    count="$(keytool -list -keystore "$(_cacerts)" -storepass changeit 2>/dev/null |
+        grep -c 'koziolek-nexus')"
     assertEquals "powtórny import nie może zduplikować aliasu" 1 "$count"
 }
 

@@ -17,7 +17,7 @@ setUp() {
     _BIN="$_TMP/bin"
     _LOG="$_TMP/calls.log"
     mkdir -p "$_BIN" "$_TMP/keyrings" "$_TMP/sources.d"
-    : > "$_LOG"
+    : >"$_LOG"
     local t p
     for t in bash awk grep sed sort tr head basename dirname mktemp cut rm cat id timeout find tee chmod mkdir touch; do
         p="$(builtin command -v "$t" 2>/dev/null)" && [ -n "$p" ] && ln -s "$p" "$_BIN/$t"
@@ -27,7 +27,7 @@ setUp() {
     export FIX_APT_SOURCES_LIST="$_TMP/sources.list" FIX_APT_SOURCES_DIR="$_TMP/sources.d"
     export FIXES_SUDO='' FIXES_CONTEXT=debian XDG_CACHE_HOME="$_TMP/cache"
     export FIXES_DIRS="$PROJECT_ROOT/packages/commons/fixes.d"
-    : > "$APT_OUT_FILE"
+    : >"$APT_OUT_FILE"
     # apt-get update wypisuje zawartość $APT_OUT_FILE
     _mock apt-get 'echo "APT $*" >> "$GPG_LOG"; [ "$1" = update ] && cat "$APT_OUT_FILE"; exit 0'
     # gpg: --show-keys <plik> => [expired] gdy plik zawiera EXPIRED; --recv-keys => sukces leczy apt
@@ -38,13 +38,16 @@ setUp() {
             *--fingerprint*) echo "Key fingerprint = AAAA BBBB"; exit 0 ;;
             *--export*) echo "KEYDATA"; exit 0 ;;
         esac'
-    printf 'deb https://repo.example.com/apt stable main\n' > "$_TMP/sources.d/example.list"
+    printf 'deb https://repo.example.com/apt stable main\n' >"$_TMP/sources.d/example.list"
 }
 
 tearDown() { rm -rf "$_TMP"; }
 
-_mock() { printf '#!%s\n%s\n' "$_BIN/bash" "$2" > "$_BIN/$1"; chmod +x "$_BIN/$1"; }
-_log() { printf '%s\n' "$@" > "$FIX_APT_UPDATE_LOG"; }
+_mock() {
+    printf '#!%s\n%s\n' "$_BIN/bash" "$2" >"$_BIN/$1"
+    chmod +x "$_BIN/$1"
+}
+_log() { printf '%s\n' "$@" >"$FIX_APT_UPDATE_LOG"; }
 _calls() { cat "$_LOG"; }
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
 # update.sh: fixes_refresh_apt_log + apply_fixes; po wywołaniu wypisuje REPOS_DEAD
@@ -90,7 +93,7 @@ testStaleLogIsIgnored() {
 }
 
 testExpiredImportedKeyIsDetectedOffline() {
-    echo EXPIRED > "$_TMP/keyrings/imported-DEADBEEF.gpg"
+    echo EXPIRED >"$_TMP/keyrings/imported-DEADBEEF.gpg"
     local out rc=0
     out="$(_run all --only apt-gpg --check --format tsv)" || rc=$?
     assertEquals "kod --check" 10 "$rc"
@@ -143,7 +146,7 @@ testRecvFailureIsFailedAndWritesNoKeyring() {
 
 testKeyWithoutMatchingSourceIsFailed() {
     _log "$_NOPUB"
-    printf 'deb https://other.example.org/apt stable main\n' > "$_TMP/sources.d/example.list"
+    printf 'deb https://other.example.org/apt stable main\n' >"$_TMP/sources.d/example.list"
     local out
     out="$(_run pre-apt --only apt-gpg --format tsv)"
     assertContains "failed" "$out" "apt-gpg	failed"
@@ -151,8 +154,8 @@ testKeyWithoutMatchingSourceIsFailed() {
 }
 
 testExpiredKeyIsRemovedAndRefetched() {
-    echo EXPIRED > "$_TMP/keyrings/imported-ABCDEF0123456789.gpg"
-    printf '%s\n' "$_NOPUB" > "$APT_OUT_FILE"
+    echo EXPIRED >"$_TMP/keyrings/imported-ABCDEF0123456789.gpg"
+    printf '%s\n' "$_NOPUB" >"$APT_OUT_FILE"
     _log "$_NOPUB"
     local out
     out="$(_run pre-apt --only apt-gpg --format tsv)"
@@ -162,7 +165,7 @@ testExpiredKeyIsRemovedAndRefetched() {
 }
 
 testApplyFixesRepairsAndReports() {
-    printf '%s\n' "$_NOPUB" > "$APT_OUT_FILE"
+    printf '%s\n' "$_NOPUB" >"$APT_OUT_FILE"
     local out
     out="$(_wrap)"
     assertContains "ok po naprawie" "$out" "OK [apt-gpg] naprawiono"
@@ -171,21 +174,21 @@ testApplyFixesRepairsAndReports() {
 }
 
 testApplyFixesHealthySystem() {
-    printf 'Pobrano 0 B\n' > "$APT_OUT_FILE"
+    printf 'Pobrano 0 B\n' >"$APT_OUT_FILE"
     local out
     out="$(_wrap)"
     assertContains "ok" "$out" "OK [apt-gpg] w porządku"
 }
 
 testApplyFixesCollectsDeadReposIntoArray() {
-    printf '%s\n' "$_DEAD" > "$APT_OUT_FILE"
+    printf '%s\n' "$_DEAD" >"$APT_OUT_FILE"
     local out
     out="$(_wrap)"
     assertContains "REPOS_DEAD wypełnione" "$out" "DEAD https://dead.example.com/apt"
 }
 
 testApplyFixesNeverFailsWhenRepairFails() {
-    printf '%s\n' "$_NOPUB" > "$APT_OUT_FILE"
+    printf '%s\n' "$_NOPUB" >"$APT_OUT_FILE"
     export GPG_RECV_RC=1
     local out
     out="$(_wrap)"

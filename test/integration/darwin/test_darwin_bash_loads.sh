@@ -38,7 +38,7 @@ oneTimeSetUp() {
         [[ -n \"\${BASH_FUNCTIONS_LOADED:-}\" ]] && echo 'BASH_LOADED=ok'
         declare -f log_info  >/dev/null 2>&1 && echo 'FUNC_LOG=ok'
         declare -f get_and_build >/dev/null 2>&1 && echo 'FUNC_GAB=ok'
-    " > "$_OUT" 2>/dev/null
+    " >"$_OUT" 2>/dev/null
 }
 
 oneTimeTearDown() {

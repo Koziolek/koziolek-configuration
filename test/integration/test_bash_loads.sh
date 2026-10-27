@@ -49,7 +49,7 @@ oneTimeSetUp() {
         [[ \"\$PROMPT_COMMAND\" == *_sdkman_init* ]] && echo 'PROMPT_CMD_SDKMAN=ok'
         [[ -n \"\$WORKSPACE\" ]] && echo 'VAR_WORKSPACE=ok'
         [[ -n \"\$WORKSPACE_TOOLS\" ]] && echo 'VAR_WORKSPACE_TOOLS=ok'
-    " > "$_OUT" 2>/dev/null
+    " >"$_OUT" 2>/dev/null
 }
 
 oneTimeTearDown() {

@@ -7,7 +7,7 @@ PROJECT_NAME='koziolek-configuration'
 export DEBIAN_FRONTEND=noninteractive
 
 SUDO=''
-if (( $EUID != 0 )); then
+if (($EUID != 0)); then
     SUDO='sudo'
 fi
 
@@ -45,41 +45,41 @@ source "$COMMONS_DIR/sdk_tools_apply.sh"
 source "$COMMONS_DIR/lang_packages_apply.sh"
 
 all_packages=(
-  "${minimal_tools[@]}"
-  "${system_tools[@]}"
-  "${security_tools[@]}"
-  "${graphics_libs[@]}"
-  "${gui_libs[@]}"
-  "${image_tools[@]}"
-  "${diag_tools[@]}"
-  "${build_libs[@]}"
-  "${boxes_vm[@]}"
+    "${minimal_tools[@]}"
+    "${system_tools[@]}"
+    "${security_tools[@]}"
+    "${graphics_libs[@]}"
+    "${gui_libs[@]}"
+    "${image_tools[@]}"
+    "${diag_tools[@]}"
+    "${build_libs[@]}"
+    "${boxes_vm[@]}"
 )
 
 safe_apt_install() {
-  local pkg ok_list=()
-  for pkg in "$@"; do
-    # `apt-cache show` sam w sobie NIE wystarcza: pakiety przejściowe/dummy
-    # (np. w trakcie transformacji nazwy w Debian sid) mają metadane/opis,
-    # więc `apt-cache show` przechodzi, ale nie mają realnego kandydata do
-    # instalacji na tej architekturze — dopiero `apt-get install` by to
-    # wykrył, wywalając na CAŁEJ liście pakietów naraz (patrz #124).
-    # `apt-cache policy` mówi wprost "Candidate: (none)" w takim przypadku.
-    if apt-cache policy "$pkg" 2>/dev/null | grep -q 'Candidate: (none)'; then
-      echo "⚠️ Package '$pkg' has no installation candidate, skipping"
-    elif apt-cache show "$pkg" >/dev/null 2>&1; then
-      ok_list+=("$pkg")
-    else
-      echo "⚠️ Package '$pkg' not found, skipping"
-    fi
-  done
+    local pkg ok_list=()
+    for pkg in "$@"; do
+        # `apt-cache show` sam w sobie NIE wystarcza: pakiety przejściowe/dummy
+        # (np. w trakcie transformacji nazwy w Debian sid) mają metadane/opis,
+        # więc `apt-cache show` przechodzi, ale nie mają realnego kandydata do
+        # instalacji na tej architekturze — dopiero `apt-get install` by to
+        # wykrył, wywalając na CAŁEJ liście pakietów naraz (patrz #124).
+        # `apt-cache policy` mówi wprost "Candidate: (none)" w takim przypadku.
+        if apt-cache policy "$pkg" 2>/dev/null | grep -q 'Candidate: (none)'; then
+            echo "⚠️ Package '$pkg' has no installation candidate, skipping"
+        elif apt-cache show "$pkg" >/dev/null 2>&1; then
+            ok_list+=("$pkg")
+        else
+            echo "⚠️ Package '$pkg' not found, skipping"
+        fi
+    done
 
-  if [ "${#ok_list[@]}" -gt 0 ]; then
-    echo "Installing: ${ok_list[*]}"
-    $SUDO apt-get install -qqy "${ok_list[@]}"
-  else
-    echo "❌ No valid packages to install."
-  fi
+    if [ "${#ok_list[@]}" -gt 0 ]; then
+        echo "Installing: ${ok_list[*]}"
+        $SUDO apt-get install -qqy "${ok_list[@]}"
+    else
+        echo "❌ No valid packages to install."
+    fi
 }
 
 install_initial_packages() {
@@ -98,7 +98,7 @@ install_initial_packages() {
 # apply_fixes — rejestr napraw (#144), wspólny z update.sh. Tu fazy pre-apt/post-apt: bez nich uszkodzony
 # pakiet *-dkms (stan iF, np. v4l2loopback-dkms: "DKMS tree already contains") blokuje każdy
 # `apt-get install` (dpkg próbuje go dokończyć przy każdej instalacji). Wymaga ok/warn/info i $SUDO.
-ok()   { printf '✓ %s\n' "$*"; }
+ok() { printf '✓ %s\n' "$*"; }
 warn() { printf '⚠ %s\n' "$*"; }
 info() { printf '  %s\n' "$*"; }
 # shellcheck source=packages/commons/fixes_apply.sh
@@ -199,8 +199,8 @@ install_calibre() {
     calibre_install_deps
     # Strona calibre odradza pakiety dystrybucji (często nieaktualne) — używamy instalatora
     # z calibre-ebook.com. Brak oficjalnej sumy kontrolnej; błąd nie przerywa skryptu.
-    { [ -z "$SUDO" ] || $SUDO -v; } \
-        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin || {
+    { [ -z "$SUDO" ] || $SUDO -v; } &&
+        wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin || {
         echo "⚠️  calibre pominięty — zainstaluj ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
         return 0
     }
@@ -217,10 +217,10 @@ install_apps() {
     if ! command -v spotify >/dev/null 2>&1; then
         echo "Instalacja Spotify..."
         $SUDO mkdir -p /etc/apt/keyrings
-        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg \
-            | $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" \
-            | $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
+        curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg |
+            $SUDO gpg --dearmor --yes -o /etc/apt/keyrings/spotify.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/spotify.gpg] https://repository.spotify.com stable non-free" |
+            $SUDO tee /etc/apt/sources.list.d/spotify.list >/dev/null
         $SUDO apt-get -qq update && $SUDO apt-get install -qqy spotify-client
     fi
 
@@ -252,12 +252,11 @@ install_apps() {
         $SUDO dpkg --add-architecture i386
         $SUDO apt-get update
         $SUDO apt-get install -qqy lib32gcc-s1 libc6-i386
-        $SUDO apt-get install -fqqy  # napraw zależności
+        $SUDO apt-get install -fqqy # napraw zależności
     fi
 
     echo "Wszystkie aplikacje zostały zainstalowane!"
 }
-
 
 install_gh() {
     if command -v gh &>/dev/null; then
@@ -275,8 +274,8 @@ install_gh() {
     $SUDO install -o root -g root -m 644 "$tmpkey" "$keyring"
     rm -f "$tmpkey"
 
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" \
-        | $SUDO tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" |
+        $SUDO tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 
     $SUDO apt-get -qq update
     safe_apt_install gh
@@ -288,8 +287,8 @@ install_gh() {
 # (nie zostawiamy niezweryfikowanej binarki w PATH roota).
 install_ctop() {
     local ctop_version
-    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
-        | grep '"tag_name":' | cut -d '"' -f 4)
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest |
+        grep '"tag_name":' | cut -d '"' -f 4)
     if [ -z "$ctop_version" ]; then
         echo "⚠️ Nie udało się pobrać wersji ctop, pomijam instalację"
         return 0
@@ -300,13 +299,13 @@ install_ctop() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
-            -o "$tmp_dir/$ctop_bin"; then
+        -o "$tmp_dir/$ctop_bin"; then
         echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
     fi
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
-            -o "$tmp_dir/sha256sums.txt"; then
+        -o "$tmp_dir/sha256sums.txt"; then
         echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
@@ -339,13 +338,13 @@ install_kubectl() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
-            -o "$tmp_dir/kubectl"; then
+        -o "$tmp_dir/kubectl"; then
         echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
     fi
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
-            -o "$tmp_dir/kubectl.sha256"; then
+        -o "$tmp_dir/kubectl.sha256"; then
         echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
@@ -364,40 +363,39 @@ install_kubectl() {
 
 install_docker() {
     echo "Instalacja Docker i docker-ctop..."
-    
+
     # Usuń stare wersje Docker jeśli istnieją
     echo "Usuwanie starych wersji Docker..."
     $SUDO apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
 
-    
     # Dodaj klucz GPG Docker
     echo "Dodawanie klucza GPG Docker..."
     $SUDO mkdir -p /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    
+
     # Dodaj repozytorium Docker
     echo "Dodawanie repozytorium Docker..."
     echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | $SUDO tee /etc/apt/sources.list.d/docker.list >/dev/null
+
     # Aktualizuj listę pakietów z nowym repozytorium
     $SUDO apt-get -qq update
-    
+
     # Zainstaluj Docker Engine
     echo "Instalacja Docker Engine..."
     safe_apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
+
     # Uruchom i włącz Docker service
     echo "Uruchamianie Docker service..."
     $SUDO systemctl start docker
     $SUDO systemctl enable docker
-    
+
     # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
     echo "Dodawanie użytkownika $USER do grupy docker..."
-    $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
+    $SUDO groupadd docker 2>/dev/null || true # grupa może już istnieć
     $SUDO usermod -aG docker $USER
-    
+
     # Zainstaluj docker-ctop
     echo "Instalacja docker-ctop..."
     install_ctop
@@ -407,7 +405,7 @@ install_docker() {
     docker --version
     docker-compose --version
     command -v ctop &>/dev/null && ctop -v || echo "⚠️ ctop niedostępny, pomijam sprawdzenie"
-    
+
     echo "Docker i docker-ctop zostały pomyślnie zainstalowane!"
     echo "Użytkownik $USER został dodany do grupy docker."
     echo ""

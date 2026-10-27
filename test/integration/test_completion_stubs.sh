@@ -90,7 +90,7 @@ testAsdfCompletionCacheCreated() {
 
 testAsdfCompletionCacheNotRegeneratedIfFresh() {
     # Pre-tworzenie cache — przy ponownym sourcowaniu asdf NIE powinno być wołane
-    echo '# stale cache' > "$_FAKE_HOME/.cache/asdf_bash_completion"
+    echo '# stale cache' >"$_FAKE_HOME/.cache/asdf_bash_completion"
     local asdf_log
     asdf_log="$(mktemp)"
 

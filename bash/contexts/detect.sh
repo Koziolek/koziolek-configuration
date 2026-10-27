@@ -58,15 +58,33 @@ detect_context() {
     fi
 
     case "$id" in
-        vanilla) printf 'vanilla\n'; return 0 ;;
-        ubuntu)  printf 'ubuntu\n';  return 0 ;;
-        debian)  printf 'debian\n';  return 0 ;;
-        rhel|centos|fedora|rocky|almalinux) printf 'redhat\n'; return 0 ;;
+    vanilla)
+        printf 'vanilla\n'
+        return 0
+        ;;
+    ubuntu)
+        printf 'ubuntu\n'
+        return 0
+        ;;
+    debian)
+        printf 'debian\n'
+        return 0
+        ;;
+    rhel | centos | fedora | rocky | almalinux)
+        printf 'redhat\n'
+        return 0
+        ;;
     esac
 
     case " $id_like " in
-        *" debian "*|*" ubuntu "*) printf 'debian\n'; return 0 ;;
-        *" rhel "*|*" fedora "*)   printf 'redhat\n'; return 0 ;;
+    *" debian "* | *" ubuntu "*)
+        printf 'debian\n'
+        return 0
+        ;;
+    *" rhel "* | *" fedora "*)
+        printf 'redhat\n'
+        return 0
+        ;;
     esac
 
     printf 'linux\n'
@@ -75,13 +93,13 @@ detect_context() {
 context_chain() {
     local ctx="${1:-${CONFIG_CONTEXT:-$(detect_context)}}"
     case "$ctx" in
-        darwin)  printf 'darwin\n' ;;
-        vanilla) printf 'linux\ndebian\nvanilla\n' ;;
-        ubuntu)  printf 'linux\ndebian\nubuntu\n' ;;
-        wsl)     printf 'linux\ndebian\nwsl\n' ;;
-        debian)  printf 'linux\ndebian\n' ;;
-        redhat)  printf 'linux\nredhat\n' ;;
-        linux|*) printf 'linux\n' ;;
+    darwin) printf 'darwin\n' ;;
+    vanilla) printf 'linux\ndebian\nvanilla\n' ;;
+    ubuntu) printf 'linux\ndebian\nubuntu\n' ;;
+    wsl) printf 'linux\ndebian\nwsl\n' ;;
+    debian) printf 'linux\ndebian\n' ;;
+    redhat) printf 'linux\nredhat\n' ;;
+    linux | *) printf 'linux\n' ;;
     esac
 }
 
@@ -103,11 +121,11 @@ context_is() {
 context_package_suffix() {
     local ctx="${1:-${CONFIG_CONTEXT:-$(detect_context)}}"
     case "$ctx" in
-        darwin)            printf 'mac\n' ;;
-        vanilla)           printf 'vanilla\n' ;;
-        redhat)            printf 'redhat\n' ;;
-        ubuntu|debian|wsl) printf 'ubuntu\n' ;;
-        *)                 return 1 ;;
+    darwin) printf 'mac\n' ;;
+    vanilla) printf 'vanilla\n' ;;
+    redhat) printf 'redhat\n' ;;
+    ubuntu | debian | wsl) printf 'ubuntu\n' ;;
+    *) return 1 ;;
     esac
 }
 
@@ -136,7 +154,7 @@ resolve_vanilla_subsystem() {
         host_id=$(sed -n 's/^ID=//p' "$host_os_release_file" | tr -d '"' | head -1)
         host_like=$(sed -n 's/^ID_LIKE=//p' "$host_os_release_file" | tr -d '"' | head -1)
         case " $host_id $host_like " in
-            *" vanilla "*) ctx="vanilla" ;;
+        *" vanilla "*) ctx="vanilla" ;;
         esac
     fi
 

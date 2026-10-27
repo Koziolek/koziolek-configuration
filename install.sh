@@ -42,7 +42,7 @@ ensure_git() {
 
     echo "Instalacja git..."
     local sudo=''
-    (( EUID != 0 )) && sudo='sudo'
+    ((EUID != 0)) && sudo='sudo'
     $sudo apt-get -qq update
     $sudo apt-get install -qqy git
 }

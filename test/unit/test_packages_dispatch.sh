@@ -45,8 +45,9 @@ testInitialRedhatPicksRedhatScript() {
 
 testInitialVanillaSubsystemPicksVanillaScript() {
     local host_os="$_TMP/host-os-release"
-    printf 'ID=debian\nID_LIKE=vanilla\n' > "$host_os"
-    local containerenv="$_TMP/containerenv"; : > "$containerenv"
+    printf 'ID=debian\nID_LIKE=vanilla\n' >"$host_os"
+    local containerenv="$_TMP/containerenv"
+    : >"$containerenv"
     local out
     out=$(env PACKAGES_DISPATCH_DRY_RUN=1 CONFIG_CONTEXT_FORCE=debian \
         CONTAINERENV_FILE="$containerenv" HOST_OS_RELEASE_FILE="$host_os" \

@@ -9,13 +9,16 @@ COMMIT_FILE=$1
 COMMIT_SOURCE=$2
 
 case "$COMMIT_SOURCE" in
-  merge|squash) exit 0 ;;
+merge | squash) exit 0 ;;
 esac
 
 FIRST_LINE=$(head -n1 "$COMMIT_FILE")
 if [[ "$FIRST_LINE" == "$BRANCH "* ]]; then
-  exit 0
+    exit 0
 fi
 
 TEMP=$(mktemp)
-{ printf '%s ' "$BRANCH"; cat "$COMMIT_FILE"; } > "$TEMP" && mv "$TEMP" "$COMMIT_FILE"
+{
+    printf '%s ' "$BRANCH"
+    cat "$COMMIT_FILE"
+} >"$TEMP" && mv "$TEMP" "$COMMIT_FILE"

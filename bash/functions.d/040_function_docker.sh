@@ -14,24 +14,23 @@ function check_docker_compose_availability() {
     fi
 }
 
-
 # Function checks container state
 function check_container_status() {
-  local container_name="$1"
-  if [ -z "$container_name" ]; then
-      log_error docker.container_name_required
-      return 1
-  fi
+    local container_name="$1"
+    if [ -z "$container_name" ]; then
+        log_error docker.container_name_required
+        return 1
+    fi
 
-  local status
+    local status
 
-  if status=$("${DOCKER_CLI:-docker}" inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null); then
-      echo "${C_GREEN}The '$container_name': $status${C_NC}"
-      return 0
-  else
-      echo "${C_PURPLE}The '$container_name': does not exist${C_NC}"
-      return 1
-  fi
+    if status=$("${DOCKER_CLI:-docker}" inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null); then
+        echo "${C_GREEN}The '$container_name': $status${C_NC}"
+        return 0
+    else
+        echo "${C_PURPLE}The '$container_name': does not exist${C_NC}"
+        return 1
+    fi
 }
 
 # Function checking docker-compose services state
@@ -49,7 +48,6 @@ function check_compose_status() {
 
     $DOCKER_COMPOSE -f "$compose_file" ps
 }
-
 
 # Function checking if all services are healthy
 function check_all_services_healthy() {
@@ -109,8 +107,7 @@ function start_compose_services() {
     fi
 }
 
-
-export -f check_container_status;
-export -f check_compose_status;
-export -f check_all_services_healthy;
-export -f start_compose_services;
+export -f check_container_status
+export -f check_compose_status
+export -f check_all_services_healthy
+export -f start_compose_services

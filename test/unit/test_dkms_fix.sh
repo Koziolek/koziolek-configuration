@@ -14,7 +14,7 @@ setUp() {
     _BIN="$_TMP/bin"
     _LOG="$_TMP/calls.log"
     mkdir -p "$_BIN"
-    : > "$_LOG"
+    : >"$_LOG"
     local t p
     for t in bash awk grep tr head tail basename dirname mktemp sort cut rm cat id timeout; do
         p="$(builtin command -v "$t" 2>/dev/null)" && [ -n "$p" ] && ln -s "$p" "$_BIN/$t"
@@ -42,8 +42,11 @@ tearDown() {
     rm -rf "$_TMP"
 }
 
-_mock() { printf '#!%s\n%s\n' "$_BIN/bash" "$2" > "$_BIN/$1"; chmod +x "$_BIN/$1"; }
-_state() { printf '%s' "$1" > "$DKMS_STATE"; }
+_mock() {
+    printf '#!%s\n%s\n' "$_BIN/bash" "$2" >"$_BIN/$1"
+    chmod +x "$_BIN/$1"
+}
+_state() { printf '%s' "$1" >"$DKMS_STATE"; }
 # PATH ograniczony do mocków tylko dla procesu pod testem (sam shunit2 potrzebuje pełnego PATH).
 _run() { PATH="$_BIN" "$_BIN/bash" -c '. "$1"; shift; run_fixes "$@"' _ "$RUNNER" "$@" 2>&1; }
 _wrap() { PATH="$_BIN" "$_BIN/bash" -c 'ok() { echo "OK $*"; }; warn() { echo "WARN $*"; }; info() { echo "INFO $*"; }; SUDO="${2-}"; . "$1"; apply_fixes "${3:-pre-apt}"' _ "$APPLY" "$@" 2>&1; }

@@ -16,7 +16,7 @@ fi
 # lokalizuje packages/commons/apt_packages.sh względem ${BASH_SOURCE[0]}, a process
 # substitution (/dev/fd/N) łamie to dirname'owanie.
 TMPSCRIPT="$(dirname "$SCRIPT")/.e2e-head-$$.sh"
-head -n $((CUTLINE - 1)) "$SCRIPT" > "$TMPSCRIPT"
+head -n $((CUTLINE - 1)) "$SCRIPT" >"$TMPSCRIPT"
 # shellcheck disable=SC1090
 . "$TMPSCRIPT"
 rm -f "$TMPSCRIPT"
@@ -48,9 +48,9 @@ fi
 echo "=== SYNTAX_CHECK_START ==="
 SYNTAX_OK=true
 for f in /project/bash/functions.d/[0-9]*.sh \
-         /project/bash/bash_aliases.sh \
-         /project/bash/bash_exports.sh \
-         /project/bash/bash_completion.sh; do
+    /project/bash/bash_aliases.sh \
+    /project/bash/bash_exports.sh \
+    /project/bash/bash_completion.sh; do
     [[ -f "$f" ]] || continue
     if ! bash -n "$f" 2>/dev/null; then
         echo "SYNTAX_FAIL: $f"

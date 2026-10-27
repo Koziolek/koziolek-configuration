@@ -19,7 +19,7 @@ trap 'echo "❌ Error on line $LINENO"; exit 1' ERR
 PROJECT_NAME='koziolek-configuration'
 
 SUDO=''
-if (( EUID != 0 )); then
+if ((EUID != 0)); then
     SUDO='sudo'
 fi
 
@@ -55,33 +55,33 @@ source "$COMMONS_DIR/sdk_tools_apply.sh"
 source "$COMMONS_DIR/lang_packages_apply.sh"
 
 all_packages=(
-  "${minimal_tools[@]}"
-  "${system_tools[@]}"
-  "${security_tools[@]}"
-  "${graphics_libs[@]}"
-  "${gui_libs[@]}"
-  "${image_tools[@]}"
-  "${diag_tools[@]}"
-  "${build_libs[@]}"
-  "${boxes_vm[@]}"
+    "${minimal_tools[@]}"
+    "${system_tools[@]}"
+    "${security_tools[@]}"
+    "${graphics_libs[@]}"
+    "${gui_libs[@]}"
+    "${image_tools[@]}"
+    "${diag_tools[@]}"
+    "${build_libs[@]}"
+    "${boxes_vm[@]}"
 )
 
 safe_yum_install() {
-  local pkg ok_list=()
-  for pkg in "$@"; do
-    if yum list "$pkg" >/dev/null 2>&1; then
-      ok_list+=("$pkg")
-    else
-      echo "⚠️ Package '$pkg' not found, skipping"
-    fi
-  done
+    local pkg ok_list=()
+    for pkg in "$@"; do
+        if yum list "$pkg" >/dev/null 2>&1; then
+            ok_list+=("$pkg")
+        else
+            echo "⚠️ Package '$pkg' not found, skipping"
+        fi
+    done
 
-  if [ "${#ok_list[@]}" -gt 0 ]; then
-    echo "Installing: ${ok_list[*]}"
-    $SUDO yum install -y "${ok_list[@]}"
-  else
-    echo "❌ No valid packages to install."
-  fi
+    if [ "${#ok_list[@]}" -gt 0 ]; then
+        echo "Installing: ${ok_list[*]}"
+        $SUDO yum install -y "${ok_list[@]}"
+    else
+        echo "❌ No valid packages to install."
+    fi
 }
 
 install_initial_packages() {
@@ -186,8 +186,8 @@ install_calibre() {
     calibre_install_deps
     # Strona calibre odradza pakiety dystrybucji (często nieaktualne) — używamy instalatora
     # z calibre-ebook.com. Brak oficjalnej sumy kontrolnej; błąd nie przerywa skryptu.
-    { [ -z "$SUDO" ] || $SUDO -v; } \
-        && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin || {
+    { [ -z "$SUDO" ] || $SUDO -v; } &&
+        wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin || {
         echo "⚠️  calibre pominięty — zainstaluj ręcznie: sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin"
         return 0
     }
@@ -219,8 +219,8 @@ install_gh() {
 # (nie zostawiamy niezweryfikowanej binarki w PATH roota).
 install_ctop() {
     local ctop_version
-    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest \
-        | grep '"tag_name":' | cut -d '"' -f 4)
+    ctop_version=$(curl -sf https://api.github.com/repos/bcicen/ctop/releases/latest |
+        grep '"tag_name":' | cut -d '"' -f 4)
     if [ -z "$ctop_version" ]; then
         echo "⚠️ Nie udało się pobrać wersji ctop, pomijam instalację"
         return 0
@@ -231,13 +231,13 @@ install_ctop() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/${ctop_bin}" \
-            -o "$tmp_dir/$ctop_bin"; then
+        -o "$tmp_dir/$ctop_bin"; then
         echo "⚠️ Nie udało się pobrać ctop ${ctop_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
     fi
     if ! curl -fsSL "https://github.com/bcicen/ctop/releases/download/${ctop_version}/sha256sums.txt" \
-            -o "$tmp_dir/sha256sums.txt"; then
+        -o "$tmp_dir/sha256sums.txt"; then
         echo "⚠️ Nie udało się pobrać sha256sums.txt dla ctop ${ctop_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
@@ -269,13 +269,13 @@ install_kubectl() {
     tmp_dir=$(mktemp -d)
 
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl" \
-            -o "$tmp_dir/kubectl"; then
+        -o "$tmp_dir/kubectl"; then
         echo "⚠️ Nie udało się pobrać kubectl ${kubectl_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
     fi
     if ! curl -fsSL "https://dl.k8s.io/release/${kubectl_version}/bin/linux/amd64/kubectl.sha256" \
-            -o "$tmp_dir/kubectl.sha256"; then
+        -o "$tmp_dir/kubectl.sha256"; then
         echo "⚠️ Nie udało się pobrać sumy sha256 dla kubectl ${kubectl_version}, pomijam instalację"
         rm -rf "$tmp_dir"
         return 0
@@ -321,7 +321,7 @@ install_docker() {
 
     # Dodaj użytkownika do grupy docker (aby można było uruchamiać bez sudo)
     echo "Dodawanie użytkownika $USER do grupy docker..."
-    $SUDO groupadd docker 2>/dev/null || true  # grupa może już istnieć
+    $SUDO groupadd docker 2>/dev/null || true # grupa może już istnieć
     $SUDO usermod -aG docker "$USER"
 
     # Zainstaluj docker-ctop

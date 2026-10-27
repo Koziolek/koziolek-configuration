@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 setUp() {
     _TMP="$(mktemp -d)"
     _LOG="$_TMP/pm.log"
-    : > "$_LOG"
+    : >"$_LOG"
     _BIN="$_TMP/bin"
     mkdir -p "$_BIN"
     SUDO=""
@@ -20,7 +20,7 @@ tearDown() {
 
 # Mock menedżera pakietów w restrykcyjnym PATH (tylko to, co zainstalowane "w systemie").
 _mock_pm() {
-    printf '#!/bin/sh\necho "%s $*" >> "%s"\nexit %s\n' "$1" "$_LOG" "${2:-0}" > "$_BIN/$1"
+    printf '#!/bin/sh\necho "%s $*" >> "%s"\nexit %s\n' "$1" "$_LOG" "${2:-0}" >"$_BIN/$1"
     chmod +x "$_BIN/$1"
 }
 
@@ -50,14 +50,16 @@ testAptWinsWhenBothPresent() {
 testFailureWarnsAndReturnsZero() {
     _mock_pm apt-get 100
     local out rc
-    out=$(_run); rc=$?
+    out=$(_run)
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "libxcb-cursor0 niezainstalowany"
 }
 
 testNoPackageManagerIsNoop() {
     local out rc
-    out=$(_run); rc=$?
+    out=$(_run)
+    rc=$?
     assertEquals 0 "$rc"
     assertEquals "" "$out"
 }

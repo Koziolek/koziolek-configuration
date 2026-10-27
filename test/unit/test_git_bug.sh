@@ -7,24 +7,24 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 _make_release() {
     local ver="$1" dir="$_TMP/build/git-bug_${1}_linux_amd64"
     mkdir -p "$dir" "$_REL"
-    printf '#!/bin/sh\necho "git-bug v%s abcdef123456 go1.27.1 linux amd64"\n' "$ver" > "$dir/git-bug"
+    printf '#!/bin/sh\necho "git-bug v%s abcdef123456 go1.27.1 linux amd64"\n' "$ver" >"$dir/git-bug"
     chmod +x "$dir/git-bug"
     if [ "${_NO_DOCS:-}" != 1 ]; then
         mkdir -p "$dir/man" "$dir/completion/bash" "$dir/completion/zsh"
-        echo ".TH GIT-BUG 1 v$ver" > "$dir/man/git-bug.1"
-        echo ".TH GIT-BUG-BUG 1 v$ver" > "$dir/man/git-bug-bug.1"
-        echo "# bash completion v$ver" > "$dir/completion/bash/git-bug"
-        echo "# zsh completion" > "$dir/completion/zsh/git-bug"
+        echo ".TH GIT-BUG 1 v$ver" >"$dir/man/git-bug.1"
+        echo ".TH GIT-BUG-BUG 1 v$ver" >"$dir/man/git-bug-bug.1"
+        echo "# bash completion v$ver" >"$dir/completion/bash/git-bug"
+        echo "# zsh completion" >"$dir/completion/zsh/git-bug"
     fi
     tar -czf "$_REL/git-bug_${ver}_linux_amd64.tar.gz" -C "$_TMP/build" "git-bug_${ver}_linux_amd64"
-    (cd "$_REL" && sha256sum "git-bug_${ver}_linux_amd64.tar.gz" > checksums.txt)
+    (cd "$_REL" && sha256sum "git-bug_${ver}_linux_amd64.tar.gz" >checksums.txt)
 }
 
 setUp() {
     _TMP="$(mktemp -d)"
     _REL="$_TMP/release"
     _CURL_LOG="$_TMP/curl.log"
-    : > "$_CURL_LOG"
+    : >"$_CURL_LOG"
     export GIT_BUG_INSTALL_DIR="$_TMP/bin"
     export GIT_BUG_DATA_DIR="$_TMP/share"
     _NO_DOCS=""
@@ -38,14 +38,20 @@ setUp() {
         local out="" url="" w=0 arg
         while [ $# -gt 0 ]; do
             case "$1" in
-                -o) out="$2"; shift ;;
-                -w) w=1; shift ;;
-                -*) ;;
-                *) url="$1" ;;
+            -o)
+                out="$2"
+                shift
+                ;;
+            -w)
+                w=1
+                shift
+                ;;
+            -*) ;;
+            *) url="$1" ;;
             esac
             shift
         done
-        echo "CURL $url" >> "$_CURL_LOG"
+        echo "CURL $url" >>"$_CURL_LOG"
         [ -n "$_CURL_FAIL" ] && [[ "$url" == *"$_CURL_FAIL"* ]] && return 22
         if [ "$w" = 1 ]; then
             [ -n "$_LATEST_URL" ] || return 22
@@ -86,7 +92,7 @@ testInstallsWhenMissingWithoutSudo() {
 testUpdatesWhenOlder() {
     _make_release 0.12.0
     mkdir -p "$GIT_BUG_INSTALL_DIR"
-    printf '#!/bin/sh\necho "git-bug v0.11.0 abc go linux amd64"\n' > "$(_bin)"
+    printf '#!/bin/sh\necho "git-bug v0.11.0 abc go linux amd64"\n' >"$(_bin)"
     chmod +x "$(_bin)"
     install_git_bug >/dev/null
     assertEquals "0.12.0" "$(git_bug_installed_version "$(_bin)")"
@@ -95,7 +101,7 @@ testUpdatesWhenOlder() {
 testNoDownloadWhenUpToDate() {
     _make_release 0.12.0
     install_git_bug >/dev/null
-    : > "$_CURL_LOG"
+    : >"$_CURL_LOG"
     local out
     out=$(install_git_bug)
     assertContains "komunikat" "$out" "git-bug aktualny: v0.12.0"
@@ -104,12 +110,13 @@ testNoDownloadWhenUpToDate() {
 
 testBadChecksumKeepsOldBinaryAndReturnsZero() {
     _make_release 0.12.0
-    echo "0000000000000000000000000000000000000000000000000000000000000000  git-bug_0.12.0_linux_amd64.tar.gz" > "$_REL/checksums.txt"
+    echo "0000000000000000000000000000000000000000000000000000000000000000  git-bug_0.12.0_linux_amd64.tar.gz" >"$_REL/checksums.txt"
     mkdir -p "$GIT_BUG_INSTALL_DIR"
-    printf '#!/bin/sh\necho "git-bug v0.11.0 abc go linux amd64"\n' > "$(_bin)"
+    printf '#!/bin/sh\necho "git-bug v0.11.0 abc go linux amd64"\n' >"$(_bin)"
     chmod +x "$(_bin)"
     local out rc
-    out=$(install_git_bug); rc=$?
+    out=$(install_git_bug)
+    rc=$?
     assertEquals "kod wyjścia" 0 "$rc"
     assertContains "ostrzeżenie" "$out" "suma sha256"
     assertEquals "stara wersja zostaje" "0.11.0" "$(git_bug_installed_version "$(_bin)")"
@@ -118,7 +125,8 @@ testBadChecksumKeepsOldBinaryAndReturnsZero() {
 testNetworkFailureOnVersionLookupWarnsAndReturnsZero() {
     _LATEST_URL=""
     local out rc
-    out=$(install_git_bug); rc=$?
+    out=$(install_git_bug)
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "ostrzeżenie" "$out" "nie udało się ustalić najnowszej wersji"
     assertFalse "nic nie zainstalowano" "[ -e '$(_bin)' ]"
@@ -128,7 +136,8 @@ testDownloadFailureWarnsAndReturnsZero() {
     _make_release 0.12.0
     _CURL_FAIL=".tar.gz"
     local out rc
-    out=$(install_git_bug); rc=$?
+    out=$(install_git_bug)
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "ostrzeżenie" "$out" "nie udało się pobrać"
     assertFalse "nic nie zainstalowano" "[ -e '$(_bin)' ]"
@@ -176,7 +185,7 @@ testUpdateReplacesDocs() {
 testUpToDateWithDocsDoesNotDownload() {
     _make_release 0.12.0
     install_git_bug >/dev/null
-    : > "$_CURL_LOG"
+    : >"$_CURL_LOG"
     install_git_bug >/dev/null
     assertNotContains "bez pobierania" "$(cat "$_CURL_LOG")" ".tar.gz"
 }
@@ -195,7 +204,8 @@ testMissingDocsInTarballWarnsButInstallsBinary() {
     _NO_DOCS=1
     _make_release 0.12.0
     local out rc
-    out=$(install_git_bug); rc=$?
+    out=$(install_git_bug)
+    rc=$?
     assertEquals 0 "$rc"
     assertContains "ostrzeżenie man" "$out" "brak stron man"
     assertContains "ostrzeżenie completion" "$out" "brak bash completion"
@@ -204,7 +214,7 @@ testMissingDocsInTarballWarnsButInstallsBinary() {
 
 testBadChecksumInstallsNoDocs() {
     _make_release 0.12.0
-    echo "0000000000000000000000000000000000000000000000000000000000000000  git-bug_0.12.0_linux_amd64.tar.gz" > "$_REL/checksums.txt"
+    echo "0000000000000000000000000000000000000000000000000000000000000000  git-bug_0.12.0_linux_amd64.tar.gz" >"$_REL/checksums.txt"
     install_git_bug >/dev/null
     assertFalse "brak completion" "[ -e '$GIT_BUG_DATA_DIR/bash-completion/completions/git-bug' ]"
     assertFalse "brak man" "[ -e '$GIT_BUG_DATA_DIR/man/man1/git-bug.1' ]"

@@ -37,7 +37,7 @@ tearDown() {
 # ---------------------------------------------------------------------------
 
 testSourceIfExistsSourcesExistingFile() {
-    printf 'SIE_MARKER=sourced\n' > "$_TEST_DIR/myfile.sh"
+    printf 'SIE_MARKER=sourced\n' >"$_TEST_DIR/myfile.sh"
     unset SIE_MARKER
     source_if_exists "myfile" "$_TEST_DIR" 2>/dev/null
     assertEquals 'source_if_exists musi sourcować istniejący plik' 'sourced' "${SIE_MARKER:-}"
@@ -67,7 +67,7 @@ testSourceIfExistsNoBashConfigDirReturnsOne() {
 }
 
 testSourceIfExistsUsesBashConfigDirAsDefault() {
-    printf 'SIE_DEFAULT_MARKER=default_ok\n' > "$BASH_CONFIGURATION_DIR/sie_default.sh"
+    printf 'SIE_DEFAULT_MARKER=default_ok\n' >"$BASH_CONFIGURATION_DIR/sie_default.sh"
     unset SIE_DEFAULT_MARKER
     source_if_exists "sie_default" 2>/dev/null
     assertEquals 'source_if_exists musi używać BASH_CONFIGURATION_DIR domyślnie' \
@@ -81,8 +81,8 @@ testSourceIfExistsUsesBashConfigDirAsDefault() {
 # ---------------------------------------------------------------------------
 
 testSourceDirectoryLoadsNumberedFiles() {
-    printf 'SD_LOADED_010=yes\n' > "$_TEST_DIR/010_first.sh"
-    printf 'SD_LOADED_020=yes\n' > "$_TEST_DIR/020_second.sh"
+    printf 'SD_LOADED_010=yes\n' >"$_TEST_DIR/010_first.sh"
+    printf 'SD_LOADED_020=yes\n' >"$_TEST_DIR/020_second.sh"
     unset SD_LOADED_010 SD_LOADED_020
     source_directory "$_TEST_DIR" 2>/dev/null
     assertEquals 'source_directory musi załadować 010_first.sh' 'yes' "${SD_LOADED_010:-}"
@@ -91,8 +91,8 @@ testSourceDirectoryLoadsNumberedFiles() {
 }
 
 testSourceDirectoryIgnoresNonNumberedFiles() {
-    printf 'SD_IGNORED=yes\n' > "$_TEST_DIR/ignored.sh"
-    printf 'SD_IGNORED_DOT=yes\n' > "$_TEST_DIR/.hidden.sh"
+    printf 'SD_IGNORED=yes\n' >"$_TEST_DIR/ignored.sh"
+    printf 'SD_IGNORED_DOT=yes\n' >"$_TEST_DIR/.hidden.sh"
     unset SD_IGNORED SD_IGNORED_DOT
     source_directory "$_TEST_DIR" 2>/dev/null
     assertNull 'source_directory nie powinna ładować pliku bez prefiksu numerycznego' \
@@ -102,9 +102,9 @@ testSourceDirectoryIgnoresNonNumberedFiles() {
 }
 
 testSourceDirectoryLoadsInAlphabeticalOrder() {
-    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} A"\n' > "$_TEST_DIR/010_a.sh"
-    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} B"\n' > "$_TEST_DIR/020_b.sh"
-    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} C"\n' > "$_TEST_DIR/030_c.sh"
+    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} A"\n' >"$_TEST_DIR/010_a.sh"
+    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} B"\n' >"$_TEST_DIR/020_b.sh"
+    printf 'SD_ORDER_LOG="${SD_ORDER_LOG:-} C"\n' >"$_TEST_DIR/030_c.sh"
     unset SD_ORDER_LOG
     source_directory "$_TEST_DIR" 2>/dev/null
     assertContains 'pliki muszą być ładowane w kolejności A B C' "${SD_ORDER_LOG:-}" 'A'

@@ -19,10 +19,10 @@ _assert_wired() {
     assertTrue "$f: pre-apt przed post-apt" "[ '${pre:-0}' -lt '${post:-0}' ]"
 }
 
-testUbuntuInstallRunsAptFixes()  { _assert_wired ubuntu/install.sh; }
-testUbuntuUpdateRunsAptFixes()   { _assert_wired ubuntu/update.sh; }
+testUbuntuInstallRunsAptFixes() { _assert_wired ubuntu/install.sh; }
+testUbuntuUpdateRunsAptFixes() { _assert_wired ubuntu/update.sh; }
 testVanillaInstallRunsAptFixes() { _assert_wired vanilla/install.sh; }
-testVanillaUpdateRunsAptFixes()  { _assert_wired vanilla/update.sh; }
+testVanillaUpdateRunsAptFixes() { _assert_wired vanilla/update.sh; }
 
 testInstallFixesBracketPackageInstallation() {
     local f pre post inst

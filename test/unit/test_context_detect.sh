@@ -17,7 +17,10 @@ oneTimeTearDown() { rm -rf "$_TMP"; }
 _mk_os_release() {
     # $1 = ID, $2 = ID_LIKE (opcjonalnie)
     local f="$_TMP/os-release-$RANDOM"
-    { printf 'ID=%s\n' "$1"; [ -n "${2:-}" ] && printf 'ID_LIKE=%s\n' "$2"; } > "$f"
+    {
+        printf 'ID=%s\n' "$1"
+        [ -n "${2:-}" ] && printf 'ID_LIKE=%s\n' "$2"
+    } >"$f"
     printf '%s' "$f"
 }
 
@@ -147,9 +150,9 @@ testLoadContextsSourcesChainInOrder() {
     # fałszywy CONTEXTS_DIR z plikami dopisującymi do zmiennej
     local d="$_TMP/ctx-$RANDOM"
     mkdir -p "$d"
-    echo 'ORDER="${ORDER}linux;"'  > "$d/linux.sh"
-    echo 'ORDER="${ORDER}debian;"' > "$d/debian.sh"
-    echo 'ORDER="${ORDER}vanilla;"'> "$d/vanilla.sh"
+    echo 'ORDER="${ORDER}linux;"' >"$d/linux.sh"
+    echo 'ORDER="${ORDER}debian;"' >"$d/debian.sh"
+    echo 'ORDER="${ORDER}vanilla;"' >"$d/vanilla.sh"
     local out
     out=$(CONFIG_CONTEXT='vanilla' CONTEXTS_DIR="$d" bash --norc --noprofile -c "
         source_if_exists() { [ -f \"\$2/\$1.sh\" ] && . \"\$2/\$1.sh\"; }
@@ -203,8 +206,9 @@ testResolveVanillaHostAborts() {
 testResolveVanillaSubsystemDetected() {
     local host_os containerenv out
     host_os="$_TMP/host-os-release-$RANDOM"
-    printf 'ID=debian\nID_LIKE=vanilla\n' > "$host_os"
-    containerenv="$_TMP/containerenv-$RANDOM"; : > "$containerenv"
+    printf 'ID=debian\nID_LIKE=vanilla\n' >"$host_os"
+    containerenv="$_TMP/containerenv-$RANDOM"
+    : >"$containerenv"
     out=$(CONTAINERENV_FILE="$containerenv" HOST_OS_RELEASE_FILE="$host_os" \
         resolve_vanilla_subsystem debian)
     assertEquals 'vanilla' "$out"

@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
 
 function install_lib() {
-  local _args=("$@") _t="" _e="" _x=false _i
-  for (( _i = 0; _i < ${#_args[@]}; _i++ )); do
-    case "${_args[_i]}" in
-      -t) _t="${_args[_i+1]}"; _i=$(( _i + 1 )) ;;
-      -e) _e="${_args[_i+1]}"; _i=$(( _i + 1 )) ;;
-      -x) _x=true ;;
-    esac
-  done
-  if [[ -n "$_t" && -d "$WORKSPACE_TOOLS/$_t" ]]; then
-    [[ "$_x" == true && -n "$_e" ]] && . "$WORKSPACE_TOOLS/$_t/$_e"
-    return 0
-  fi
+    local _args=("$@") _t="" _e="" _x=false _i
+    for ((_i = 0; _i < ${#_args[@]}; _i++)); do
+        case "${_args[_i]}" in
+        -t)
+            _t="${_args[_i + 1]}"
+            _i=$((_i + 1))
+            ;;
+        -e)
+            _e="${_args[_i + 1]}"
+            _i=$((_i + 1))
+            ;;
+        -x) _x=true ;;
+        esac
+    done
+    if [[ -n "$_t" && -d "$WORKSPACE_TOOLS/$_t" ]]; then
+        [[ "$_x" == true && -n "$_e" ]] && . "$WORKSPACE_TOOLS/$_t/$_e"
+        return 0
+    fi
 
-  local OPTIND opt
-  local repo_url=""
-  local target_dir=""
-  local exec_file=""
-  local exp=false
-  local safe=false
+    local OPTIND opt
+    local repo_url=""
+    local target_dir=""
+    local exec_file=""
+    local exp=false
+    local safe=false
 
-  function _install_lib_show_help {
-    cat <<EOF
+    function _install_lib_show_help {
+        cat <<EOF
 Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [-x] [-p] [-h]
   -r: Adres repozytorium
   -t: Opcjonalny katalog docelowy
@@ -32,186 +38,186 @@ Użycie: clone_and_check_file -r <repo_url> [-t <target_dir>] [-e <exec_file>] [
       hasło/token), brak dostępu = ostrzeżenie i pominięcie, NIE błąd (proces leci dalej)
   -h: Wyświetl pomoc
 EOF
-  }
+    }
 
-  function _install_lib_source {
-    if [[ $exp == true ]]; then
-      . "$target_dir/$exec_file"
+    function _install_lib_source {
+        if [[ $exp == true ]]; then
+            . "$target_dir/$exec_file"
+        fi
+    }
+
+    while getopts ":hr:t:e:xp" opt; do
+        case "$opt" in
+        h)
+            _install_lib_show_help
+            return 0
+            ;;
+        r) repo_url="$OPTARG" ;;   # Adres repozytorium
+        t) target_dir="$OPTARG" ;; # Opcjonalny katalog docelowy
+        e) exec_file="$OPTARG" ;;  # Opcjonalny plik wykonywalny
+        x) exp=true ;;
+        p) safe=true ;; # bezpieczne klonowanie repo prywatnego (patrz help)
+        *)
+            log_warn install_lib.unknown_option "$OPTARG"
+            log_man install_lib.usage
+            return 1
+            ;;
+        esac
+    done
+
+    if [ -z "$repo_url" ]; then
+        log_error install_lib.repo_required
+        log_man install_lib.usage
+        return 1
     fi
-  }
 
-  while getopts ":hr:t:e:xp" opt; do
-    case "$opt" in
-    h)
-      _install_lib_show_help
-      return 0
-      ;;
-    r) repo_url="$OPTARG" ;;   # Adres repozytorium
-    t) target_dir="$OPTARG" ;; # Opcjonalny katalog docelowy
-    e) exec_file="$OPTARG" ;;  # Opcjonalny plik wykonywalny
-    x) exp=true ;;
-    p) safe=true ;;            # bezpieczne klonowanie repo prywatnego (patrz help)
-    *)
-      log_warn install_lib.unknown_option "$OPTARG"
-      log_man install_lib.usage
-      return 1
-      ;;
-    esac
-  done
+    if [ -n "$target_dir" ]; then
+        target_dir="$WORKSPACE_TOOLS/$target_dir"
+    else
+        target_dir="$WORKSPACE_TOOLS/$(basename "$repo_url" .git)"
+    fi
 
-  if [ -z "$repo_url" ]; then
-    log_error install_lib.repo_required
-    log_man install_lib.usage
-    return 1
-  fi
+    if [ -d "$target_dir" ]; then
+        _install_lib_source
+        return 0
+    fi
 
-  if [ -n "$target_dir" ]; then
-    target_dir="$WORKSPACE_TOOLS/$target_dir"
-  else
-    target_dir="$WORKSPACE_TOOLS/$(basename "$repo_url" .git)"
-  fi
+    # -p: sprawdź dostęp PRZED klonowaniem — GIT_TERMINAL_PROMPT=0 wymusza natychmiastowy
+    # błąd zamiast interaktywnego promptu o login/hasło/token (co inaczej zawiesiłoby
+    # start powłoki na maszynie bez skonfigurowanego dostępu do repo prywatnego).
+    if [ "$safe" = true ] && ! GIT_TERMINAL_PROMPT=0 git ls-remote "$repo_url" >/dev/null 2>&1; then
+        log_warn install_lib.no_access "$repo_url"
+        return 0
+    fi
 
-  if [ -d "$target_dir" ]; then
+    if [ "$safe" = true ]; then
+        # Dostęp potwierdzony wyżej — mimo to bez promptu, na wypadek utraty dostępu
+        # między sprawdzeniem a klonowaniem (błąd wtedy traktowany jak normalny — patrz niżej).
+        if ! GIT_TERMINAL_PROMPT=0 git clone "$repo_url" "$target_dir"; then
+            log_error install_lib.clone_failed "$repo_url"
+            return 1
+        fi
+    elif ! git clone "$repo_url" "$target_dir"; then
+        log_error install_lib.clone_failed "$repo_url"
+        return 1
+    fi
+
+    if [ -n "$exec_file" ]; then
+        if [ ! -x "$target_dir/$exec_file" ]; then
+            chmod +x "$target_dir/$exec_file"
+        fi
+    fi
+
     _install_lib_source
-    return 0
-  fi
 
-  # -p: sprawdź dostęp PRZED klonowaniem — GIT_TERMINAL_PROMPT=0 wymusza natychmiastowy
-  # błąd zamiast interaktywnego promptu o login/hasło/token (co inaczej zawiesiłoby
-  # start powłoki na maszynie bez skonfigurowanego dostępu do repo prywatnego).
-  if [ "$safe" = true ] && ! GIT_TERMINAL_PROMPT=0 git ls-remote "$repo_url" >/dev/null 2>&1; then
-    log_warn install_lib.no_access "$repo_url"
-    return 0
-  fi
-
-  if [ "$safe" = true ]; then
-    # Dostęp potwierdzony wyżej — mimo to bez promptu, na wypadek utraty dostępu
-    # między sprawdzeniem a klonowaniem (błąd wtedy traktowany jak normalny — patrz niżej).
-    if ! GIT_TERMINAL_PROMPT=0 git clone "$repo_url" "$target_dir"; then
-      log_error install_lib.clone_failed "$repo_url"
-      return 1
-    fi
-  elif ! git clone "$repo_url" "$target_dir"; then
-    log_error install_lib.clone_failed "$repo_url"
-    return 1
-  fi
-
-  if [ -n "$exec_file" ]; then
-    if [ ! -x "$target_dir/$exec_file" ]; then
-      chmod +x "$target_dir/$exec_file"
-    fi
-  fi
-
-  _install_lib_source
-
-  local OPTIND=1 # reset param pointer
+    local OPTIND=1 # reset param pointer
 }
 
 function weather() {
-  if [[ -z "$1" ]]; then
-    log_man weather.usage
-    return 1
-  fi
+    if [[ -z "$1" ]]; then
+        log_man weather.usage
+        return 1
+    fi
 
-  local city_name="$1"
-  local response
-  response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
+    local city_name="$1"
+    local response
+    response=$(curl -s "wttr.in/${city_name}?format=%C+%t+%h+%w")
 
-  if [[ -z "$response" ]]; then
-    log_error weather.fetch_failed "$city_name"
-    return 1
-  fi
+    if [[ -z "$response" ]]; then
+        log_error weather.fetch_failed "$city_name"
+        return 1
+    fi
 
-  local weather_desc
-  weather_desc=$(echo "$response" | awk '{print $1}')
-  local temperature
-  temperature=$(echo "$response" | awk '{print $2}')
-  local humidity
-  humidity=$(echo "$response" | awk '{print $3}')
-  local wind_speed
-  wind_speed=$(echo "$response" | awk '{print $4, $5}')
+    local weather_desc
+    weather_desc=$(echo "$response" | awk '{print $1}')
+    local temperature
+    temperature=$(echo "$response" | awk '{print $2}')
+    local humidity
+    humidity=$(echo "$response" | awk '{print $3}')
+    local wind_speed
+    wind_speed=$(echo "$response" | awk '{print $4, $5}')
 
-  echo "----------------------------------------"
-  echo "| Weather in ${city_name}                   |"
-  echo "----------------------------------------"
-  printf "| %-15s | %-10s |\n" "Temperature" "${temperature}"
-  printf "| %-15s | %-10s |\n" "Humidity" "${humidity}"
-  printf "| %-15s | %-10s |\n" "Description" "${weather_desc}"
-  printf "| %-15s | %-10s |\n" "Wind Speed" "${wind_speed}"
-  echo "----------------------------------------"
+    echo "----------------------------------------"
+    echo "| Weather in ${city_name}                   |"
+    echo "----------------------------------------"
+    printf "| %-15s | %-10s |\n" "Temperature" "${temperature}"
+    printf "| %-15s | %-10s |\n" "Humidity" "${humidity}"
+    printf "| %-15s | %-10s |\n" "Description" "${weather_desc}"
+    printf "| %-15s | %-10s |\n" "Wind Speed" "${wind_speed}"
+    echo "----------------------------------------"
 }
 # Wersja Linux (systemctl/lightdm). macOS cieniuje w bash/contexts/darwin.sh.
 function start_x() {
-  make_me_sudo
-  $SUDO systemctl start lightdm
-  unmake_me_sudo
+    make_me_sudo
+    $SUDO systemctl start lightdm
+    unmake_me_sudo
 }
 
 function generate_month_dirs() {
-  local months=("styczen" "luty" "marzec" "kwiecien" "maj" "czerwiec" "lipiec" "sierpien" "wrzesien" "pazdziernik" "listopad" "grudzien")
-  local i
+    local months=("styczen" "luty" "marzec" "kwiecien" "maj" "czerwiec" "lipiec" "sierpien" "wrzesien" "pazdziernik" "listopad" "grudzien")
+    local i
 
-  for i in {1..12}; do
-    local dir_name
-    dir_name=$(printf "%02d-%s" "$i" "${months[$((i - 1))]}")
+    for i in {1..12}; do
+        local dir_name
+        dir_name=$(printf "%02d-%s" "$i" "${months[$((i - 1))]}")
 
-    if [ -d "$dir_name" ]; then
-      log_warn misc.dir_exists "$dir_name"
-    else
-      mkdir "$dir_name"
-      log_info misc.dir_created "$dir_name"
-    fi
-  done
+        if [ -d "$dir_name" ]; then
+            log_warn misc.dir_exists "$dir_name"
+        else
+            mkdir "$dir_name"
+            log_info misc.dir_created "$dir_name"
+        fi
+    done
 }
 
 function tmux_dump() {
-  local out="${1:-tmux-session-dump-$(date +%Y%m%d-%H%M%S).txt}"
+    local out="${1:-tmux-session-dump-$(date +%Y%m%d-%H%M%S).txt}"
 
-  if ! command -v tmux >/dev/null 2>&1; then
-    echo "tmux is not installed" >&2
-    return 1
-  fi
+    if ! command -v tmux >/dev/null 2>&1; then
+        echo "tmux is not installed" >&2
+        return 1
+    fi
 
-  if [ -z "${TMUX:-}" ]; then
-    echo "Not running inside tmux session" >&2
-    return 1
-  fi
+    if [ -z "${TMUX:-}" ]; then
+        echo "Not running inside tmux session" >&2
+        return 1
+    fi
 
-  {
-    echo "TMUX SESSION DUMP"
-    echo "Generated: $(date '+%Y-%m-%dT%H:%M:%S%z')"
-    echo
+    {
+        echo "TMUX SESSION DUMP"
+        echo "Generated: $(date '+%Y-%m-%dT%H:%M:%S%z')"
+        echo
 
-    echo "=== CURRENT SESSION ==="
-    tmux display-message -p \
-      'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
-    echo
+        echo "=== CURRENT SESSION ==="
+        tmux display-message -p \
+            'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
+        echo
 
-    echo "=== SESSIONS ==="
-    tmux list-sessions -F \
-      'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
-    echo
+        echo "=== SESSIONS ==="
+        tmux list-sessions -F \
+            'session=#{session_name} id=#{session_id} windows=#{session_windows} attached=#{session_attached}'
+        echo
 
-    echo "=== WINDOWS ==="
-    tmux list-windows -a -F \
-      'session=#{session_name} window=#{window_index} name=#{window_name} active=#{window_active} panes=#{window_panes} layout=#{window_layout}'
-    echo
+        echo "=== WINDOWS ==="
+        tmux list-windows -a -F \
+            'session=#{session_name} window=#{window_index} name=#{window_name} active=#{window_active} panes=#{window_panes} layout=#{window_layout}'
+        echo
 
-    echo "=== PANES ==="
-    tmux list-panes -a -F \
-      'session=#{session_name} window=#{window_index} pane=#{pane_index} id=#{pane_id} active=#{pane_active} size=#{pane_width}x#{pane_height} path=#{pane_current_path} command=#{pane_current_command} title=#{pane_title}'
-    echo
+        echo "=== PANES ==="
+        tmux list-panes -a -F \
+            'session=#{session_name} window=#{window_index} pane=#{pane_index} id=#{pane_id} active=#{pane_active} size=#{pane_width}x#{pane_height} path=#{pane_current_path} command=#{pane_current_command} title=#{pane_title}'
+        echo
 
-    echo "=== GLOBAL OPTIONS ==="
-    tmux show-options -g
-    echo
+        echo "=== GLOBAL OPTIONS ==="
+        tmux show-options -g
+        echo
 
-    echo "=== GLOBAL WINDOW OPTIONS ==="
-    tmux show-window-options -g
+        echo "=== GLOBAL WINDOW OPTIONS ==="
+        tmux show-window-options -g
 
-  } > "$out"
+    } >"$out"
 
-  echo "$out"
+    echo "$out"
 }
 
 export -f start_x

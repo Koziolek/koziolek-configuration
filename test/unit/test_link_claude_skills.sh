@@ -9,13 +9,13 @@ setUp() {
     export CLAUDE_SKILLS_DIR="$_TMP/claude/skills"
     export KLAUDYNA_URL="git@example.invalid:klaudyna.git"
     _GIT_LOG="$_TMP/git.log"
-    : > "$_GIT_LOG"
+    : >"$_GIT_LOG"
     unset _LS_REMOTE_RC
     # shellcheck source=/dev/null
     . "$PROJECT_ROOT/packages/commons/link_claude_skills.sh"
 
     git() {
-        echo "GIT $*" >> "$_GIT_LOG"
+        echo "GIT $*" >>"$_GIT_LOG"
         [ "$1" = "ls-remote" ] && return "${_LS_REMOTE_RC:-0}"
         if [ "$1" = "clone" ]; then
             mkdir -p "$3/skills/alpha" "$3/skills/beta"

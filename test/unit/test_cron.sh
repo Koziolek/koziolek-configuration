@@ -16,9 +16,9 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 
 setUp() {
     _TMP="$(mktemp -d)"
-    _CT_FILE="$_TMP/crontab"      # „crontab” bieżącego użytkownika
-    _CT_CALLS="$_TMP/calls"       # argumenty wszystkich wywołań crontab
-    _LOG="$_TMP/log"              # zalogowane komunikaty: "poziom klucz args"
+    _CT_FILE="$_TMP/crontab" # „crontab” bieżącego użytkownika
+    _CT_CALLS="$_TMP/calls"  # argumenty wszystkich wywołań crontab
+    _LOG="$_TMP/log"         # zalogowane komunikaty: "poziom klucz args"
     : >"$_CT_CALLS"
     : >"$_LOG"
     export CRON_LOG_DIR="$_TMP/logs"
@@ -29,7 +29,10 @@ setUp() {
     crontab() {
         echo "$*" >>"$_CT_CALLS"
         case "${1:-}" in
-        -l) [ -f "$_CT_FILE" ] || return 1; cat "$_CT_FILE" ;;
+        -l)
+            [ -f "$_CT_FILE" ] || return 1
+            cat "$_CT_FILE"
+            ;;
         -r) rm -f "$_CT_FILE" ;;
         -u) return 99 ;;
         *) cp "$1" "$_CT_FILE" ;;
@@ -56,14 +59,22 @@ testScheduleReadyPassesThrough() {
 }
 
 testScheduleRejectsOutOfRange() {
-    cron_schedule '60 * * * *' >/dev/null; assertEquals 1 $?
-    cron_schedule '* 24 * * *' >/dev/null; assertEquals 1 $?
-    cron_schedule '* * 0 * *' >/dev/null; assertEquals 1 $?
-    cron_schedule '* * * 13 *' >/dev/null; assertEquals 1 $?
-    cron_schedule '* * * * 8' >/dev/null; assertEquals 1 $?
-    cron_schedule '*/0 * * * *' >/dev/null; assertEquals 1 $?
-    cron_schedule '5-2 * * * *' >/dev/null; assertEquals 1 $?
-    cron_schedule 'bzdura' >/dev/null; assertEquals 1 $?
+    cron_schedule '60 * * * *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '* 24 * * *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '* * 0 * *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '* * * 13 *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '* * * * 8' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '*/0 * * * *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule '5-2 * * * *' >/dev/null
+    assertEquals 1 $?
+    cron_schedule 'bzdura' >/dev/null
+    assertEquals 1 $?
 }
 
 testSchedulePolish() {
@@ -89,10 +100,14 @@ testScheduleEnglish() {
 }
 
 testScheduleRejectsBadTime() {
-    cron_schedule 'codziennie o 25:00' >/dev/null; assertEquals 1 $?
-    cron_schedule 'codziennie o 10:61' >/dev/null; assertEquals 1 $?
-    cron_schedule 'co 0 min' >/dev/null; assertEquals 1 $?
-    cron_schedule 'co 60 min' >/dev/null; assertEquals 1 $?
+    cron_schedule 'codziennie o 25:00' >/dev/null
+    assertEquals 1 $?
+    cron_schedule 'codziennie o 10:61' >/dev/null
+    assertEquals 1 $?
+    cron_schedule 'co 0 min' >/dev/null
+    assertEquals 1 $?
+    cron_schedule 'co 60 min' >/dev/null
+    assertEquals 1 $?
 }
 
 # --- cron_add --------------------------------------------------------------
@@ -242,7 +257,7 @@ testRemoveUsage() {
 
 # --- cron_edit -------------------------------------------------------------
 
-_make_editor() {  # _make_editor <zawartość docelowa> — edytor-mock nadpisujący plik
+_make_editor() { # _make_editor <zawartość docelowa> — edytor-mock nadpisujący plik
     local content="$1"
     _EDITOR="$_TMP/editor.sh"
     printf '#!/usr/bin/env bash\nprintf "%%s\\n" %q > "$1"\n' "$content" >"$_EDITOR"

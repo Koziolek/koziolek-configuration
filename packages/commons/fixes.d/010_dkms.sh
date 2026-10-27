@@ -25,8 +25,8 @@ FIX_RISK=low
 # `i` (install), status F/H/U/W/T (half-configured/half-installed/unpacked/trig-awaited/trig-pending).
 # `rc`/`un` i inne stany usunięte NIE są uszkodzone i nie są ruszane.
 _dkms_broken_packages() {
-    dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package}\n' '*-dkms' 2>/dev/null \
-        | awk 'substr($1,1,1) == "i" && substr($1,2,1) ~ /[FHUWT]/ && $2 != "" {print $2}'
+    dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package}\n' '*-dkms' 2>/dev/null |
+        awk 'substr($1,1,1) == "i" && substr($1,2,1) ~ /[FHUWT]/ && $2 != "" {print $2}'
 }
 
 fix_detect() {
@@ -67,8 +67,8 @@ fix_apply() {
             name=$(basename "$dir")
             mod="${name%-*}"
             ver="${name##*-}"
-            out=$($SUDO dkms remove "$mod/$ver" --all 2>&1) \
-                || fix_log "dkms remove %s/%s: %s" "$mod" "$ver" "$(printf '%s' "$out" | tail -n 1)"
+            out=$($SUDO dkms remove "$mod/$ver" --all 2>&1) ||
+                fix_log "dkms remove %s/%s: %s" "$mod" "$ver" "$(printf '%s' "$out" | tail -n 1)"
             if [ -n "$($SUDO dkms status "$mod/$ver" 2>/dev/null)" ]; then
                 fix_log "dkms remove zostawił %s/%s w drzewie — czyszczę ręcznie" "$mod" "$ver"
                 _dkms_purge_tree "$mod" "$ver" || fix_log "nieprawidłowa nazwa modułu %s/%s — pomijam" "$mod" "$ver"

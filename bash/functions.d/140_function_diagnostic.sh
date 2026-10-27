@@ -47,8 +47,8 @@ hwinfo_cpu() {
     echo
     echo "  ${C_BOLD}/proc/cpuinfo:${C_NC}"
     grep -m1 "model name" /proc/cpuinfo | sed 's/model name[[:space:]]*:[[:space:]]*/  Model : /'
-    grep -m1 "cpu MHz"    /proc/cpuinfo | sed 's/cpu MHz[[:space:]]*:[[:space:]]*/  Takt  : /' | \
-      awk '{printf "  Takt  : %.0f MHz\n", $NF}'
+    grep -m1 "cpu MHz" /proc/cpuinfo | sed 's/cpu MHz[[:space:]]*:[[:space:]]*/  Takt  : /' |
+        awk '{printf "  Takt  : %.0f MHz\n", $NF}'
     echo "  Procesory logiczne : $(grep -c "^processor" /proc/cpuinfo)"
 }
 
@@ -105,8 +105,8 @@ hwinfo_gpu() {
     if command -v nvidia-smi &>/dev/null; then
         echo "  ${C_BOLD}NVIDIA (nvidia-smi):${C_NC}"
         nvidia-smi --query-gpu=name,driver_version,memory.total,temperature.gpu \
-          --format=csv,noheader | \
-          awk -F',' '{
+            --format=csv,noheader |
+            awk -F',' '{
         printf "    Model   : %s\n    Driver  : %s\n    VRAM    : %s\n    Temp    : %s\n", \
                $1, $2, $3, $4
       }'
@@ -137,8 +137,6 @@ hwinfo() {
     echo "${C_CYAN}══════════════════════════════════════${C_NC}"
     echo
 }
-
-
 
 # run_diagnostic — uruchamia pre-analyze.sh z fix-comp z dowolnego katalogu roboczego.
 # Skrypt sam liczy swoją lokalizację przez ${BASH_SOURCE[0]} (nie $PWD), więc podanie

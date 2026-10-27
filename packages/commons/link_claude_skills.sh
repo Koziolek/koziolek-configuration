@@ -22,13 +22,13 @@ link_claude_skills() {
     if [ ! -d "$repo_dir" ]; then
         # Bez promptu o hasło/klucz — świeża maszyna może nie mieć dostępu do repo prywatnego.
         if ! GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes" \
-                git ls-remote "$repo_url" >/dev/null 2>&1; then
+            git ls-remote "$repo_url" >/dev/null 2>&1; then
             echo "⚠️  Brak dostępu do $repo_url — pomijam linkowanie skilli Claude Code"
             return 0
         fi
         mkdir -p "$(dirname "$repo_dir")"
         if ! GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes" \
-                git clone "$repo_url" "$repo_dir"; then
+            git clone "$repo_url" "$repo_dir"; then
             echo "⚠️  Nie udało się sklonować $repo_url — pomijam linkowanie skilli"
             return 0
         fi

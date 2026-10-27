@@ -33,11 +33,20 @@ fix_log() {
     printf "[%s] ${fmt}\n" "${FIX_ID:-?}" "$@" >&2
 }
 # fix_detail <tekst> — jednolinijkowy szczegół do raportu (liczy się ostatnie wywołanie).
-fix_detail() { [ -n "${FIX_DETAIL_FILE:-}" ] && printf '%s\n' "$*" > "$FIX_DETAIL_FILE"; return 0; }
+fix_detail() {
+    [ -n "${FIX_DETAIL_FILE:-}" ] && printf '%s\n' "$*" >"$FIX_DETAIL_FILE"
+    return 0
+}
 # fix_note_dead_repo <repo> — zgłoszenie martwego repo apt do podsumowania runnera.
-fix_note_dead_repo() { [ -n "${FIX_DEAD_REPOS_FILE:-}" ] && printf '%s\n' "$1" >> "$FIX_DEAD_REPOS_FILE"; return 0; }
+fix_note_dead_repo() {
+    [ -n "${FIX_DEAD_REPOS_FILE:-}" ] && printf '%s\n' "$1" >>"$FIX_DEAD_REPOS_FILE"
+    return 0
+}
 # fix_denied — podstawiane za $SUDO tam, gdzie root jest zabroniony (detect, --check, brak uprawnień).
-fix_denied() { echo "fix_denied: root niedozwolony w tym kontekście: $*" >&2; return 126; }
+fix_denied() {
+    echo "fix_denied: root niedozwolony w tym kontekście: $*" >&2
+    return 126
+}
 
 # ── Wnętrze runnera ────────────────────────────────────────────────────────────
 
@@ -75,26 +84,35 @@ _fixes_meta() {
     local file="$1" out line k v
     M_ID='' M_DESC='' M_PHASE='' M_CONTEXTS='' M_ROOT='' M_RISK='' M_ERR=''
     M_DETECT=0 M_APPLY=0 M_VERIFY=0
-    out=$(_fixes_child "$file" _fixes_dump_meta 2>/dev/null) \
-        || { M_ERR="nie da się załadować pliku"; M_ID="$(basename "$file" .sh)"; return 0; }
+    out=$(_fixes_child "$file" _fixes_dump_meta 2>/dev/null) ||
+        {
+            M_ERR="nie da się załadować pliku"
+            M_ID="$(basename "$file" .sh)"
+            return 0
+        }
     while IFS= read -r line; do
-        k="${line%%=*}"; v="${line#*=}"
+        k="${line%%=*}"
+        v="${line#*=}"
         case "$k" in
-            id) M_ID="$v" ;; desc) M_DESC="$v" ;; phase) M_PHASE="$v" ;; contexts) M_CONTEXTS="$v" ;;
-            root) M_ROOT="$v" ;; risk) M_RISK="$v" ;;
-            has_detect) M_DETECT=1 ;; has_apply) M_APPLY=1 ;; has_verify) M_VERIFY=1 ;;
+        id) M_ID="$v" ;; desc) M_DESC="$v" ;; phase) M_PHASE="$v" ;; contexts) M_CONTEXTS="$v" ;;
+        root) M_ROOT="$v" ;; risk) M_RISK="$v" ;;
+        has_detect) M_DETECT=1 ;; has_apply) M_APPLY=1 ;; has_verify) M_VERIFY=1 ;;
         esac
-    done <<< "$out"
+    done <<<"$out"
     local w
-    [[ "$M_ID" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { M_ERR="FIX_ID pusty lub z niedozwolonymi znakami"; M_ID="$(basename "$file" .sh)"; return 0; }
+    [[ "$M_ID" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || {
+        M_ERR="FIX_ID pusty lub z niedozwolonymi znakami"
+        M_ID="$(basename "$file" .sh)"
+        return 0
+    }
     [ -n "$M_DESC" ] || M_ERR="brak FIX_DESC"
     [ -n "$M_PHASE" ] || M_ERR="brak FIX_PHASE"
     for w in $M_PHASE; do
-        case "$w" in pre-apt|post-update|post-apt) ;; *) M_ERR="nieznana faza '$w'" ;; esac
+        case "$w" in pre-apt | post-update | post-apt) ;; *) M_ERR="nieznana faza '$w'" ;; esac
     done
     [ -n "$M_CONTEXTS" ] || M_ERR="brak FIX_CONTEXTS"
-    case "$M_ROOT" in 0|1) ;; *) M_ERR="FIX_NEEDS_ROOT musi być 0 lub 1" ;; esac
-    case "$M_RISK" in low|high) ;; *) M_ERR="FIX_RISK musi być low lub high" ;; esac
+    case "$M_ROOT" in 0 | 1) ;; *) M_ERR="FIX_NEEDS_ROOT musi być 0 lub 1" ;; esac
+    case "$M_RISK" in low | high) ;; *) M_ERR="FIX_RISK musi być low lub high" ;; esac
     [ "$M_DETECT" = 1 ] || M_ERR="brak funkcji fix_detect"
     [ "$M_APPLY" = 1 ] || M_ERR="brak funkcji fix_apply"
     return 0
@@ -128,18 +146,30 @@ _fixes_ctx_match() {
     return 1
 }
 
-_fixes_clean() { local s="$1"; s="${s//$'\t'/ }"; s="${s//$'\n'/ }"; s="${s//$'\r'/ }"; printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037'; }
-_fixes_json() { local s; s="$(_fixes_clean "$1")"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; printf '"%s"' "$s"; }
+_fixes_clean() {
+    local s="$1"
+    s="${s//$'\t'/ }"
+    s="${s//$'\n'/ }"
+    s="${s//$'\r'/ }"
+    printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037'
+}
+_fixes_json() {
+    local s
+    s="$(_fixes_clean "$1")"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    printf '"%s"' "$s"
+}
 
 # _fixes_emit <format> <id> <state> <phase> <risk> <desc> <detail>
 _fixes_emit() {
     local fmt="$1" id="$2" state="$3" phase="$4" risk="$5" desc="$6" detail="$7"
     case "$fmt" in
-        tsv) printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$state" "$phase" "$risk" "$(_fixes_clean "$detail")" ;;
-        json) printf '{"v":1,"fix_id":%s,"state":%s,"phase":%s,"risk":%s,"detail":%s}\n' \
-                "$(_fixes_json "$id")" "$(_fixes_json "$state")" "$(_fixes_json "$phase")" \
-                "$(_fixes_json "$risk")" "$(_fixes_json "$detail")" ;;
-        *) printf '[%s] %s — %s%s\n' "$state" "$id" "$desc" "${detail:+ ($(_fixes_clean "$detail"))}" ;;
+    tsv) printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$state" "$phase" "$risk" "$(_fixes_clean "$detail")" ;;
+    json) printf '{"v":1,"fix_id":%s,"state":%s,"phase":%s,"risk":%s,"detail":%s}\n' \
+        "$(_fixes_json "$id")" "$(_fixes_json "$state")" "$(_fixes_json "$phase")" \
+        "$(_fixes_json "$risk")" "$(_fixes_json "$detail")" ;;
+    *) printf '[%s] %s — %s%s\n' "$state" "$id" "$desc" "${detail:+ ($(_fixes_clean "$detail"))}" ;;
     esac
 }
 
@@ -148,10 +178,14 @@ _fixes_emit() {
 _fixes_root_prefix() {
     if [ "${FIXES_SUDO+x}" = x ]; then
         [ "$FIXES_SUDO" = none ] && return 1
-        printf '%s' "$FIXES_SUDO"; return 0
+        printf '%s' "$FIXES_SUDO"
+        return 0
     fi
     if [ "$(id -u)" = 0 ]; then return 0; fi
-    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then printf 'sudo -n'; return 0; fi
+    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+        printf 'sudo -n'
+        return 0
+    fi
     return 1
 }
 
@@ -159,15 +193,26 @@ _fixes_root_prefix() {
 # Wypisuje problemy, zwraca 1 przy jakimkolwiek.
 fixes_lint() {
     local dirs rc=0 f seen=' ' body
-    dirs="$(IFS=:; echo "$*")"
+    dirs="$(
+        IFS=:
+        echo "$*"
+    )"
     for f in $(FIXES_DIRS="${dirs:-${FIXES_DIRS:-$_FIXES_DIR/fixes.d}}" _fixes_files); do
         _fixes_meta "$f"
-        if [ -n "$M_ERR" ]; then echo "$f: $M_ERR"; rc=1; continue; fi
-        case "$seen" in *" $M_ID "*) echo "$f: zduplikowane FIX_ID '$M_ID'"; rc=1 ;; esac
+        if [ -n "$M_ERR" ]; then
+            echo "$f: $M_ERR"
+            rc=1
+            continue
+        fi
+        case "$seen" in *" $M_ID "*)
+            echo "$f: zduplikowane FIX_ID '$M_ID'"
+            rc=1
+            ;;
+        esac
         seen="$seen$M_ID "
         # heurystyka: fix_detect nie woła roota, sieci ani nie modyfikuje stanu
         body="$(awk '/^fix_detect\(\)/{p=1} p{print} p&&/^}/{exit}' "$f" | grep -v '^[[:space:]]*#')"
-        if grep -Eq '\$SUDO|\bsudo\b|\bcurl\b|\bwget\b|apt-get|\bapt\b|dpkg -i|dpkg --configure|git clone|systemctl (start|stop|restart|enable)|\brm -|\bmv |\btee\b' <<< "$body"; then
+        if grep -Eq '\$SUDO|\bsudo\b|\bcurl\b|\bwget\b|apt-get|\bapt\b|dpkg -i|dpkg --configure|git clone|systemctl (start|stop|restart|enable)|\brm -|\bmv |\btee\b' <<<"$body"; then
             echo "$f: fix_detect wygląda na modyfikujący/sieciowy/rootowy (wolno tylko czytać)"
             rc=1
         fi
@@ -186,68 +231,100 @@ run_fixes() {
 _fixes_run_impl() {
     local phase="${1:-}" mode=apply format=text only='' allow_high=0 strict=0
     shift || true
-    case "$phase" in pre-apt|post-update|post-apt|all) ;; *) echo "run_fixes: nieznana faza '$phase'" >&2; return 2 ;; esac
+    case "$phase" in pre-apt | post-update | post-apt | all) ;; *)
+        echo "run_fixes: nieznana faza '$phase'" >&2
+        return 2
+        ;;
+    esac
     while [ $# -gt 0 ]; do
         case "$1" in
-            --check) mode=check ;;
-            --only) only="$2"; shift ;;
-            --only=*) only="${1#*=}" ;;
-            --format) format="$2"; shift ;;
-            --format=*) format="${1#*=}" ;;
-            --allow-high) allow_high=1 ;;
-            --strict) strict=1 ;;
-            *) echo "run_fixes: nieznana opcja '$1'" >&2; return 2 ;;
+        --check) mode=check ;;
+        --only)
+            only="$2"
+            shift
+            ;;
+        --only=*) only="${1#*=}" ;;
+        --format)
+            format="$2"
+            shift
+            ;;
+        --format=*) format="${1#*=}" ;;
+        --allow-high) allow_high=1 ;;
+        --strict) strict=1 ;;
+        *)
+            echo "run_fixes: nieznana opcja '$1'" >&2
+            return 2
+            ;;
         esac
         shift
     done
-    case "$format" in text|tsv|json) ;; *) echo "run_fixes: nieznany format '$format'" >&2; return 2 ;; esac
+    case "$format" in text | tsv | json) ;; *)
+        echo "run_fixes: nieznany format '$format'" >&2
+        return 2
+        ;;
+    esac
 
     local tmp states=' ' f rc state detail root_prefix sudo_apply can_root dead
     tmp="$(mktemp -d)" || return 2
     local _FIXES_TMP="$tmp" _FIXES_MODE="$mode"
-    : > "$tmp/dead"
+    : >"$tmp/dead"
     [ "$format" = tsv ] && printf '#fixes-report v1\tmode=%s\tphase=%s\n' "$mode" "$phase"
     [ "$format" = json ] && printf '{"v":1,"report":"fixes-report","mode":"%s","phase":"%s"}\n' "$mode" "$phase"
 
-    if [ "$mode" = apply ] && root_prefix="$(_fixes_root_prefix)"; then can_root=1; else can_root=0; root_prefix=''; fi
+    if [ "$mode" = apply ] && root_prefix="$(_fixes_root_prefix)"; then can_root=1; else
+        can_root=0
+        root_prefix=''
+    fi
 
     for f in $(_fixes_files); do
         _fixes_meta "$f"
         if [ -n "$M_ERR" ]; then
             _fixes_emit "$format" "$M_ID" unknown "$phase" low "$M_ID" "niepoprawny plik fixa: $M_ERR"
-            states="${states}unknown "; continue
+            states="${states}unknown "
+            continue
         fi
         [ "$phase" = all ] || case " $M_PHASE " in *" $phase "*) ;; *) continue ;; esac
         _fixes_ctx_match "$M_CONTEXTS" || continue
-        if [ -n "$only" ]; then case ",$only," in *",$M_ID,"*) ;; *) continue ;; esac; fi
+        if [ -n "$only" ]; then case ",$only," in *",$M_ID,"*) ;; *) continue ;; esac fi
 
-        : > "$tmp/detail"
-        _fixes_call "$f" fix_detect fix_denied; rc=$?
+        : >"$tmp/detail"
+        _fixes_call "$f" fix_detect fix_denied
+        rc=$?
         detail="$(head -n1 "$tmp/detail" 2>/dev/null)"
         case "$rc" in
-            0) state=detected ;;
-            1) state=ok ;;
-            2) state=na ;;
-            124|137) state=unknown; detail="${detail:-timeout fix_detect}" ;;
-            *) state=unknown; detail="${detail:-fix_detect zwrócił kod $rc}" ;;
+        0) state=detected ;;
+        1) state=ok ;;
+        2) state=na ;;
+        124 | 137)
+            state=unknown
+            detail="${detail:-timeout fix_detect}"
+            ;;
+        *)
+            state=unknown
+            detail="${detail:-fix_detect zwrócił kod $rc}"
+            ;;
         esac
 
         if [ "$state" = detected ] && [ "$mode" = apply ]; then
             if [ "$M_RISK" = high ] && [ "$allow_high" = 0 ]; then
-                state=skipped; detail="ryzyko high wymaga --allow-high"
+                state=skipped
+                detail="ryzyko high wymaga --allow-high"
             elif [ "$M_ROOT" = 1 ] && [ "$can_root" = 0 ]; then
-                state=skipped; detail="wymaga roota (brak uprawnień lub sudo -n)"
+                state=skipped
+                detail="wymaga roota (brak uprawnień lub sudo -n)"
             else
                 if [ "$M_ROOT" = 1 ]; then sudo_apply="$root_prefix"; else sudo_apply=fix_denied; fi
-                : > "$tmp/detail"
+                : >"$tmp/detail"
                 local fail_msg=''
                 if _fixes_call "$f" fix_apply "$sudo_apply"; then
                     state=fixed
                     if [ "$M_VERIFY" = 1 ] && ! _fixes_call "$f" fix_verify "$sudo_apply"; then
-                        state=failed; fail_msg="fix_verify nie potwierdził naprawy"
+                        state=failed
+                        fail_msg="fix_verify nie potwierdził naprawy"
                     fi
                 else
-                    state=failed; fail_msg="fix_apply zakończył się błędem"
+                    state=failed
+                    fail_msg="fix_apply zakończył się błędem"
                 fi
                 # Szczegół zgłoszony przez sam fix (fix_detail) ma pierwszeństwo przed ogólnym komunikatem.
                 detail="$(head -n1 "$tmp/detail" 2>/dev/null)"
@@ -262,22 +339,22 @@ _fixes_run_impl() {
     if [ -n "$dead" ]; then
         while IFS= read -r f; do
             case "$format" in
-                tsv) printf '#dead_repo\t%s\n' "$(_fixes_clean "$f")" ;;
-                json) printf '{"v":1,"dead_repo":%s}\n' "$(_fixes_json "$f")" ;;
-                *) printf '[dead_repo] %s\n' "$(_fixes_clean "$f")" ;;
+            tsv) printf '#dead_repo\t%s\n' "$(_fixes_clean "$f")" ;;
+            json) printf '{"v":1,"dead_repo":%s}\n' "$(_fixes_json "$f")" ;;
+            *) printf '[dead_repo] %s\n' "$(_fixes_clean "$f")" ;;
             esac
-        done <<< "$dead"
+        done <<<"$dead"
     fi
     rm -rf "$tmp"
 
     rc=0
     case "$states" in
-        *" failed "*) [ "$mode" = apply ] && rc=11 ;;
+    *" failed "*) [ "$mode" = apply ] && rc=11 ;;
     esac
     if [ "$rc" = 0 ]; then case "$states" in
         *" detected "*) [ "$mode" = check ] && rc=10 ;;
-        *" unknown "*|*" skipped "*) rc=12 ;;
-    esac; fi
+        *" unknown "* | *" skipped "*) rc=12 ;;
+        esac fi
     if [ "$mode" = apply ] && [ "$strict" = 0 ]; then return 0; fi
     return $rc
 }
