@@ -6,6 +6,7 @@ export SERVICES_DATA=${WORKSPACE_TOOLS}/_data
 export NGINX_DATA=${SERVICES_DATA}/nginx_data
 export POSTGRES_DATA=${SERVICES_DATA}/postgres_data
 export NEXUS_DATA=${SERVICES_DATA}/nexus_data
+export SONAR_DATA=${SERVICES_DATA}/sonar_data
 
 function load_config() {
     for conf_file in services_functions; do

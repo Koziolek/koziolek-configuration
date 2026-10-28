@@ -8,6 +8,10 @@ SELECT 'CREATE DATABASE "ghost-track"'
 SELECT 'CREATE DATABASE home'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'home')\gexec
 
+-- Tworzenie bazy danych 'sonar' (SonarQube)
+SELECT 'CREATE DATABASE sonar'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sonar')\gexec
+
 -- Informacje o utworzonych bazach
     \echo 'Inicjalizacja baz danych zakończona.'
     \echo 'Dostępne bazy danych:'

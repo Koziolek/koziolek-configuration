@@ -21,6 +21,18 @@ function configurate_nexus() {
     $SUDO chown -R 200:200 $NEXUS_DATA/etc/
     unmake_me_sudo
 }
+function configurate_sonar() {
+    make_me_sudo
+    $SUDO mkdir -p "$SONAR_DATA"/{data,extensions,logs}
+    # obraz sonarqube działa jako uid 1000
+    $SUDO chown -R 1000:1000 "$SONAR_DATA"
+    # wbudowany Elasticsearch wymaga vm.max_map_count >= 262144 (tylko Linux)
+    if [ -e /proc/sys/vm/max_map_count ]; then
+        echo "vm.max_map_count=262144" | $SUDO tee /etc/sysctl.d/99-sonarqube.conf >/dev/null
+        $SUDO sysctl -w vm.max_map_count=262144 >/dev/null
+    fi
+    unmake_me_sudo
+}
 
 # Importuje self-signed certyfikat nginx ($NGINX_DATA/ssl/nginx.crt) do cacerts każdego
 # JDK zainstalowanego przez sdkman (~/.sdkman/candidates/java/*), żeby Maven/JVM nie
@@ -73,13 +85,44 @@ function configurate_services() {
     configurate_nexus
     prepare_key
     update_sdkman_jdk_certs
+    configurate_sonar
 }
+
+# Konfiguruje serwisy, a potem startuje kontenery. `up -d` odtwarza tylko serwisy
+# ze zmienioną konfiguracją - już działające i niezmienione zostają nietknięte; na końcu
+# przeładowuje nginx-proxy.
+# Opcjonalne argumenty = nazwy serwisów (domyślnie wszystkie).
+function start_services() {
+    local compose_file="$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
+
+    if [ ! -f "$compose_file" ]; then
+        log_error services.compose_missing "$compose_file"
+        return 1
+    fi
+
+    configurate_services || return $?
+
+    # shellcheck disable=SC2086
+    ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$@" || {
+        log_error services.compose_failed
+        return 1
+    }
+
+    # nginx-proxy czyta conf.d z zamontowanego katalogu, więc zmiana configu nie odtwarza
+    # kontenera - bez reloadu nowe vhosty nie zadziałają. configurate_services kopiuje config
+    # zawsze, więc reload też jest bezwarunkowy (nawet przy starcie wybranych serwisów).
+    "${DOCKER_CLI:-docker}" exec nginx-proxy nginx -s reload >/dev/null 2>&1 ||
+        log_warn services.nginx_reload_failed
+}
+
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configurate_services
+    export -f start_services
     export -f configurate_nginx
     export -f configurate_postgres
     export -f configurate_nexus
+    export -f configurate_sonar
     export -f update_sdkman_jdk_certs
 else
     configurate_services "$@"

@@ -41,6 +41,37 @@ services:
       start_period: 120s
     networks:
       - service-network
+  sonarqube:
+    # Community Build (LGPL v3) - bez problemów z licencją, w odróżnieniu od edycji Developer/Enterprise
+    image: sonarqube:25.9.0.112764-community
+    container_name: sonarqube
+    env_file:
+      - ~/.senv
+    environment:
+      SONAR_WEB_CONTEXT: /sonar
+      SONAR_JDBC_URL: jdbc:postgresql://home-db:5432/sonar
+      SONAR_JDBC_USERNAME: ${DB_USERNAME}
+      SONAR_JDBC_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      home-db:
+        condition: service_healthy
+    volumes:
+      - $SONAR_DATA/data:/opt/sonarqube/data
+      - $SONAR_DATA/extensions:/opt/sonarqube/extensions
+      - $SONAR_DATA/logs:/opt/sonarqube/logs
+    expose:
+      - "9000"
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/sonar/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - service-network
   pgadmin:
     image: dpage/pgadmin4:9.4
     container_name: pgadmin
