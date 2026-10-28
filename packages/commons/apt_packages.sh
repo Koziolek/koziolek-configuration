@@ -7,7 +7,7 @@
 # przed czymkolwiek innym, niezależnie od tej wspólnej listy.
 
 system_tools=(
-    git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2
+    git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2 nmap
     postgresql-client-common postgresql-client-16
 )
 

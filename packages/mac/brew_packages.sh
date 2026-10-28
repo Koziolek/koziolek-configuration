@@ -8,7 +8,7 @@
 # do packages/commons/apt_packages.sh dla Linuksa).
 
 system_tools=(
-    git vim unzip zip tree tmux htop neofetch hub
+    git vim unzip zip tree tmux htop neofetch hub nmap
     libpq
     kubernetes-cli
     pam-u2f

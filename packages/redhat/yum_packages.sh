@@ -13,7 +13,7 @@
 # poza samym EPEL; `safe_yum_install` pomija je z ostrzeżeniem, nie przerywa.
 
 system_tools=(
-    git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql
+    git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql nmap
 )
 
 security_tools=(
