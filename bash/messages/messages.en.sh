@@ -262,6 +262,7 @@ MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: %s not found (fix-comp
 MSG_ERROR[certs.import_failed]="Failed to import certificate into %s"
 MSG_ERROR[services.compose_missing]="Docker compose file is missing: %s"
 MSG_ERROR[services.compose_failed]="docker compose failed"
+MSG_ERROR[services.list_failed]="Failed to get the service list from docker compose"
 MSG_ERROR[docker.compose_unavailable]="compose unavailable (DOCKER_COMPOSE='%s')"
 MSG_ERROR[docker.container_name_required]="Container name parameter is required"
 MSG_ERROR[docker.compose_file_missing]="❌ File %s does not exist!"

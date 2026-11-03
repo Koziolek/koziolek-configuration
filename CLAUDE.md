@@ -381,6 +381,12 @@ zwykły `git push -u origin <gałąź>` (także w `git bleeh` — bez `--force-w
 przepisywano), nie ma → koniec z kodem 0. Są zmiany → działanie jak dotąd. Helpery:
 `__git_has_changes_or_push`, `__git_has_unpushed` (niewyeksportowane).
 
+### Funkcja `list_services`
+
+`list_services` (`services/services_functions.sh`) wypisuje na stdout linie `nazwa status` (`running`/`stopped`, brak kontenera = `stopped`)
+dla serwisów z `services/docker/docker-compose.yaml`. Lista z `${DOCKER_COMPOSE:-docker compose} config --services` (bez twardej listy),
+działające z `ps --status running --services`. Test: `test/unit/test_services_functions.sh` (mock compose).
+
 ### Funkcja `git_exterminatus_worktree`
 
 `git exterminatus-worktree [-n|--dry-run]` (`git/git_functions.sh`) usuwa worktree, których gałąź jest już zmergowana do

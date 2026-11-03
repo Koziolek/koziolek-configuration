@@ -265,6 +265,7 @@ MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: brak %s (fix-comp nies
 MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
 MSG_ERROR[services.compose_missing]="Brak pliku docker-compose: %s"
 MSG_ERROR[services.compose_failed]="docker compose zakończył się błędem"
+MSG_ERROR[services.list_failed]="Nie udało się pobrać listy serwisów z docker compose"
 MSG_ERROR[docker.compose_unavailable]="compose niedostępny (DOCKER_COMPOSE='%s')"
 MSG_ERROR[docker.container_name_required]="Parametr z nazwą kontenera jest wymagany"
 MSG_ERROR[docker.compose_file_missing]="❌ Plik %s nie istnieje!"
