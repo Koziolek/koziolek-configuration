@@ -1,0 +1,67 @@
+# Jenkins Configuration as Code. Kopiowany przez configure_jenkins do $JENKINS_DATA/casc/ (CASC_JENKINS_CONFIG).
+# Sekrety i wersje narzędzi z env kontenera (docker-compose.yaml), nic nie jest wpisane na stałe:
+#   JENKINS_ADMIN_USER / JENKINS_ADMIN_PASSWORD  - konto admina (~/.senv)
+#   DB_USERNAME / DB_PASSWORD                    - baza `jenkins` w home-db (~/.senv)
+#   JENKINS_JDK_ID / JENKINS_MAVEN_ID            - wersje narzędzi (opcjonalne, domyślne poniżej)
+jenkins:
+  systemMessage: "Lokalny serwer CI (koziolek-configuration)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_USER}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "https://koziolek.home/jenkins/"
+  # Wspólne połączenie JDBC do bazy `jenkins` w home-db (używa go JUnit External Storage)
+  globalDatabaseConfiguration:
+    database:
+      postgreSQL:
+        database: "jenkins"
+        hostname: "home-db"
+        username: "${DB_USERNAME}"
+        password: "${DB_PASSWORD}"
+        validationQuery: "SELECT 1"
+  # Wyniki testów JUnit w bazie zamiast junitResult.xml w $JENKINS_HOME
+  junitTestResultStorage:
+    storage: "database"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              id: "home-db"
+              description: "Baza jenkins w home-db"
+              scope: SYSTEM
+              username: "${DB_USERNAME}"
+              password: "${DB_PASSWORD}"
+
+tool:
+  # Graf zależności buildów Mavena w bazie (Pipeline Maven Integration)
+  pipelineMaven:
+    jdbcUrl: "jdbc:postgresql://home-db:5432/jenkins"
+    JdbcCredentialsId: "home-db"
+  # Narzędzia buildowe pobierane przez Jenkinsa (tool installers) - bez własnego obrazu
+  jdk:
+    installations:
+      - name: "temurin-latest"
+        properties:
+          - installSource:
+              installers:
+                - adoptOpenJdkInstaller:
+                    id: "${JENKINS_JDK_ID:-jdk-25.0.5+8}"
+  maven:
+    installations:
+      - name: "maven-latest"
+        properties:
+          - installSource:
+              installers:
+                - maven:
+                    id: "${JENKINS_MAVEN_ID:-3.10.0}"

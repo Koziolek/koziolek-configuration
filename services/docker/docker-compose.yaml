@@ -72,6 +72,40 @@ services:
       start_period: 120s
     networks:
       - service-network
+  jenkins:
+    # Cienka warstwa na oficjalnym LTS (tylko wtyczki z plugins.txt); JDK/Maven pobiera Jenkins sam (JCasC tool installers).
+    # Przebudowa po zmianie plugins.txt / tagu: docker compose build jenkins
+    build:
+      context: ../jenkins
+    image: koziolek/jenkins:2.580.2-lts-jdk21
+    container_name: jenkins
+    # tylko to, czego Jenkins potrzebuje - bez env_file (nie wpuszczamy całego ~/.senv do kontenera CI)
+    environment:
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false
+      JENKINS_OPTS: --prefix=/jenkins
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      home-db:
+        condition: service_healthy
+    volumes:
+      - $JENKINS_DATA:/var/jenkins_home
+    expose:
+      - "8080"
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/jenkins/login > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - service-network
   pgadmin:
     image: dpage/pgadmin4:9.4
     container_name: pgadmin

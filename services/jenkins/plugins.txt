@@ -1,0 +1,22 @@
+# Wtyczki Jenkinsa (jenkins-plugin-cli). Wersje przypięte wg update center stable-2.580 (2026-11-03);
+# zależności tranzytywne dociąga jenkins-plugin-cli. Podbicie = zmiana wersji tutaj + docker compose build jenkins.
+# Konfiguracja jako kod
+configuration-as-code:2144.ve8c697101488
+# Pipeline, Git, poświadczenia
+workflow-aggregator:608.v67378e9d3db_1
+git:5.11.0
+credentials-binding:728.v902a_273b_8947
+# Narzędzia buildowe pobierane przez JCasC: Maven (maven-plugin) i JDK Temurin (jdk-tool + adoptopenjdk)
+maven-plugin:3.28
+jdk-tool:83.v417146707a_3d
+adoptopenjdk:167.vf71ff2140e23
+# Baza w home-db (PostgreSQL): wspólna konfiguracja JDBC + sterownik
+database:343.v7fdd4652e742
+database-postgresql:146.vd1a_f70b_56e0e
+postgresql-api:42.7.11-94.v50c5c1c8f3b_d
+# Wyniki testów JUnit w bazie
+junit:1456.vdb_4425ca_0d4d
+junit-sql-storage:447.va_3758dd32a_a_e
+# Graf zależności buildów Mavena w bazie
+pipeline-maven:1760.v9a_a_e6dcb_0444
+pipeline-maven-database:1760.v9a_a_e6dcb_0444
