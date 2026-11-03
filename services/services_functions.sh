@@ -167,7 +167,9 @@ function start_services() {
 # Restartuje serwisy z docker-compose przez restart kontenera. Bez twardej listy - nazwy
 # sprawdzane względem `compose config --services`.
 # Serwis nie działa -> tylko start (+ ostrzeżenie). Działa -> stop, czekanie aż stanie
-# (co RESTART_SERVICE_WAIT_INTERVAL s, maks. RESTART_SERVICE_WAIT_RETRIES prób), potem start.
+# (dokładnie RESTART_SERVICE_WAIT_RETRIES sprawdzeń, sen RESTART_SERVICE_WAIT_INTERVAL s tylko
+# między nimi), potem start. Wartości niepoprawne (RETRIES nie-liczba lub < 1, INTERVAL nie-liczba)
+# dają ostrzeżenie i domyślne 60 / 1.
 # Zwraca 1, jeśli któryś serwis się nie powiódł (pozostałe są i tak przetwarzane).
 RESTART_SERVICE_WAIT_INTERVAL="${RESTART_SERVICE_WAIT_INTERVAL:-1}"
 RESTART_SERVICE_WAIT_RETRIES="${RESTART_SERVICE_WAIT_RETRIES:-60}"
@@ -188,7 +190,18 @@ function restart_service() {
         return 1
     fi
 
-    local known svc attempt rc=0
+    local known svc attempt stopped retries interval rc=0
+    retries="$RESTART_SERVICE_WAIT_RETRIES"
+    if [[ ! "$retries" =~ ^[0-9]+$ ]] || ((10#$retries < 1)); then
+        log_warn services.invalid_wait_retries "$retries" 60
+        retries=60
+    fi
+    retries=$((10#$retries))
+    interval="$RESTART_SERVICE_WAIT_INTERVAL"
+    if [[ ! "$interval" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        log_warn services.invalid_wait_interval "$interval" 1
+        interval=1
+    fi
     known="$(_services_compose -f "$compose_file" config --services 2>/dev/null)"
 
     for svc in "$@"; do
@@ -207,14 +220,16 @@ function restart_service() {
                 rc=1
                 continue
             fi
-            attempt=1
-            while _restart_service_running "$compose_file" "$svc" &&
-                [ "$attempt" -lt "$RESTART_SERVICE_WAIT_RETRIES" ]; do
-                attempt=$((attempt + 1))
-                sleep "$RESTART_SERVICE_WAIT_INTERVAL"
+            stopped=0
+            for ((attempt = 1; attempt <= retries; attempt++)); do
+                if ! _restart_service_running "$compose_file" "$svc"; then
+                    stopped=1
+                    break
+                fi
+                if ((attempt < retries)); then sleep "$interval"; fi
             done
-            if _restart_service_running "$compose_file" "$svc"; then
-                log_error services.stop_timeout "$svc" "$RESTART_SERVICE_WAIT_RETRIES"
+            if [ "$stopped" -ne 1 ]; then
+                log_error services.stop_timeout "$svc" "$retries"
                 rc=1
                 continue
             fi
