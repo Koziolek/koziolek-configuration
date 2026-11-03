@@ -52,6 +52,7 @@ MOCK
 }
 
 tearDown() {
+    unset -f sleep
     export PATH="$_ORIG_PATH"
     rm -rf "$_TEST_DIR"
 }
@@ -141,6 +142,156 @@ MOCK
     DOCKER_COMPOSE=podman-compose restart_service postgres >/dev/null 2>&1
     assertContains "$(cat "$CALLS")" "PC -f"
     assertContains "$(cat "$CALLS")" "up -d postgres"
+}
+
+testWrapperSplitsMultiWordComposeCommand() {
+    cat >"$_TEST_DIR/bin/mycompose" <<'MOCK'
+#!/usr/bin/env bash
+echo "MC $*" >> "$CALLS"
+for a in "$@"; do [ "$a" = config ] && echo postgres; done
+exit 0
+MOCK
+    chmod +x "$_TEST_DIR/bin/mycompose"
+    DOCKER_COMPOSE="mycompose --ansi never" restart_service postgres >/dev/null 2>&1
+    assertContains "$(cat "$CALLS")" "MC --ansi never -f"
+    assertContains "$(cat "$CALLS")" "up -d postgres"
+}
+
+testEmptyComposeVariableFallsBackToDockerCompose() {
+    DOCKER_COMPOSE='' restart_service postgres >/dev/null 2>&1
+    assertContains "$(cat "$CALLS")" "up -d postgres"
+}
+
+testWrapperDoesNotGlobExpandComposeVariable() {
+    cat >"$_TEST_DIR/bin/echoer" <<'MOCK'
+#!/usr/bin/env bash
+echo "$*" >> "$CALLS"
+MOCK
+    chmod +x "$_TEST_DIR/bin/echoer"
+    touch "$_TEST_DIR/bin/globbed"
+    (cd "$_TEST_DIR/bin" && DOCKER_COMPOSE='echoer *' _services_compose x)
+    assertContains "$(cat "$CALLS")" "* x"
+}
+
+testNoShellcheckSC2086DirectiveInServicesFunctions() {
+    assertFalse "dyrektywa SC2086 wróciła" \
+        "grep -q 'shellcheck disable=SC2086' '$PROJECT_ROOT/services/services_functions.sh'"
+}
+
+# --- pętla oczekiwania (#187): liczba sprawdzeń = RETRIES, snów = RETRIES-1 ---
+# Mock `sleep` zlicza wywołania; STOP_AFTER_PS=N: serwis znika dopiero po N-tym `ps`.
+_install_counting_sleep() {
+    export SLEEPS="$_TEST_DIR/sleeps"
+    : >"$SLEEPS"
+    sleep() { echo "$1" >>"$SLEEPS"; }
+}
+
+_count_sleeps() { wc -l <"$SLEEPS" | tr -d ' '; }
+_count_ps() { grep -c '^ps ' "$CALLS"; }
+
+_install_slow_stop_docker() {
+    # stop nie usuwa stanu; ps „widzi" serwis przez STOP_AFTER_PS wywołań, potem znika
+    cat >"$_TEST_DIR/bin/docker" <<'MOCK'
+#!/usr/bin/env bash
+args=("$@")
+[ "${args[0]}" = compose ] && args=("${args[@]:1}")
+[ "${args[0]}" = -f ] && args=("${args[@]:2}")
+echo "${args[*]}" >> "$CALLS"
+case "${args[0]}" in
+config) for s in $KNOWN_SERVICES; do echo "$s"; done ;;
+ps)
+    svc="${args[${#args[@]} - 1]}"
+    if [ -e "$STATE/$svc" ]; then
+        n=$(( $(cat "$STATE/$svc.ps" 2>/dev/null || echo 0) + 1 ))
+        echo "$n" >"$STATE/$svc.ps"
+        if [ -e "$STATE/$svc.stopped" ] && [ "$n" -gt "$STOP_AFTER_PS" ]; then
+            rm -f "$STATE/$svc"
+        else
+            echo "cid-$svc"
+        fi
+    fi ;;
+stop) touch "$STATE/${args[1]}.stopped"; : >"$STATE/${args[1]}.ps" ;;
+up) touch "$STATE/${args[2]}"; rm -f "$STATE/${args[2]}.stopped" ;;
+esac
+exit 0
+MOCK
+}
+
+testWaitStoppedImmediatelyNoSleep() {
+    _install_counting_sleep
+    touch "$STATE/postgres"
+    restart_service postgres >/dev/null 2>&1
+    assertEquals 0 $?
+    assertEquals 0 "$(_count_sleeps)"
+}
+
+testWaitStoppedAfterTwoPollsOneSleep() {
+    _install_counting_sleep
+    _install_slow_stop_docker
+    export STOP_AFTER_PS=1
+    touch "$STATE/postgres"
+    restart_service postgres >/dev/null 2>&1
+    assertEquals 0 $?
+    assertEquals 1 "$(_count_sleeps)"
+}
+
+testWaitStuckSleepsRetriesMinusOneAndTimesOut() {
+    _install_counting_sleep
+    export STOP_STUCK=1
+    touch "$STATE/postgres"
+    local out
+    out="$(restart_service postgres 2>&1)"
+    assertEquals 1 $?
+    assertContains "$out" "nie zatrzymał się po 3 próbach"
+    assertEquals 2 "$(_count_sleeps)"
+}
+
+testWaitStuckPollsExactlyRetriesTimes() {
+    _install_counting_sleep
+    export STOP_STUCK=1
+    touch "$STATE/postgres"
+    : >"$CALLS"
+    restart_service postgres >/dev/null 2>&1
+    # 1 ps na decyzję „czy działa" + RETRIES (=3) w pętli, bez dodatkowego po pętli
+    assertEquals 4 "$(_count_ps)"
+}
+
+testWaitRetriesOneNoSleepAndError() {
+    _install_counting_sleep
+    export STOP_STUCK=1 RESTART_SERVICE_WAIT_RETRIES=1
+    touch "$STATE/postgres"
+    restart_service postgres >/dev/null 2>&1
+    assertEquals 1 $?
+    assertEquals 0 "$(_count_sleeps)"
+}
+
+testWaitInvalidRetriesWarnsAndUsesDefault() {
+    _install_counting_sleep
+    export STOP_STUCK=1 RESTART_SERVICE_WAIT_RETRIES=abc
+    touch "$STATE/postgres"
+    local out
+    out="$(restart_service postgres 2>&1)"
+    assertContains "$out" "Nieprawidłowe RESTART_SERVICE_WAIT_RETRIES (abc) - używam 60"
+    assertContains "$out" "nie zatrzymał się po 60 próbach"
+}
+
+testWaitZeroRetriesIsInvalid() {
+    _install_counting_sleep
+    export RESTART_SERVICE_WAIT_RETRIES=0
+    touch "$STATE/postgres"
+    local out
+    out="$(restart_service postgres 2>&1)"
+    assertEquals 0 $?
+    assertContains "$out" "Nieprawidłowe RESTART_SERVICE_WAIT_RETRIES (0)"
+}
+
+testWaitInvalidIntervalWarnsAndUsesDefault() {
+    _install_counting_sleep
+    export RESTART_SERVICE_WAIT_INTERVAL=-5
+    touch "$STATE/postgres"
+    local out
+    out="$(restart_service postgres 2>&1)"
+    assertContains "$out" "Nieprawidłowe RESTART_SERVICE_WAIT_INTERVAL (-5) - używam 1"
 }
 
 # shellcheck source=/dev/null

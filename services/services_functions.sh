@@ -129,6 +129,15 @@ function configurate_services() {
     return "$rc"
 }
 
+# Wrapper na polecenie compose. DOCKER_COMPOSE jest eksportowanym łańcuchem
+# ("docker compose", "podman-compose", ...), więc rozbijamy go raz do lokalnej tablicy
+# zamiast niecytowanego rozwinięcia (SC2086, globbing). Pusta/nieustawiona = "docker compose".
+function _services_compose() {
+    local -a cmd
+    read -r -a cmd <<<"${DOCKER_COMPOSE:-docker compose}"
+    "${cmd[@]}" "$@"
+}
+
 # Czy kontener o dokładnej nazwie <nazwa> działa.
 function _services_container_running() {
     [ -n "$("${DOCKER_CLI:-docker}" ps -q --filter "name=^$1\$" --filter status=running 2>/dev/null)" ]
@@ -166,8 +175,7 @@ function start_services() {
 
     configurate_services || return $?
 
-    # shellcheck disable=SC2086
-    ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$@" || {
+    _services_compose -f "$compose_file" up -d "$@" || {
         log_error services.compose_failed
         return 1
     }
@@ -178,14 +186,15 @@ function start_services() {
 # Restartuje serwisy z docker-compose przez restart kontenera. Bez twardej listy - nazwy
 # sprawdzane względem `compose config --services`.
 # Serwis nie działa -> tylko start (+ ostrzeżenie). Działa -> stop, czekanie aż stanie
-# (co RESTART_SERVICE_WAIT_INTERVAL s, maks. RESTART_SERVICE_WAIT_RETRIES prób), potem start.
+# (dokładnie RESTART_SERVICE_WAIT_RETRIES sprawdzeń, sen RESTART_SERVICE_WAIT_INTERVAL s tylko
+# między nimi), potem start. Wartości niepoprawne (RETRIES nie-liczba lub < 1, INTERVAL nie-liczba)
+# dają ostrzeżenie i domyślne 60 / 1.
 # Zwraca 1, jeśli któryś serwis się nie powiódł (pozostałe są i tak przetwarzane).
 RESTART_SERVICE_WAIT_INTERVAL="${RESTART_SERVICE_WAIT_INTERVAL:-1}"
 RESTART_SERVICE_WAIT_RETRIES="${RESTART_SERVICE_WAIT_RETRIES:-60}"
 
 function _restart_service_running() {
-    # shellcheck disable=SC2086
-    [ -n "$(${DOCKER_COMPOSE:-docker compose} -f "$1" ps -q --status running "$2" 2>/dev/null)" ]
+    [ -n "$(_services_compose -f "$1" ps -q --status running "$2" 2>/dev/null)" ]
 }
 
 function restart_service() {
@@ -200,9 +209,19 @@ function restart_service() {
         return 1
     fi
 
-    local known svc attempt rc=0
-    # shellcheck disable=SC2086
-    known="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services 2>/dev/null)"
+    local known svc attempt stopped retries interval rc=0
+    retries="$RESTART_SERVICE_WAIT_RETRIES"
+    if [[ ! "$retries" =~ ^[0-9]+$ ]] || ((10#$retries < 1)); then
+        log_warn services.invalid_wait_retries "$retries" 60
+        retries=60
+    fi
+    retries=$((10#$retries))
+    interval="$RESTART_SERVICE_WAIT_INTERVAL"
+    if [[ ! "$interval" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        log_warn services.invalid_wait_interval "$interval" 1
+        interval=1
+    fi
+    known="$(_services_compose -f "$compose_file" config --services 2>/dev/null)"
 
     for svc in "$@"; do
         if ! printf '%s\n' "$known" | grep -qx -- "$svc"; then
@@ -215,28 +234,28 @@ function restart_service() {
             log_warn services.restart_not_running "$svc"
         else
             log_info services.stopping "$svc"
-            # shellcheck disable=SC2086
-            if ! ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" stop "$svc" >/dev/null; then
+            if ! _services_compose -f "$compose_file" stop "$svc" >/dev/null; then
                 log_error services.stop_failed "$svc"
                 rc=1
                 continue
             fi
-            attempt=1
-            while _restart_service_running "$compose_file" "$svc" &&
-                [ "$attempt" -lt "$RESTART_SERVICE_WAIT_RETRIES" ]; do
-                attempt=$((attempt + 1))
-                sleep "$RESTART_SERVICE_WAIT_INTERVAL"
+            stopped=0
+            for ((attempt = 1; attempt <= retries; attempt++)); do
+                if ! _restart_service_running "$compose_file" "$svc"; then
+                    stopped=1
+                    break
+                fi
+                if ((attempt < retries)); then sleep "$interval"; fi
             done
-            if _restart_service_running "$compose_file" "$svc"; then
-                log_error services.stop_timeout "$svc" "$RESTART_SERVICE_WAIT_RETRIES"
+            if [ "$stopped" -ne 1 ]; then
+                log_error services.stop_timeout "$svc" "$retries"
                 rc=1
                 continue
             fi
             log_info services.stopped "$svc"
         fi
 
-        # shellcheck disable=SC2086
-        if ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$svc" >/dev/null; then
+        if _services_compose -f "$compose_file" up -d "$svc" >/dev/null; then
             log_info services.started "$svc"
         else
             log_error services.start_failed "$svc"
@@ -259,13 +278,11 @@ function list_services() {
     fi
 
     local all running
-    # shellcheck disable=SC2086
-    all="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services)" || {
+    all="$(_services_compose -f "$compose_file" config --services)" || {
         log_error services.list_failed
         return 1
     }
-    # shellcheck disable=SC2086
-    running="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" ps --status running --services 2>/dev/null)"
+    running="$(_services_compose -f "$compose_file" ps --status running --services 2>/dev/null)"
 
     local name
     while IFS= read -r name; do
@@ -280,6 +297,7 @@ function list_services() {
 # --- /list_services ---
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    export -f _services_compose
     export -f configurate_services
     export -f configurate_nginx
     export -f configurate_postgres
