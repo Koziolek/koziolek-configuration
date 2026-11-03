@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Testy jednostkowe: services/services_functions.sh
 # Zakres: update_sdkman_jdk_certs (import certyfikatu nginx do cacerts JDK zarządzanych sdkman),
-#         start_services, configurate_sonar oraz statyczne sprawdzenie compose/vhosta SonarQube
+#         start_services, configure_sonar oraz statyczne sprawdzenie compose/vhosta SonarQube
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -16,7 +16,7 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/services/services_functions.sh"
 
-_REAL_CONFIGURATE_SERVICES="$(declare -f configurate_services)"
+_REAL_CONFIGURE_SERVICES="$(declare -f configure_services)"
 _TEST_DIR=''
 _ORIG_PATH=''
 
@@ -46,7 +46,7 @@ EOF
     chmod +x "$_TEST_DIR/bin/keytool"
     export PATH="$_TEST_DIR/bin:$PATH"
 
-    # start_services / configurate_sonar
+    # start_services / configure_sonar
     ORDER_LOG="$_TEST_DIR/order.log"
     export ORDER_LOG
     unset DOCKER_FAIL_UP DOCKER_FAIL_EXEC DOCKER_COMPOSE DOCKER_NGINX_DOWN DOCKER_FAIL_NGINX_T
@@ -71,9 +71,9 @@ exit 0
 EOF
     chmod +x "$_TEST_DIR/bin/docker" "$_TEST_DIR/bin/mycompose"
 
-    # atrapy: configurate_services i sudo (mkdir wykonywany naprawdę, reszta tylko logowana)
+    # atrapy: configure_services i sudo (mkdir wykonywany naprawdę, reszta tylko logowana)
     CONFIGURE_RC=0
-    configurate_services() {
+    configure_services() {
         echo "configure" >>"$ORDER_LOG"
         return "$CONFIGURE_RC"
     }
@@ -258,23 +258,23 @@ testStartServicesInvalidNginxConfigErrorsWithoutReload() {
 }
 
 # ---------------------------------------------------------------------------
-# configurate_sonar
+# configure_sonar
 
 testConfigurateSonarCreatesDataDirs() {
-    configurate_sonar >/dev/null
+    configure_sonar >/dev/null
     assertTrue "data" "[ -d '$SONAR_DATA/data' ]"
     assertTrue "extensions" "[ -d '$SONAR_DATA/extensions' ]"
     assertTrue "logs" "[ -d '$SONAR_DATA/logs' ]"
 }
 
 testConfigurateSonarChownsToUid1000() {
-    configurate_sonar >/dev/null
+    configure_sonar >/dev/null
     assertContains "$(cat "$ORDER_LOG")" "sudo chown -R 1000:1000 $SONAR_DATA"
 }
 
 testConfigurateSonarSetsMaxMapCount() {
     [ -e /proc/sys/vm/max_map_count ] || startSkipping
-    configurate_sonar >/dev/null
+    configure_sonar >/dev/null
     assertContains "$(cat "$ORDER_LOG")" "tee /etc/sysctl.d/99-sonarqube.conf: vm.max_map_count=262144"
     assertContains "$(cat "$ORDER_LOG")" "sudo sysctl -w vm.max_map_count=262144"
 }
@@ -384,7 +384,7 @@ testListServicesConfigFailure() {
 }
 # --- /list_services ---
 
-# --- configurate_nginx / configurate_postgres / configurate_nexus (#183) ---
+# --- configure_nginx / configure_postgres / configure_nexus (#183) ---
 # SUDO wykonuje polecenia naprawdę (bez sudo); ścieżki celowo ze spacjami.
 _real_sudo() { "$@"; }
 _failing_cp_sudo() {
@@ -409,7 +409,7 @@ _setup_copy_dirs() {
 testConfigurateNginxCopiesWithSpacesAndCreatesMissingDirs() {
     _setup_copy_dirs
     rm -rf "$NGINX_DATA" # czysta maszyna: brak $NGINX_DATA i ssl/
-    configurate_nginx >/dev/null
+    configure_nginx >/dev/null
     assertEquals 0 $?
     assertTrue "config" "[ -f '$NGINX_DATA/config/main.conf' ]"
     assertTrue "www" "[ -f '$NGINX_DATA/www/index.html' ]"
@@ -419,7 +419,7 @@ testConfigurateNginxCopiesWithSpacesAndCreatesMissingDirs() {
 testConfigurateNginxNoCertsDirIsNotAnError() {
     _setup_copy_dirs
     local out
-    out="$(configurate_nginx)"
+    out="$(configure_nginx)"
     assertEquals 0 $?
     assertNotContains "$out" "ERROR"
 }
@@ -428,7 +428,7 @@ testConfigurateNginxCopiesCertsWhenPresent() {
     _setup_copy_dirs
     mkdir -p "$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs"
     echo ca >"$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs/ca.crt"
-    configurate_nginx >/dev/null
+    configure_nginx >/dev/null
     assertEquals 0 $?
     assertTrue "certs" "[ -f '$NGINX_DATA/ssl/certs/ca.crt' ]"
 }
@@ -438,7 +438,7 @@ testConfigurateNginxCertCopyFailureIsReported() {
     mkdir -p "$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs"
     SUDO=_failing_cp_sudo
     local out
-    out="$(configurate_nginx)"
+    out="$(configure_nginx)"
     assertEquals 1 $?
     assertContains "$out" "ERROR"
     assertContains "$out" "Nie udało się skopiować"
@@ -448,7 +448,7 @@ testConfigurateNginxFailsWhenSourceMissing() {
     _setup_copy_dirs
     rm -rf "$SERVICES_CONFIGURATION_DIR/nginx/www"
     local out
-    out="$(configurate_nginx)"
+    out="$(configure_nginx)"
     assertEquals 1 $?
     assertContains "$out" "ERROR"
 }
@@ -456,14 +456,14 @@ testConfigurateNginxFailsWhenSourceMissing() {
 testConfigurateNginxCreatesDirsAndStillRunsPrepareCertTarget() {
     _setup_copy_dirs
     rm -rf "$NGINX_DATA"
-    configurate_nginx >/dev/null
+    configure_nginx >/dev/null
     # prepare_cert zapisuje tutaj - katalog musi istnieć
     assertTrue "zapis do ssl" "echo x > '$NGINX_DATA/ssl/nginx.crt'"
 }
 
 testConfiguratePostgresCopiesHiddenFilesAndCreatesDir() {
     _setup_copy_dirs
-    configurate_postgres >/dev/null
+    configure_postgres >/dev/null
     assertEquals 0 $?
     assertTrue "init.sql" "[ -f '$POSTGRES_DATA/init.sql' ]"
     assertTrue "plik ukryty" "[ -f '$POSTGRES_DATA/.hidden' ]"
@@ -472,7 +472,7 @@ testConfiguratePostgresCopiesHiddenFilesAndCreatesDir() {
 testConfiguratePostgresEmptySourceDoesNotCopyLiteralGlob() {
     _setup_copy_dirs
     rm -rf "$SERVICES_CONFIGURATION_DIR/postgres"/* "$SERVICES_CONFIGURATION_DIR/postgres"/.hidden
-    configurate_postgres >/dev/null
+    configure_postgres >/dev/null
     assertEquals 0 $?
     assertFalse "literalna gwiazdka" "[ -e '$POSTGRES_DATA/*' ]"
 }
@@ -481,7 +481,7 @@ testConfiguratePostgresCopyFailureReturnsError() {
     _setup_copy_dirs
     SUDO=_failing_cp_sudo
     local out
-    out="$(configurate_postgres)"
+    out="$(configure_postgres)"
     assertEquals 1 $?
     assertContains "$out" "ERROR"
 }
@@ -489,7 +489,7 @@ testConfiguratePostgresCopyFailureReturnsError() {
 testConfigurateNexusCopiesWithSpacesAndChowns() {
     _setup_copy_dirs
     SUDO=_nexus_sudo
-    configurate_nexus >/dev/null
+    configure_nexus >/dev/null
     assertEquals 0 $?
     assertTrue "etc" "[ -f '$NEXUS_DATA/etc/nexus.properties' ]"
     assertContains "$(cat "$ORDER_LOG")" "chown -R 200:200 $NEXUS_DATA/etc/"
@@ -502,7 +502,7 @@ _nexus_sudo() {
     fi
     "$@"
 }
-# --- /configurate_* (#183) ---
+# --- /configure_* (#183) ---
 
 # --- propagacja błędów (#184) ---
 testImportFailureOnOneJdkReturnsErrorButContinues() {
@@ -546,37 +546,37 @@ testReadOnlyCacertsIsReportedWithReason() {
     assertContains "$out" "Brak prawa zapisu do cacerts"
 }
 
-# prawdziwy configurate_services (setUp podmienia go atrapą) z atrapami kroków
-_use_real_configurate_services() {
-    eval "$_REAL_CONFIGURATE_SERVICES"
+# prawdziwy configure_services (setUp podmienia go atrapą) z atrapami kroków
+_use_real_configure_services() {
+    eval "$_REAL_CONFIGURE_SERVICES"
     source_if_exists() { :; }
     STEPS_LOG="$_TEST_DIR/steps.log"
     : >"$STEPS_LOG"
     local s
-    for s in configurate_postgres configurate_nginx prepare_cert configurate_nexus \
-        prepare_key update_sdkman_jdk_certs configurate_sonar; do
+    for s in configure_postgres configure_nginx prepare_cert configure_nexus \
+        prepare_key update_sdkman_jdk_certs configure_sonar; do
         eval "$s() { echo $s >>\"\$STEPS_LOG\"; return \"\${RC_$s:-0}\"; }"
     done
-    unset RC_configurate_postgres RC_configurate_nginx RC_prepare_cert RC_configurate_nexus \
-        RC_prepare_key RC_update_sdkman_jdk_certs RC_configurate_sonar
+    unset RC_configure_postgres RC_configure_nginx RC_prepare_cert RC_configure_nexus \
+        RC_prepare_key RC_update_sdkman_jdk_certs RC_configure_sonar
 }
 
 testConfigurateServicesSucceedsWhenAllStepsSucceed() {
-    _use_real_configurate_services
-    configurate_services >/dev/null
+    _use_real_configure_services
+    configure_services >/dev/null
     assertEquals 0 $?
     assertEquals 7 "$(wc -l <"$STEPS_LOG")"
 }
 
 testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
-    _use_real_configurate_services
+    _use_real_configure_services
     local step
-    for step in configurate_postgres configurate_nginx prepare_cert configurate_nexus prepare_key configurate_sonar; do
-        _use_real_configurate_services
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_sonar; do
+        _use_real_configure_services
         eval "RC_$step=1"
         export "RC_$step"
         local out
-        out="$(configurate_services)"
+        out="$(configure_services)"
         assertEquals "rc dla $step" 1 $?
         assertContains "$out" "Krok konfiguracji nie powiódł się: $step"
         assertEquals "pozostałe kroki lecą ($step)" 7 "$(wc -l <"$STEPS_LOG")"
@@ -585,27 +585,27 @@ testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
 }
 
 testConfigurateServicesTreatsJdkCertsAsSoftStep() {
-    _use_real_configurate_services
+    _use_real_configure_services
     export RC_update_sdkman_jdk_certs=1
     local out
-    out="$(configurate_services)"
+    out="$(configure_services)"
     assertEquals 0 $?
     assertContains "$out" "WARN"
     unset RC_update_sdkman_jdk_certs
 }
 
 testStartServicesDoesNotRunComposeWhenRealConfigureFails() {
-    _use_real_configurate_services
-    export RC_configurate_nginx=1
+    _use_real_configure_services
+    export RC_configure_nginx=1
     : >"$ORDER_LOG"
     start_services >/dev/null
     assertEquals 1 $?
     assertNotContains "$(cat "$ORDER_LOG")" "up -d"
-    unset RC_configurate_nginx
+    unset RC_configure_nginx
 }
 # --- /propagacja błędów (#184) ---
 
-# --- jedna sesja sudo na configurate_services (#185) ---
+# --- jedna sesja sudo na configure_services (#185) ---
 # Prawdziwe make/unmake_me_sudo (setUp podmienia je atrapami) + atrapa `sudo` liczącą `-K`.
 _use_real_sudo_session() {
     # shellcheck source=/dev/null
@@ -615,11 +615,11 @@ _use_real_sudo_session() {
     : >"$SUDO_LOG"
     printf '#!/usr/bin/env bash\necho "sudo $*" >> "%s"\n' "$SUDO_LOG" >"$_TEST_DIR/bin/sudo"
     chmod +x "$_TEST_DIR/bin/sudo"
-    _use_real_configurate_services
-    # każdy krok sam otwiera i zamyka sesję sudo, jak prawdziwe configurate_*
+    _use_real_configure_services
+    # każdy krok sam otwiera i zamyka sesję sudo, jak prawdziwe configure_*
     local s
-    for s in configurate_postgres configurate_nginx prepare_cert configurate_nexus \
-        prepare_key configurate_sonar; do
+    for s in configure_postgres configure_nginx prepare_cert configure_nexus \
+        prepare_key configure_sonar; do
         eval "$s() { make_me_sudo; echo $s >>\"\$STEPS_LOG\"; local r=\"\${RC_$s:-0}\"; unmake_me_sudo; return \"\$r\"; }"
     done
 }
@@ -627,7 +627,7 @@ _use_real_sudo_session() {
 testConfigurateServicesRevokesSudoOnce() {
     [ "$(id -u)" -eq 0 ] && startSkipping
     _use_real_sudo_session
-    configurate_services >/dev/null
+    configure_services >/dev/null
     assertEquals 0 $?
     assertEquals 1 "$(grep -c -- 'sudo -K' "$SUDO_LOG")"
     assertNull "SUDO nie wycieka" "${SUDO:-}"
@@ -636,15 +636,59 @@ testConfigurateServicesRevokesSudoOnce() {
 testConfigurateServicesRevokesSudoOnceEvenWhenStepFails() {
     [ "$(id -u)" -eq 0 ] && startSkipping
     _use_real_sudo_session
-    export RC_configurate_nginx=1
-    configurate_services >/dev/null
+    export RC_configure_nginx=1
+    configure_services >/dev/null
     assertEquals 1 $?
     assertEquals 1 "$(grep -c -- 'sudo -K' "$SUDO_LOG")"
     assertNull "SUDO nie wycieka" "${SUDO:-}"
     assertNull "RESET_SUDO nie wycieka" "${RESET_SUDO:-}"
-    unset RC_configurate_nginx
+    unset RC_configure_nginx
 }
 # --- /jedna sesja sudo (#185) ---
+
+# --- zmiana nazw configurate_* -> configure_* (#188) ---
+testDeprecatedNamesDelegateAndWarn() {
+    local name new out
+    for name in services nginx postgres nexus sonar; do
+        new="configure_$name"
+        : >"$ORDER_LOG"
+        eval "$new() { echo \"$new \$*\" >>\"\$ORDER_LOG\"; return 0; }"
+        out="$("configurate_$name" arg1 arg2 2>&1)"
+        assertEquals "rc configurate_$name" 0 $?
+        assertContains "$out" "WARN"
+        assertContains "$out" "configurate_$name"
+        assertContains "$out" "$new"
+        assertContains "deleguje z argumentami" "$(cat "$ORDER_LOG")" "$new arg1 arg2"
+    done
+}
+
+testDeprecatedWrapperPropagatesReturnCode() {
+    configure_services() { return 7; }
+    configurate_services >/dev/null 2>&1
+    assertEquals 7 $?
+}
+
+testBothNamesAreFunctionsAndExported() {
+    local name
+    for name in services nginx postgres nexus sonar; do
+        assertEquals "function" "$(type -t "configure_$name")"
+        assertEquals "function" "$(type -t "configurate_$name")"
+    done
+    # eksport: proces potomny widzi obie nazwy oraz funkcje pomocnicze, od których zależą
+    local out
+    out="$(bash -c 'for f in configure_services configurate_services configure_nginx configurate_nginx \
+        _services_copy_dir _services_deprecated_name _services_reload_nginx _services_container_running \
+        _restart_service_running _services_compose; do declare -F "$f" >/dev/null || echo "BRAK:$f"; done')"
+    assertEquals "" "$out"
+}
+
+testStartServicesCallsNewName() {
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertContains "$(cat "$ORDER_LOG")" "configure"
+    assertNotContains "$(declare -f start_services)" "configurate_"
+}
+# --- /zmiana nazw (#188) ---
 
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

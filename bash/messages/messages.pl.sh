@@ -194,6 +194,7 @@ MSG_WARN[certs.cert_missing]="Certyfikat %s nie istnieje - uruchom najpierw prep
 MSG_WARN[certs.no_sdkman_jdks]="Brak katalogu %s - sdkman nie ma zainstalowanych JDK"
 MSG_WARN[certs.no_cacerts]="Brak cacerts w %s, pomijam"
 MSG_WARN[services.optional_step_failed]="Krok opcjonalny nie powiódł się, kontynuuję: %s"
+MSG_WARN[services.deprecated_name]="Funkcja %s jest przestarzała i zostanie usunięta - użyj %s"
 MSG_WARN[services.nginx_reload_failed]="Nie udało się przeładować nginx-proxy - sprawdź konfigurację: docker exec nginx-proxy nginx -t"
 MSG_WARN[services.restart_not_running]="Serwis %s nie działał - uruchamiam go (bez zatrzymywania)"
 MSG_WARN[services.invalid_wait_retries]="Nieprawidłowe RESTART_SERVICE_WAIT_RETRIES (%s) - używam %s"

@@ -191,6 +191,7 @@ MSG_WARN[certs.cert_missing]="Certificate %s does not exist - run prepare_cert f
 MSG_WARN[certs.no_sdkman_jdks]="Directory %s is missing - sdkman has no JDKs installed"
 MSG_WARN[certs.no_cacerts]="No cacerts in %s, skipping"
 MSG_WARN[services.optional_step_failed]="Optional step failed, continuing: %s"
+MSG_WARN[services.deprecated_name]="Function %s is deprecated and will be removed - use %s"
 MSG_WARN[services.nginx_reload_failed]="Failed to reload nginx-proxy - check the configuration: docker exec nginx-proxy nginx -t"
 MSG_WARN[services.restart_not_running]="Service %s was not running - starting it (no stop needed)"
 MSG_WARN[services.invalid_wait_retries]="Invalid RESTART_SERVICE_WAIT_RETRIES (%s) - using %s"

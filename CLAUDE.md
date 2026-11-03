@@ -422,6 +422,17 @@ kontenera (`${DOCKER_COMPOSE:-docker compose}`, bez twardej listy — nazwy wali
 `RESTART_SERVICE_WAIT_RETRIES`=60), `up -d`. Timeout/nieznany serwis = błąd i kod 1, pozostałe serwisy lecą dalej. Test:
 `test/unit/test_restart_service.sh` (mock `docker`, interwał 0).
 
+### Funkcje serwisów (`services/services_functions.sh`)
+
+Konfiguracja i obsługa kontenerów z `services/docker/docker-compose.yaml`: `configure_services` (+ `configure_nginx`/
+`configure_postgres`/`configure_nexus`/`configure_sonar`), `start_services`, `restart_service`, `list_services`,
+`update_sdkman_jdk_certs`. Nazewnictwo: `configure_*` (angielski czasownik); dawne `configurate_*` zostały jako cienkie
+funkcje-wrappery (nie aliasy — aliasy nie przechodzą przez `export -f`), które logują `services.deprecated_name` i delegują
+do nowej nazwy; **do usunięcia w kolejnej wersji**. Nowy serwis z compose obsługują bez zmian `restart_service` i
+`list_services` (lista z `compose config --services`). Każda funkcja wołana z procesów potomnych (`git fun …`, `bash -c`)
+musi być wyeksportowana razem z prywatnymi helperami `_services_*`/`_restart_service_running` — pilnuje tego
+`testBothNamesAreFunctionsAndExported`. Test: `test/unit/test_services_functions.sh`, `test/unit/test_restart_service.sh`.
+
 ### Sekrety
 
 Wrażliwe zmienne środowiskowe trafiają do `~/.senv` (tworzony automatycznie przy pierwszym załadowaniu, tryb 400). Nigdy
