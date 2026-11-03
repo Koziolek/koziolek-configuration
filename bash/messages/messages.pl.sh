@@ -274,6 +274,7 @@ MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: brak %s (fix-comp nies
 MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
 MSG_ERROR[certs.not_writable]="Brak prawa zapisu do cacerts: %s"
 MSG_ERROR[services.configure_step_failed]="Krok konfiguracji nie powiódł się: %s"
+MSG_ERROR[services.jenkins_admin_missing]="Brak JENKINS_ADMIN_USER / JENKINS_ADMIN_PASSWORD - ustaw je w ~/.senv (wzór w .senv.template)"
 MSG_ERROR[services.compose_missing]="Brak pliku docker-compose: %s"
 MSG_ERROR[services.compose_failed]="docker compose zakończył się błędem"
 MSG_ERROR[services.nginx_config_invalid]="Konfiguracja nginx-proxy jest niepoprawna, pomijam reload: %s"

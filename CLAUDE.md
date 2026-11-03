@@ -433,6 +433,29 @@ do nowej nazwy; **do usunięcia w kolejnej wersji**. Nowy serwis z compose obsł
 musi być wyeksportowana razem z prywatnymi helperami `_services_*`/`_restart_service_running` — pilnuje tego
 `testBothNamesAreFunctionsAndExported`. Test: `test/unit/test_services_functions.sh`, `test/unit/test_restart_service.sh`.
 
+### Jenkins (lokalny serwer CI, `services/jenkins/`)
+
+Kontener `jenkins` w `services/docker/docker-compose.yaml`, dostępny przez nginx pod `/jenkins/` (vhost
+`nginx/config/includes/jenkins.conf`; Jenkins działa z `--prefix=/jenkins`; upstream w zmiennej + `resolver 127.0.0.11`,
+więc nginx nie pada, gdy kontenera akurat brak). Dane w `$JENKINS_DATA` (`services/main.sh`) → `/var/jenkins_home`, uid 1000
+(`configure_jenkins` kopiuje tu `jenkins/casc/` i robi `chown`). Obraz: cienka warstwa na `jenkins/jenkins:2.580.2-lts-jdk21`
+(przypięty LTS, nie `latest`) tylko z wtyczkami z `jenkins/plugins.txt` (wersje przypięte); po zmianie wtyczek/tagu
+`docker compose -f services/docker/docker-compose.yaml build jenkins` (`up -d` buduje tylko, gdy obrazu brak).
+Konfiguracja jako kod: `jenkins/casc/jenkins.yaml` (kreator wyłączony, konto admina lokalne, anonim bez dostępu).
+**Wymaga w `~/.senv`:** `JENKINS_ADMIN_USER`, `JENKINS_ADMIN_PASSWORD` (wzór w `.senv.template`) — bez nich
+`configure_jenkins` zwraca błąd i `start_services` nic nie startuje (celowo: nigdy Jenkins bez uwierzytelniania). Do kontenera
+trafiają tylko zmienne potrzebne Jenkinsowi (bez `env_file: ~/.senv`).
+Narzędzia buildowe **nie są w obrazie** — pobiera je Jenkins (tool installers z JCasC): Temurin JDK (`temurin-latest`,
+`JENKINS_JDK_ID`, domyślnie `jdk-25.0.5+8`) i Maven (`maven-latest`, `JENKINS_MAVEN_ID`, domyślnie `3.10.0`); nowa wersja =
+zmiana domyślnej wartości w `jenkins.yaml` lub zmienna w środowisku kontenera.
+Baza: PostgreSQL `home-db`, baza `jenkins` (`postgres/init.sql`, jak `sonar`), te same `DB_USERNAME`/`DB_PASSWORD`. Do bazy idą
+tylko dane, które wtyczki umieją tam trzymać: wyniki testów JUnit (`junit-sql-storage`) i graf zależności buildów Mavena
+(`pipeline-maven-database`, poświadczenie JCasC `home-db`). Rdzeń Jenkinsa nie ma backendu SQL — config, joby, historia buildów,
+logi konsoli i credentials zostają w `$JENKINS_DATA`, więc backup = snapshot `$JENKINS_DATA` **oraz** `pg_dump jenkins`.
+Zweryfikowane na prawdziwej instancji (kontener tymczasowy): obraz buduje się z `plugins.txt`, JCasC się ładuje (admin,
+narzędzia, `jdbcUrl`, storage JUnit). Test: `test/unit/test_services_functions.sh` (sekcja „Jenkins”: `configure_jenkins`, statyczne
+sprawdzenie compose/vhosta/JCasC/plugins).
+
 ### Sekrety
 
 Wrażliwe zmienne środowiskowe trafiają do `~/.senv` (tworzony automatycznie przy pierwszym załadowaniu, tryb 400). Nigdy

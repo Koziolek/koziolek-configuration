@@ -39,6 +39,21 @@ function configure_nexus() {
     unmake_me_sudo
     return "$rc"
 }
+function configure_jenkins() {
+    # Jenkins nie może wystartować bez konta admina z ~/.senv: pusty użytkownik/hasło w JCasC
+    # dałyby instancję bez realnego uwierzytelniania, więc to błąd, a nie ostrzeżenie.
+    if [ -z "${JENKINS_ADMIN_USER:-}" ] || [ -z "${JENKINS_ADMIN_PASSWORD:-}" ]; then
+        log_error services.jenkins_admin_missing
+        return 1
+    fi
+    make_me_sudo
+    local rc=0
+    _services_copy_dir "$SERVICES_CONFIGURATION_DIR/jenkins/casc" "$JENKINS_DATA/casc" || rc=1
+    # obraz jenkins/jenkins działa jako uid 1000
+    $SUDO chown -R 1000:1000 "$JENKINS_DATA" || rc=1
+    unmake_me_sudo
+    return "$rc"
+}
 function configure_sonar() {
     make_me_sudo
     $SUDO mkdir -p "$SONAR_DATA"/{data,extensions,logs}
@@ -114,7 +129,7 @@ function configure_services() {
     make_me_sudo
     source_if_exists ssl_setup "$SERVICES_CONFIGURATION_DIR/nginx/ssl/"
     source_if_exists key_setup "$SERVICES_CONFIGURATION_DIR/nexus/"
-    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key; do
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins; do
         "$step" || {
             log_error services.configure_step_failed "$step"
             rc=1
@@ -332,6 +347,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configure_nginx
     export -f configure_postgres
     export -f configure_nexus
+    export -f configure_jenkins
     export -f configure_sonar
     export -f _services_deprecated_name
     export -f configurate_services

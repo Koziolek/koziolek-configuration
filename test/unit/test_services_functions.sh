@@ -17,6 +17,9 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 . "$PROJECT_ROOT/services/services_functions.sh"
 
 _REAL_CONFIGURE_SERVICES="$(declare -f configure_services)"
+# prawdziwe funkcje kroków - testy z atrapami (_use_real_configure_services) nadpisują je globalnie,
+# więc przywracamy po każdym teście (kolejność testów nie może mieć znaczenia)
+_REAL_STEP_FUNCS="$(declare -f configure_postgres configure_nginx configure_nexus configure_jenkins configure_sonar update_sdkman_jdk_certs)"
 _TEST_DIR=''
 _ORIG_PATH=''
 
@@ -52,6 +55,7 @@ EOF
     unset DOCKER_FAIL_UP DOCKER_FAIL_EXEC DOCKER_COMPOSE DOCKER_NGINX_DOWN DOCKER_FAIL_NGINX_T
     export SERVICES_CONFIGURATION_DIR="$_TEST_DIR/services"
     export SONAR_DATA="$_TEST_DIR/sonar_data"
+    export JENKINS_DATA="$_TEST_DIR/jenkins_data"
     mkdir -p "$SERVICES_CONFIGURATION_DIR/docker"
     : >"$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
 
@@ -91,6 +95,7 @@ _fake_sudo() {
 }
 
 tearDown() {
+    eval "$_REAL_STEP_FUNCS"
     export PATH="$_ORIG_PATH"
     rm -rf "$_TEST_DIR"
 }
@@ -554,24 +559,24 @@ _use_real_configure_services() {
     : >"$STEPS_LOG"
     local s
     for s in configure_postgres configure_nginx prepare_cert configure_nexus \
-        prepare_key update_sdkman_jdk_certs configure_sonar; do
+        prepare_key configure_jenkins update_sdkman_jdk_certs configure_sonar; do
         eval "$s() { echo $s >>\"\$STEPS_LOG\"; return \"\${RC_$s:-0}\"; }"
     done
     unset RC_configure_postgres RC_configure_nginx RC_prepare_cert RC_configure_nexus \
-        RC_prepare_key RC_update_sdkman_jdk_certs RC_configure_sonar
+        RC_prepare_key RC_configure_jenkins RC_update_sdkman_jdk_certs RC_configure_sonar
 }
 
 testConfigurateServicesSucceedsWhenAllStepsSucceed() {
     _use_real_configure_services
     configure_services >/dev/null
     assertEquals 0 $?
-    assertEquals 7 "$(wc -l <"$STEPS_LOG")"
+    assertEquals 8 "$(wc -l <"$STEPS_LOG")"
 }
 
 testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
     _use_real_configure_services
     local step
-    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_sonar; do
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins configure_sonar; do
         _use_real_configure_services
         eval "RC_$step=1"
         export "RC_$step"
@@ -579,7 +584,7 @@ testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
         out="$(configure_services)"
         assertEquals "rc dla $step" 1 $?
         assertContains "$out" "Krok konfiguracji nie powiódł się: $step"
-        assertEquals "pozostałe kroki lecą ($step)" 7 "$(wc -l <"$STEPS_LOG")"
+        assertEquals "pozostałe kroki lecą ($step)" 8 "$(wc -l <"$STEPS_LOG")"
         unset "RC_$step"
     done
 }
@@ -619,7 +624,7 @@ _use_real_sudo_session() {
     # każdy krok sam otwiera i zamyka sesję sudo, jak prawdziwe configure_*
     local s
     for s in configure_postgres configure_nginx prepare_cert configure_nexus \
-        prepare_key configure_sonar; do
+        prepare_key configure_jenkins configure_sonar; do
         eval "$s() { make_me_sudo; echo $s >>\"\$STEPS_LOG\"; local r=\"\${RC_$s:-0}\"; unmake_me_sudo; return \"\$r\"; }"
     done
 }
@@ -689,6 +694,141 @@ testStartServicesCallsNewName() {
     assertNotContains "$(declare -f start_services)" "configurate_"
 }
 # --- /zmiana nazw (#188) ---
+
+# --- Jenkins (#182) ---
+_JENKINS_DIR="$PROJECT_ROOT/services/jenkins"
+_jenkins_block() { sed -n '/^  jenkins:/,/^  [a-z-]*:$/p' "$_COMPOSE"; }
+
+_setup_jenkins_src() {
+    export SERVICES_CONFIGURATION_DIR="$_TEST_DIR/my services"
+    mkdir -p "$SERVICES_CONFIGURATION_DIR/jenkins/casc"
+    echo "jenkins: {}" >"$SERVICES_CONFIGURATION_DIR/jenkins/casc/jenkins.yaml"
+    export JENKINS_ADMIN_USER=admin JENKINS_ADMIN_PASSWORD=s3cret
+    SUDO=_real_sudo
+}
+_jenkins_sudo() {
+    if [ "$1" = chown ]; then
+        echo "sudo $*" >>"$ORDER_LOG"
+        return 0
+    fi
+    "$@"
+}
+
+testConfigureJenkinsCopiesCascAndChownsToUid1000() {
+    _setup_jenkins_src
+    SUDO=_jenkins_sudo
+    configure_jenkins >/dev/null
+    assertEquals 0 $?
+    assertTrue "casc skopiowany" "[ -f '$JENKINS_DATA/casc/jenkins.yaml' ]"
+    assertContains "$(cat "$ORDER_LOG")" "sudo chown -R 1000:1000 $JENKINS_DATA"
+}
+
+testConfigureJenkinsFailsWithoutAdminCredentials() {
+    _setup_jenkins_src
+    local var out
+    for var in JENKINS_ADMIN_USER JENKINS_ADMIN_PASSWORD; do
+        _setup_jenkins_src
+        unset "$var"
+        out="$(configure_jenkins)"
+        assertEquals "rc bez $var" 1 $?
+        assertContains "$out" "JENKINS_ADMIN_USER"
+        assertFalse "nic nie kopiuje bez poświadczeń" "[ -e '$JENKINS_DATA/casc' ]"
+    done
+}
+
+testConfigureJenkinsCopyFailureReturnsError() {
+    _setup_jenkins_src
+    SUDO=_failing_cp_sudo
+    local out
+    out="$(configure_jenkins)"
+    assertEquals 1 $?
+    assertContains "$out" "ERROR"
+}
+
+testComposeJenkinsPinsLtsTagAndDoesNotUseLatest() {
+    local block
+    block="$(_jenkins_block)"
+    assertContains "$block" "image: koziolek/jenkins:2.580.2-lts-jdk21"
+    assertNotContains "$block" ":latest"
+    assertContains "$(cat "$_JENKINS_DIR/Dockerfile")" "FROM jenkins/jenkins:2.580.2-lts-jdk21"
+}
+
+testComposeJenkinsStoresDataInJenkinsDataAndWaitsForHealthyDb() {
+    local block
+    block="$(_jenkins_block)"
+    assertContains "$block" '$JENKINS_DATA:/var/jenkins_home'
+    assertContains "$block" "condition: service_healthy"
+    assertContains "$block" 'DB_USERNAME: ${DB_USERNAME}'
+    assertContains "$block" "service-network"
+}
+
+testComposeJenkinsDoesNotLoadWholeSenvFile() {
+    assertNotContains "$(_jenkins_block)" "env_file:"
+}
+
+testComposeJenkinsPrefixMatchesNginxVhostAndHealthcheck() {
+    local conf="$PROJECT_ROOT/services/nginx/config/includes/jenkins.conf"
+    assertContains "$(_jenkins_block)" "JENKINS_OPTS: --prefix=/jenkins"
+    assertContains "$(_jenkins_block)" "localhost:8080/jenkins/login"
+    assertContains "$(cat "$conf")" "location /jenkins/"
+    assertContains "$(cat "$conf")" "http://jenkins:8080"
+    assertContains "$(cat "$conf")" "proxy_buffering off"
+}
+
+testNginxJenkinsUpstreamIsResolvedLazily() {
+    local conf="$PROJECT_ROOT/services/nginx/config/includes/jenkins.conf"
+    assertContains "nginx nie może paść, gdy kontenera jenkins brak" "$(cat "$conf")" "set \$jenkins_upstream"
+    assertContains "$(cat "$conf")" "resolver 127.0.0.11"
+}
+
+testJenkinsLinkOnIndexPage() {
+    assertContains "$(cat "$PROJECT_ROOT/services/nginx/www/index.html")" "/jenkins"
+}
+
+testPluginsArePinnedAndIncludeDatabasePlugins() {
+    local plugins
+    plugins="$(grep -v '^#' "$_JENKINS_DIR/plugins.txt" | grep -v '^$')"
+    local line
+    while IFS= read -r line; do
+        assertContains "wersja przypięta: $line" "$line" ":"
+    done <<<"$plugins"
+    for line in configuration-as-code database-postgresql postgresql-api junit-sql-storage pipeline-maven pipeline-maven-database adoptopenjdk maven-plugin; do
+        assertContains "$plugins" "$line:"
+    done
+}
+
+testCascUsesHomeDbAndNoHardcodedSecrets() {
+    local casc
+    casc="$(cat "$_JENKINS_DIR/casc/jenkins.yaml")"
+    assertContains "$casc" "jdbc:postgresql://home-db:5432/jenkins"
+    assertContains "$casc" 'hostname: "home-db"'
+    assertContains "$casc" 'storage: "database"'
+    assertContains "$casc" 'JdbcCredentialsId: "home-db"'
+    assertContains "$casc" '${JENKINS_ADMIN_PASSWORD}'
+    assertContains "$casc" '${DB_PASSWORD}'
+    assertContains "$casc" 'allowsSignup: false'
+    assertContains "$casc" 'allowAnonymousRead: false'
+}
+
+testCascDeclaresToolInstallersWithOverridableVersions() {
+    local casc
+    casc="$(cat "$_JENKINS_DIR/casc/jenkins.yaml")"
+    assertContains "$casc" "adoptOpenJdkInstaller"
+    assertContains "$casc" '${JENKINS_JDK_ID:-'
+    assertContains "$casc" '${JENKINS_MAVEN_ID:-'
+}
+
+testSenvTemplateHasJenkinsAdminKeys() {
+    local tpl
+    tpl="$(cat "$PROJECT_ROOT/.senv.template")"
+    assertContains "$tpl" "export JENKINS_ADMIN_USER="
+    assertContains "$tpl" "export JENKINS_ADMIN_PASSWORD="
+}
+
+testJenkinsDataExportedByServicesMain() {
+    assertContains "$(cat "$PROJECT_ROOT/services/main.sh")" 'export JENKINS_DATA=${SERVICES_DATA}/jenkins_data'
+}
+# --- /Jenkins (#182) ---
 
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
