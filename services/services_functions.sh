@@ -129,6 +129,15 @@ function configurate_services() {
     return "$rc"
 }
 
+# Wrapper na polecenie compose. DOCKER_COMPOSE jest eksportowanym łańcuchem
+# ("docker compose", "podman-compose", ...), więc rozbijamy go raz do lokalnej tablicy
+# zamiast niecytowanego rozwinięcia (SC2086, globbing). Pusta/nieustawiona = "docker compose".
+function _services_compose() {
+    local -a cmd
+    read -r -a cmd <<<"${DOCKER_COMPOSE:-docker compose}"
+    "${cmd[@]}" "$@"
+}
+
 # Konfiguruje serwisy, a potem startuje kontenery. `up -d` odtwarza tylko serwisy
 # ze zmienioną konfiguracją - już działające i niezmienione zostają nietknięte; na końcu
 # przeładowuje nginx-proxy.
@@ -143,8 +152,7 @@ function start_services() {
 
     configurate_services || return $?
 
-    # shellcheck disable=SC2086
-    ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$@" || {
+    _services_compose -f "$compose_file" up -d "$@" || {
         log_error services.compose_failed
         return 1
     }
@@ -165,8 +173,7 @@ RESTART_SERVICE_WAIT_INTERVAL="${RESTART_SERVICE_WAIT_INTERVAL:-1}"
 RESTART_SERVICE_WAIT_RETRIES="${RESTART_SERVICE_WAIT_RETRIES:-60}"
 
 function _restart_service_running() {
-    # shellcheck disable=SC2086
-    [ -n "$(${DOCKER_COMPOSE:-docker compose} -f "$1" ps -q --status running "$2" 2>/dev/null)" ]
+    [ -n "$(_services_compose -f "$1" ps -q --status running "$2" 2>/dev/null)" ]
 }
 
 function restart_service() {
@@ -182,8 +189,7 @@ function restart_service() {
     fi
 
     local known svc attempt rc=0
-    # shellcheck disable=SC2086
-    known="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services 2>/dev/null)"
+    known="$(_services_compose -f "$compose_file" config --services 2>/dev/null)"
 
     for svc in "$@"; do
         if ! printf '%s\n' "$known" | grep -qx -- "$svc"; then
@@ -196,8 +202,7 @@ function restart_service() {
             log_warn services.restart_not_running "$svc"
         else
             log_info services.stopping "$svc"
-            # shellcheck disable=SC2086
-            if ! ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" stop "$svc" >/dev/null; then
+            if ! _services_compose -f "$compose_file" stop "$svc" >/dev/null; then
                 log_error services.stop_failed "$svc"
                 rc=1
                 continue
@@ -216,8 +221,7 @@ function restart_service() {
             log_info services.stopped "$svc"
         fi
 
-        # shellcheck disable=SC2086
-        if ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$svc" >/dev/null; then
+        if _services_compose -f "$compose_file" up -d "$svc" >/dev/null; then
             log_info services.started "$svc"
         else
             log_error services.start_failed "$svc"
@@ -240,13 +244,11 @@ function list_services() {
     fi
 
     local all running
-    # shellcheck disable=SC2086
-    all="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services)" || {
+    all="$(_services_compose -f "$compose_file" config --services)" || {
         log_error services.list_failed
         return 1
     }
-    # shellcheck disable=SC2086
-    running="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" ps --status running --services 2>/dev/null)"
+    running="$(_services_compose -f "$compose_file" ps --status running --services 2>/dev/null)"
 
     local name
     while IFS= read -r name; do
@@ -261,6 +263,7 @@ function list_services() {
 # --- /list_services ---
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    export -f _services_compose
     export -f configurate_services
     export -f configurate_nginx
     export -f configurate_postgres

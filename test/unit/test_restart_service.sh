@@ -143,5 +143,39 @@ MOCK
     assertContains "$(cat "$CALLS")" "up -d postgres"
 }
 
+testWrapperSplitsMultiWordComposeCommand() {
+    cat >"$_TEST_DIR/bin/mycompose" <<'MOCK'
+#!/usr/bin/env bash
+echo "MC $*" >> "$CALLS"
+for a in "$@"; do [ "$a" = config ] && echo postgres; done
+exit 0
+MOCK
+    chmod +x "$_TEST_DIR/bin/mycompose"
+    DOCKER_COMPOSE="mycompose --ansi never" restart_service postgres >/dev/null 2>&1
+    assertContains "$(cat "$CALLS")" "MC --ansi never -f"
+    assertContains "$(cat "$CALLS")" "up -d postgres"
+}
+
+testEmptyComposeVariableFallsBackToDockerCompose() {
+    DOCKER_COMPOSE='' restart_service postgres >/dev/null 2>&1
+    assertContains "$(cat "$CALLS")" "up -d postgres"
+}
+
+testWrapperDoesNotGlobExpandComposeVariable() {
+    cat >"$_TEST_DIR/bin/echoer" <<'MOCK'
+#!/usr/bin/env bash
+echo "$*" >> "$CALLS"
+MOCK
+    chmod +x "$_TEST_DIR/bin/echoer"
+    touch "$_TEST_DIR/bin/globbed"
+    (cd "$_TEST_DIR/bin" && DOCKER_COMPOSE='echoer *' _services_compose x)
+    assertContains "$(cat "$CALLS")" "* x"
+}
+
+testNoShellcheckSC2086DirectiveInServicesFunctions() {
+    assertFalse "dyrektywa SC2086 wróciła" \
+        "grep -q 'shellcheck disable=SC2086' '$PROJECT_ROOT/services/services_functions.sh'"
+}
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
