@@ -1,25 +1,43 @@
 #!/usr/bin/env bash
 
+# Kopiuje zawartość katalogu <src> do <dst> (tworzy <dst>; pliki ukryte też, bez globu).
+# Wymaga ustawionego $SUDO (make_me_sudo w wołającym). Błąd = log_error + kod 1.
+function _services_copy_dir() {
+    local src="$1" dst="$2"
+    if ! $SUDO mkdir -p "$dst" || ! $SUDO cp -R "$src"/. "$dst"/; then
+        log_error services.copy_failed "$src" "$dst"
+        return 1
+    fi
+}
+
 function configurate_nginx() {
     make_me_sudo
-    $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/config $NGINX_DATA/.
-    $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/www $NGINX_DATA/.
-    $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nginx/ssl/certs $NGINX_DATA/ssl/. 2>/dev/null || true
+    local src="$SERVICES_CONFIGURATION_DIR/nginx" rc=0
+    _services_copy_dir "$src/config" "$NGINX_DATA/config" || rc=1
+    _services_copy_dir "$src/www" "$NGINX_DATA/www" || rc=1
+    # katalog ssl/ jest potrzebny też prepare_cert (pisze tu nginx.crt/nginx.key)
+    $SUDO mkdir -p "$NGINX_DATA/ssl" || rc=1
+    # certy z repo są opcjonalne - brak katalogu to nie błąd, ale błąd kopiowania już tak
+    if [ -d "$src/ssl/certs" ]; then
+        _services_copy_dir "$src/ssl/certs" "$NGINX_DATA/ssl/certs" || rc=1
+    fi
     unmake_me_sudo
+    return "$rc"
 }
 function configurate_postgres() {
     make_me_sudo
-    $SUDO cp -r $SERVICES_CONFIGURATION_DIR/postgres/* $POSTGRES_DATA/.
+    local rc=0
+    _services_copy_dir "$SERVICES_CONFIGURATION_DIR/postgres" "$POSTGRES_DATA" || rc=1
     unmake_me_sudo
+    return "$rc"
 }
 function configurate_nexus() {
     make_me_sudo
-    if [ ! -d "$NEXUS_DATA" ] || [ ! -d "$NEXUS_DATA"/etc ]; then
-        $SUDO mkdir -p $NEXUS_DATA/etc
-    fi
-    $SUDO cp -r $SERVICES_CONFIGURATION_DIR/nexus/etc/* $NEXUS_DATA/etc/.
-    $SUDO chown -R 200:200 $NEXUS_DATA/etc/
+    local rc=0
+    _services_copy_dir "$SERVICES_CONFIGURATION_DIR/nexus/etc" "$NEXUS_DATA/etc" || rc=1
+    $SUDO chown -R 200:200 "$NEXUS_DATA/etc/" || rc=1
     unmake_me_sudo
+    return "$rc"
 }
 function configurate_sonar() {
     make_me_sudo
@@ -225,6 +243,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f restart_service
     export -f _restart_service_running
     export -f list_services
+    export -f _services_copy_dir
     export -f configurate_nginx
     export -f configurate_postgres
     export -f configurate_nexus

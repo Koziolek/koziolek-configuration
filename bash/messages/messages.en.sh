@@ -266,6 +266,7 @@ MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: %s not found (fix-comp
 MSG_ERROR[certs.import_failed]="Failed to import certificate into %s"
 MSG_ERROR[services.compose_missing]="Docker compose file is missing: %s"
 MSG_ERROR[services.compose_failed]="docker compose failed"
+MSG_ERROR[services.copy_failed]="Failed to copy %s to %s"
 MSG_ERROR[services.restart_usage]="Usage: restart_service <service>..."
 MSG_ERROR[services.unknown_service]="Unknown service: %s"
 MSG_ERROR[services.stop_failed]="Failed to stop service %s"
