@@ -72,6 +72,8 @@ Available functions:
   turn_async_profiler_on       – ustawia flagi jądra dla async-profilera JVM
   turn_async_profiler_off      – cofa flagi async-profilera
   java_clear [KATALOG]         – mvn/gradle clean we wszystkich projektach pod KATALOG (domyślnie .)
+  jhot [--pid PID|--all] [-n N] [-s N] [-i SEK] [-d N] [-o KAT] [--app PREFIKS] [-a]
+                                – diagnoza gorących wątków JVM (CPU per wątek + jstack × N + DIAGNOZA; Linux, wymaga JDK)
 
   [FIDO2/U2F]
   fido2_list_devices           – pokaż podłączone klucze FIDO2/U2F (dowolna marka)
