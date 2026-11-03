@@ -34,6 +34,7 @@ MSG_INFO[ssl.generated]="
     Certyfikat: %s
     Klucz prywatny: %s
   "
+MSG_INFO[ssl.cert_up_to_date]="Certyfikat %s jest ważny jeszcze co najmniej %s dni - pomijam generowanie (wymuś: prepare_cert --force)"
 MSG_INFO[ssl.next_steps]="
   Następne kroki:
   1. Dodaj '127.0.0.1 koziolek.home' do pliku /etc/hosts

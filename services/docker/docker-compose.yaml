@@ -130,7 +130,10 @@ services:
     networks:
       - service-network
   home-db:
-    image: postgres:17.5
+    # Wariant -bookworm (glibc 2.36) jest przypięty celowo (#201): katalog danych powstał na glibc 2.36, a goły tag
+    # 17.5 wskazuje na trixie (glibc 2.41) - zmiana sortowania tekstu bez REINDEX = ostrzeżenie o collation mismatch
+    # i ryzyko uszkodzonych indeksów B-tree. Zmiana wariantu wymaga procedury z CLAUDE.md (sekcja home-db).
+    image: postgres:17.5-bookworm
     container_name: home-db
     environment:
       POSTGRES_USER: ${DB_USERNAME}

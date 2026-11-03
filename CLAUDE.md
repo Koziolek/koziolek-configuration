@@ -442,6 +442,14 @@ DEBUG). `NGINX_FORCE_RELOAD=1` wymusza reload. Zapis (przez `$SUDO tee`) następ
 nieudany test/reload nie „zużywa” zmiany, kolejny start spróbuje ponownie; błąd zapisu to `services.nginx_checksum_save_failed`
 (WARN). Gdy sumy nie da się policzyć (brak katalogu config) reload leci jak dawniej, bez zapisu.
 
+`prepare_cert` (`services/nginx/ssl/ssl_setup.sh`, krok `configure_services`) jest **idempotentny** (#199): gdy w
+`$NGINX_DATA/ssl` są `nginx.crt` i `nginx.key`, a cert jest ważny jeszcze `PREPARE_CERT_MIN_DAYS` dni (domyślnie 30,
+`openssl x509 -checkend`), nic nie generuje (`ssl.cert_up_to_date`) — wcześniej każde `start_services` podmieniało
+cert i klucz. Brak pary / wygasający cert → generowanie; `prepare_cert --force` lub `PREPARE_CERT_FORCE=1` zawsze
+regeneruje. Sprawdzenia idą przez `$SUDO` (klucz ma 600 root). Ścieżki są cytowane, `mkdir -p` katalogu `ssl` w
+samej funkcji. `update_sdkman_jdk_certs` dalej importuje aktualny cert (przy niezmienionym — no-op). Test:
+`test/unit/test_ssl_setup.sh` (atrapa `openssl`).
+
 ### Jenkins (lokalny serwer CI, `services/jenkins/`)
 
 Kontener `jenkins` w `services/docker/docker-compose.yaml`, dostępny przez nginx pod `/jenkins/` (vhost
@@ -464,6 +472,22 @@ logi konsoli i credentials zostają w `$JENKINS_DATA`, więc backup = snapshot `
 Zweryfikowane na prawdziwej instancji (kontener tymczasowy): obraz buduje się z `plugins.txt`, JCasC się ładuje (admin,
 narzędzia, `jdbcUrl`, storage JUnit). Test: `test/unit/test_services_functions.sh` (sekcja „Jenkins”: `configure_jenkins`, statyczne
 sprawdzenie compose/vhosta/JCasC/plugins).
+
+### Baza `home-db` i wersja collation (glibc, #201)
+
+Kontener `home-db` (PostgreSQL w `services/docker/docker-compose.yaml`) trzyma bazy `sonar`, `jenkins`, `$DB_NAME` i inne.
+Indeksy B-tree na kolumnach tekstowych zależą od kolejności sortowania z glibc **obrazu**; katalog danych zapamiętuje wersję
+(`pg_database.datcollversion`). Goły tag `postgres:17.5` wskazuje dziś na Debiana trixie (glibc 2.41), a katalog danych
+powstał na bookworm (2.36) - stąd `WARNING: database "X" has a collation version mismatch`. `ALTER DATABASE … REFRESH
+COLLATION VERSION` tylko zapisuje nową wersję i **nie naprawia indeksów** (możliwe błędne wyniki, niewykrywane duplikaty
+w indeksach UNIQUE). Dlatego obraz jest przypięty do wariantu `postgres:17.5-bookworm` (glibc 2.36, ta sama wersja
+PostgreSQL 17.5): po zmianie obrazu na ten wariant dane są znowu zgodne z systemem i REINDEX nie jest potrzebny. Test
+statyczny pilnuje, by obraz miał wariant systemu (`testComposeHomeDbImageIsPinnedToDebianVariant`). Przejście na nowszy
+Debian/PostgreSQL to świadoma operacja: kopia (`pg_dumpall`) -> `REINDEX DATABASE <baza>` -> `ALTER DATABASE <baza> REFRESH
+COLLATION VERSION` dla każdej bazy (także `postgres`, `template1`), nigdy automatycznie w `start_services`.
+Diagnoza (tylko odczyt): `SELECT datname, datcollversion, pg_database_collation_actual_version(oid) FROM pg_database;`.
+Uwaga: baza utworzona już na glibc 2.41 (np. `jenkins`, `template1`) po powrocie do 2.36 zgłosi odwrotny mismatch; jeśli nie
+ma w niej indeksów na kolumnach tekstowych z collation innym niż `C` (do sprawdzenia), wystarczy `REFRESH COLLATION VERSION`.
 
 ### Sekrety
 

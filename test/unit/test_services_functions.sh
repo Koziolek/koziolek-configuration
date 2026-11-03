@@ -981,5 +981,14 @@ testPgadminHealthcheckFailsOnHttpErrors() {
 }
 # --- /healthchecki (#196) ---
 
+testComposeHomeDbImageIsPinnedToDebianVariant() {
+    local image
+    image="$(awk '/^  home-db:/{f=1;next} f&&/^    image:/{print $2;exit}' "$_COMPOSE")"
+    assertNotEquals "home-db: brak image" "" "$image"
+    # goły tag (np. postgres:17.5) zmienia glibc przy przebudowie obrazu - wymagany wariant, np. -bookworm
+    assertTrue "home-db: image bez wariantu systemu: $image" "[[ '$image' =~ ^postgres:[0-9.]+-[a-z]+$ ]]"
+    assertContains "$image" "bookworm"
+}
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

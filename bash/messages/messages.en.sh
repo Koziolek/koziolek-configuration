@@ -31,6 +31,7 @@ MSG_INFO[ssl.generated]="
     Certificate: %s
     Private key: %s
   "
+MSG_INFO[ssl.cert_up_to_date]="Certificate %s is valid for at least %s more days - skipping generation (force: prepare_cert --force)"
 MSG_INFO[ssl.next_steps]="
   Next steps:
   1. Add '127.0.0.1 koziolek.home' to your /etc/hosts file
