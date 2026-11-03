@@ -49,7 +49,7 @@ EOF
     # start_services / configurate_sonar
     ORDER_LOG="$_TEST_DIR/order.log"
     export ORDER_LOG
-    unset DOCKER_FAIL_UP DOCKER_FAIL_EXEC DOCKER_COMPOSE
+    unset DOCKER_FAIL_UP DOCKER_FAIL_EXEC DOCKER_COMPOSE DOCKER_NGINX_DOWN DOCKER_FAIL_NGINX_T
     export SERVICES_CONFIGURATION_DIR="$_TEST_DIR/services"
     export SONAR_DATA="$_TEST_DIR/sonar_data"
     mkdir -p "$SERVICES_CONFIGURATION_DIR/docker"
@@ -59,7 +59,9 @@ EOF
 #!/usr/bin/env bash
 echo "docker $*" >> "$ORDER_LOG"
 [[ " $* " == *" up "* && -n "$DOCKER_FAIL_UP" ]] && exit 1
-[[ " $* " == *" exec "* && -n "$DOCKER_FAIL_EXEC" ]] && exit 1
+[[ " $* " == *" ps "* ]] && { [ -z "$DOCKER_NGINX_DOWN" ] && echo abc123; exit 0; }
+[[ " $* " == *" nginx -t "* && -n "$DOCKER_FAIL_NGINX_T" ]] && { echo "nginx: [emerg] bad directive"; exit 1; }
+[[ " $* " == *" nginx -s reload "* && -n "$DOCKER_FAIL_EXEC" ]] && exit 1
 exit 0
 EOF
     cat >"$_TEST_DIR/bin/mycompose" <<'EOF'
@@ -226,6 +228,33 @@ testStartServicesNginxReloadFailureOnlyWarns() {
     rc=$?
     assertEquals 0 "$rc"
     assertContains "$out" "WARN"
+}
+
+testStartServicesTestsNginxConfigBeforeReload() {
+    start_services >/dev/null
+    assertEquals "docker exec nginx-proxy nginx -t" "$(tail -n 2 "$ORDER_LOG" | head -n 1)"
+    assertEquals "docker exec nginx-proxy nginx -s reload" "$(tail -n 1 "$ORDER_LOG")"
+}
+
+testStartServicesSkipsReloadWhenNginxNotRunning() {
+    export DOCKER_NGINX_DOWN=1
+    local out rc
+    out="$(start_services)"
+    rc=$?
+    assertEquals 0 "$rc"
+    assertFalse "bez działającego nginx-proxy brak exec" "grep -q ' exec ' '$ORDER_LOG'"
+    assertNotContains "bez ostrzeżenia o reloadzie" "$out" "WARN"
+}
+
+testStartServicesInvalidNginxConfigErrorsWithoutReload() {
+    export DOCKER_FAIL_NGINX_T=1
+    local out rc
+    out="$(start_services)"
+    rc=$?
+    assertEquals 0 "$rc"
+    assertContains "$out" "ERROR"
+    assertContains "$out" "bad directive"
+    assertFalse "błędny config = brak reloadu" "grep -q 'nginx -s reload' '$ORDER_LOG'"
 }
 
 # ---------------------------------------------------------------------------
