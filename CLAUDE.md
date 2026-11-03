@@ -433,6 +433,14 @@ do nowej nazwy; **do usunięcia w kolejnej wersji**. Nowy serwis z compose obsł
 musi być wyeksportowana razem z prywatnymi helperami `_services_*`/`_restart_service_running` — pilnuje tego
 `testBothNamesAreFunctionsAndExported`. Test: `test/unit/test_services_functions.sh`, `test/unit/test_restart_service.sh`.
 
+`prepare_cert` (`services/nginx/ssl/ssl_setup.sh`, krok `configure_services`) jest **idempotentny** (#199): gdy w
+`$NGINX_DATA/ssl` są `nginx.crt` i `nginx.key`, a cert jest ważny jeszcze `PREPARE_CERT_MIN_DAYS` dni (domyślnie 30,
+`openssl x509 -checkend`), nic nie generuje (`ssl.cert_up_to_date`) — wcześniej każde `start_services` podmieniało
+cert i klucz. Brak pary / wygasający cert → generowanie; `prepare_cert --force` lub `PREPARE_CERT_FORCE=1` zawsze
+regeneruje. Sprawdzenia idą przez `$SUDO` (klucz ma 600 root). Ścieżki są cytowane, `mkdir -p` katalogu `ssl` w
+samej funkcji. `update_sdkman_jdk_certs` dalej importuje aktualny cert (przy niezmienionym — no-op). Test:
+`test/unit/test_ssl_setup.sh` (atrapa `openssl`).
+
 ### Jenkins (lokalny serwer CI, `services/jenkins/`)
 
 Kontener `jenkins` w `services/docker/docker-compose.yaml`, dostępny przez nginx pod `/jenkins/` (vhost
