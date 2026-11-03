@@ -830,5 +830,46 @@ testJenkinsDataExportedByServicesMain() {
 }
 # --- /Jenkins (#182) ---
 
+# --- healthchecki nexus i pgadmin (#196) ---
+_service_block() { sed -n "/^  $1:/,/^  [a-z-]*:\$/p" "$_COMPOSE"; }
+
+testNexusHealthcheckUsesContextPathFromNexusProperties() {
+    local ctx
+    ctx="$(sed -n 's/^nexus-context-path=//p' "$PROJECT_ROOT/services/nexus/etc/nexus.properties")"
+    assertNotNull "nexus-context-path ustawiony" "$ctx"
+    assertContains "healthcheck musi iść pod prefiks z nexus.properties" \
+        "$(_service_block nexus)" "http://localhost:8081${ctx}/service/rest/v1/status"
+    assertNotContains "bez prefiksu daje 404" "$(_service_block nexus | grep 'test:')" "8081/service/rest"
+}
+
+testPgadminHealthcheckDoesNotUseMissingCurl() {
+    local test_line
+    test_line="$(_service_block pgadmin | grep 'test:')"
+    assertNotContains "obraz pgadmin4 nie ma curl" "$test_line" "curl"
+    assertNotContains "obraz pgadmin4 nie ma wget" "$test_line" "wget"
+    assertContains "$test_line" "python3"
+    assertContains "ping aplikacji (bez prefiksu nginx)" "$test_line" "http://localhost/misc/ping"
+}
+
+testPgadminHealthcheckFailsOnHttpErrors() {
+    # urlopen rzuca wyjątek przy 4xx/5xx, więc python3 kończy się kodem != 0 (jak curl -f)
+    command -v python3 >/dev/null || startSkipping
+    local srv_dir port pid
+    srv_dir="$(mktemp -d)"
+    port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+    mkdir -p "$srv_dir/misc" && echo pong >"$srv_dir/misc/ping"
+    (cd "$srv_dir" && python3 -m http.server "$port" --bind 127.0.0.1 >/dev/null 2>&1) &
+    pid=$!
+    sleep 1
+    python3 -c "import urllib.request as u; u.urlopen('http://127.0.0.1:$port/misc/ping')" 2>/dev/null
+    assertEquals "200 -> kod 0" 0 $?
+    python3 -c "import urllib.request as u; u.urlopen('http://127.0.0.1:$port/misc/nie-ma')" 2>/dev/null
+    assertNotEquals "404 -> kod != 0" 0 $?
+    kill "$pid" 2>/dev/null
+    wait "$pid" 2>/dev/null
+    rm -rf "$srv_dir"
+}
+# --- /healthchecki (#196) ---
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
