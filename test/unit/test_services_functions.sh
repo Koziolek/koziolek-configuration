@@ -16,6 +16,7 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/services/services_functions.sh"
 
+_REAL_CONFIGURATE_SERVICES="$(declare -f configurate_services)"
 _TEST_DIR=''
 _ORIG_PATH=''
 
@@ -29,7 +30,7 @@ setUp() {
 
     KEYTOOL_LOG="$_TEST_DIR/keytool.log"
     export KEYTOOL_LOG
-    unset KEYTOOL_FAIL_IMPORT
+    unset KEYTOOL_FAIL_IMPORT KEYTOOL_FAIL_ON
 
     mkdir -p "$_TEST_DIR/bin"
     cat >"$_TEST_DIR/bin/keytool" <<'EOF'
@@ -39,6 +40,7 @@ for a in "$@"; do
   [ "$a" = "-delete" ] && exit 1
 done
 [ -n "$KEYTOOL_FAIL_IMPORT" ] && exit 1
+[ -n "$KEYTOOL_FAIL_ON" ] && [[ "$*" == *"$KEYTOOL_FAIL_ON"* ]] && exit 1
 exit 0
 EOF
     chmod +x "$_TEST_DIR/bin/keytool"
@@ -112,12 +114,12 @@ testMissingCertFileFails() {
     assertContains "$out" "WARN"
 }
 
-testMissingSdkmanDirFails() {
+testMissingSdkmanDirIsOnlyAWarning() {
     _make_cert
     local out
     out="$(update_sdkman_jdk_certs)"
     local rc=$?
-    assertEquals 1 "$rc"
+    assertEquals 0 "$rc"
     assertContains "$out" "WARN"
 }
 
@@ -472,6 +474,107 @@ _nexus_sudo() {
     "$@"
 }
 # --- /configurate_* (#183) ---
+
+# --- propagacja błędów (#184) ---
+testImportFailureOnOneJdkReturnsErrorButContinues() {
+    _make_cert
+    _make_jdk jdk-a
+    _make_jdk jdk-b
+    export KEYTOOL_FAIL_ON="candidates/java/jdk-a/"
+    local out
+    out="$(update_sdkman_jdk_certs)"
+    assertEquals 1 $?
+    assertContains "$out" "ERROR"
+    assertContains "kolejny JDK nadal importowany" "$out" "jdk-b"
+}
+
+testImportFailureOnLastJdkAlsoReturnsError() {
+    _make_cert
+    _make_jdk jdk-a
+    _make_jdk jdk-b
+    export KEYTOOL_FAIL_ON="candidates/java/jdk-b/"
+    update_sdkman_jdk_certs >/dev/null
+    assertEquals 1 $?
+}
+
+testEmptyJdkDirGivesNoGlobWarning() {
+    _make_cert
+    mkdir -p "$SDKMAN_DIR/candidates/java"
+    local out
+    out="$(update_sdkman_jdk_certs)"
+    assertEquals 0 $?
+    assertNotContains "$out" "*"
+}
+
+testReadOnlyCacertsIsReportedWithReason() {
+    [ "$(id -u)" -eq 0 ] && startSkipping
+    _make_cert
+    _make_jdk jdk-a
+    chmod a-w "$SDKMAN_DIR/candidates/java/jdk-a/lib/security/cacerts"
+    local out
+    out="$(update_sdkman_jdk_certs)"
+    assertEquals 1 $?
+    assertContains "$out" "Brak prawa zapisu do cacerts"
+}
+
+# prawdziwy configurate_services (setUp podmienia go atrapą) z atrapami kroków
+_use_real_configurate_services() {
+    eval "$_REAL_CONFIGURATE_SERVICES"
+    source_if_exists() { :; }
+    STEPS_LOG="$_TEST_DIR/steps.log"
+    : >"$STEPS_LOG"
+    local s
+    for s in configurate_postgres configurate_nginx prepare_cert configurate_nexus \
+        prepare_key update_sdkman_jdk_certs configurate_sonar; do
+        eval "$s() { echo $s >>\"\$STEPS_LOG\"; return \"\${RC_$s:-0}\"; }"
+    done
+    unset RC_configurate_postgres RC_configurate_nginx RC_prepare_cert RC_configurate_nexus \
+        RC_prepare_key RC_update_sdkman_jdk_certs RC_configurate_sonar
+}
+
+testConfigurateServicesSucceedsWhenAllStepsSucceed() {
+    _use_real_configurate_services
+    configurate_services >/dev/null
+    assertEquals 0 $?
+    assertEquals 7 "$(wc -l <"$STEPS_LOG")"
+}
+
+testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
+    _use_real_configurate_services
+    local step
+    for step in configurate_postgres configurate_nginx prepare_cert configurate_nexus prepare_key configurate_sonar; do
+        _use_real_configurate_services
+        eval "RC_$step=1"
+        export "RC_$step"
+        local out
+        out="$(configurate_services)"
+        assertEquals "rc dla $step" 1 $?
+        assertContains "$out" "Krok konfiguracji nie powiódł się: $step"
+        assertEquals "pozostałe kroki lecą ($step)" 7 "$(wc -l <"$STEPS_LOG")"
+        unset "RC_$step"
+    done
+}
+
+testConfigurateServicesTreatsJdkCertsAsSoftStep() {
+    _use_real_configurate_services
+    export RC_update_sdkman_jdk_certs=1
+    local out
+    out="$(configurate_services)"
+    assertEquals 0 $?
+    assertContains "$out" "WARN"
+    unset RC_update_sdkman_jdk_certs
+}
+
+testStartServicesDoesNotRunComposeWhenRealConfigureFails() {
+    _use_real_configurate_services
+    export RC_configurate_nginx=1
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertEquals 1 $?
+    assertNotContains "$(cat "$ORDER_LOG")" "up -d"
+    unset RC_configurate_nginx
+}
+# --- /propagacja błędów (#184) ---
 
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"
