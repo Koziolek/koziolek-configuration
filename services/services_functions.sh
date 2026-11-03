@@ -158,22 +158,63 @@ function _services_container_running() {
     [ -n "$("${DOCKER_CLI:-docker}" ps -q --filter "name=^$1\$" --filter status=running 2>/dev/null)" ]
 }
 
+# sha256 z plików/stdin: sha256sum (Linux) albo shasum -a 256 (macOS) - wykrywane poleceniem, bez uname.
+function _services_sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$@"
+    else
+        shasum -a 256 "$@"
+    fi
+}
+
+# Deterministyczna suma kontrolna katalogu <dir> (ścieżki względne, posortowane w locale C, razem
+# z zawartością; pliki ukryte i ścieżki ze spacjami uwzględnione). Wypisuje sam skrót; brak katalogu
+# lub błąd = kod 1 i pusty wynik.
+function _services_dir_checksum() {
+    local dir="$1" f sums=''
+    [ -d "$dir" ] || return 1
+    while IFS= read -r -d '' f; do
+        sums+="$(cd "$dir" && _services_sha256 "$f")"$'\n' || return 1
+    done < <(cd "$dir" && find . -type f -print0 | LC_ALL=C sort -z)
+    printf '%s' "$sums" | _services_sha256 | cut -d' ' -f1
+}
+
 # nginx-proxy czyta conf.d z zamontowanego katalogu, więc zmiana configu nie odtwarza
 # kontenera - bez reloadu nowe vhosty nie zadziałają. Reload tylko, gdy kontener działa
-# (inaczej brak szumu w logu), i dopiero po `nginx -t`: błędny config = log_error z wyjściem
-# testu, bez reloadu (nginx i tak zostawiłby stary config, ale teraz widać powód).
+# (inaczej brak szumu w logu), gdy config się zmienił względem ostatniego udanego reloadu
+# (suma w $NGINX_DATA/.config.sha256; brak zapisu = pierwszy start = reload; NGINX_FORCE_RELOAD=1
+# wymusza) i dopiero po `nginx -t`: błędny config = log_error z wyjściem testu, bez reloadu.
+# Suma jest zapisywana dopiero po udanym `nginx -t` + reloadzie, więc porażka nie "zużywa" zmiany.
+# Nie da się policzyć sumy (brak katalogu) = reload bez zapisu (bezpieczniej niż pominięcie).
 function _services_reload_nginx() {
     if ! _services_container_running nginx-proxy; then
         log_debug services.nginx_reload_skipped
         return 0
+    fi
+    local state="$NGINX_DATA/.config.sha256" sum='' saved=''
+    sum="$(_services_dir_checksum "$NGINX_DATA/config")" || sum=''
+    if [ -n "$sum" ] && [ "${NGINX_FORCE_RELOAD:-0}" != 1 ]; then
+        saved="$(cat "$state" 2>/dev/null)" || saved=''
+        if [ "$sum" = "$saved" ]; then
+            log_debug services.nginx_reload_unchanged
+            return 0
+        fi
     fi
     local test_out
     if ! test_out="$("${DOCKER_CLI:-docker}" exec nginx-proxy nginx -t 2>&1)"; then
         log_error services.nginx_config_invalid "$test_out"
         return 0
     fi
-    "${DOCKER_CLI:-docker}" exec nginx-proxy nginx -s reload >/dev/null 2>&1 ||
+    if ! "${DOCKER_CLI:-docker}" exec nginx-proxy nginx -s reload >/dev/null 2>&1; then
         log_warn services.nginx_reload_failed
+        return 0
+    fi
+    if [ -n "$sum" ]; then
+        make_me_sudo
+        printf '%s\n' "$sum" | $SUDO tee "$state" >/dev/null || log_warn services.nginx_checksum_save_failed "$state"
+        unmake_me_sudo
+    fi
+    return 0
 }
 
 # Konfiguruje serwisy, a potem startuje kontenery. `up -d` odtwarza tylko serwisy
@@ -342,6 +383,8 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f _services_copy_dir
     export -f _services_container_running
     export -f _services_reload_nginx
+    export -f _services_sha256
+    export -f _services_dir_checksum
     export -f _restart_service_running
     export -f configure_services
     export -f configure_nginx

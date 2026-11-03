@@ -4,6 +4,7 @@
 
 # --- MSG_DEBUG ---
 MSG_DEBUG[services.nginx_reload_skipped]="Skipping nginx-proxy reload: container is not running"
+MSG_DEBUG[services.nginx_reload_unchanged]="Skipping nginx-proxy reload: configuration unchanged since the last reload"
 
 # --- MSG_INFO ---
 MSG_INFO[cron.already_exists]="Entry already exists: %s"
@@ -193,6 +194,7 @@ MSG_WARN[certs.no_cacerts]="No cacerts in %s, skipping"
 MSG_WARN[services.optional_step_failed]="Optional step failed, continuing: %s"
 MSG_WARN[services.deprecated_name]="Function %s is deprecated and will be removed - use %s"
 MSG_WARN[services.nginx_reload_failed]="Failed to reload nginx-proxy - check the configuration: docker exec nginx-proxy nginx -t"
+MSG_WARN[services.nginx_checksum_save_failed]="Failed to save the nginx config checksum (%s) - the next start will reload nginx-proxy again"
 MSG_WARN[services.restart_not_running]="Service %s was not running - starting it (no stop needed)"
 MSG_WARN[services.invalid_wait_retries]="Invalid RESTART_SERVICE_WAIT_RETRIES (%s) - using %s"
 MSG_WARN[services.invalid_wait_interval]="Invalid RESTART_SERVICE_WAIT_INTERVAL (%s) - using %s"
