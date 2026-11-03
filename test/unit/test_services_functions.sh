@@ -576,5 +576,46 @@ testStartServicesDoesNotRunComposeWhenRealConfigureFails() {
 }
 # --- /propagacja błędów (#184) ---
 
+# --- jedna sesja sudo na configurate_services (#185) ---
+# Prawdziwe make/unmake_me_sudo (setUp podmienia je atrapami) + atrapa `sudo` liczącą `-K`.
+_use_real_sudo_session() {
+    # shellcheck source=/dev/null
+    . "$PROJECT_ROOT/bash/functions.d/020_function_process.sh"
+    unset _SUDO_DEPTH
+    SUDO_LOG="$_TEST_DIR/sudo.log"
+    : >"$SUDO_LOG"
+    printf '#!/usr/bin/env bash\necho "sudo $*" >> "%s"\n' "$SUDO_LOG" >"$_TEST_DIR/bin/sudo"
+    chmod +x "$_TEST_DIR/bin/sudo"
+    _use_real_configurate_services
+    # każdy krok sam otwiera i zamyka sesję sudo, jak prawdziwe configurate_*
+    local s
+    for s in configurate_postgres configurate_nginx prepare_cert configurate_nexus \
+        prepare_key configurate_sonar; do
+        eval "$s() { make_me_sudo; echo $s >>\"\$STEPS_LOG\"; local r=\"\${RC_$s:-0}\"; unmake_me_sudo; return \"\$r\"; }"
+    done
+}
+
+testConfigurateServicesRevokesSudoOnce() {
+    [ "$(id -u)" -eq 0 ] && startSkipping
+    _use_real_sudo_session
+    configurate_services >/dev/null
+    assertEquals 0 $?
+    assertEquals 1 "$(grep -c -- 'sudo -K' "$SUDO_LOG")"
+    assertNull "SUDO nie wycieka" "${SUDO:-}"
+}
+
+testConfigurateServicesRevokesSudoOnceEvenWhenStepFails() {
+    [ "$(id -u)" -eq 0 ] && startSkipping
+    _use_real_sudo_session
+    export RC_configurate_nginx=1
+    configurate_services >/dev/null
+    assertEquals 1 $?
+    assertEquals 1 "$(grep -c -- 'sudo -K' "$SUDO_LOG")"
+    assertNull "SUDO nie wycieka" "${SUDO:-}"
+    assertNull "RESET_SUDO nie wycieka" "${RESET_SUDO:-}"
+    unset RC_configurate_nginx
+}
+# --- /jedna sesja sudo (#185) ---
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

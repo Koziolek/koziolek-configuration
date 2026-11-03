@@ -109,6 +109,9 @@ function update_sdkman_jdk_certs() {
 # jest krokiem miękkim - jego porażka to ostrzeżenie, bez wpływu na kod wyjścia.
 function configurate_services() {
     local rc=0 step
+    # jedna sesja sudo na cały przebieg (make/unmake w krokach są zagnieżdżone, więc sudo -K
+    # leci raz, na końcu); jeden punkt wyjścia, żeby sesja zawsze się zamknęła
+    make_me_sudo
     source_if_exists ssl_setup "$SERVICES_CONFIGURATION_DIR/nginx/ssl/"
     source_if_exists key_setup "$SERVICES_CONFIGURATION_DIR/nexus/"
     for step in configurate_postgres configurate_nginx prepare_cert configurate_nexus prepare_key; do
@@ -122,6 +125,7 @@ function configurate_services() {
         log_error services.configure_step_failed configurate_sonar
         rc=1
     }
+    unmake_me_sudo
     return "$rc"
 }
 

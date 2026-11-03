@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
 ##
-# Sets up environment variables to use sudo if not already root
+# Sets up environment variables to use sudo if not already root.
+# Zagnieżdżalne: każde wywołanie zwiększa licznik _SUDO_DEPTH, a unmake_me_sudo wygasza sesję
+# (sudo -K) dopiero przy zamknięciu najbardziej zewnętrznej pary. Dzięki temu funkcja może
+# otworzyć jedną sesję dla wielu funkcji, które same wołają make_me_sudo/unmake_me_sudo.
 ##
 function make_me_sudo() {
+    _SUDO_DEPTH=$((${_SUDO_DEPTH:-0} + 1))
     export SUDO=''
     export RESET_SUDO=0
     if ((EUID != 0)); then
@@ -14,9 +18,14 @@ function make_me_sudo() {
 }
 
 ##
-# Revokes sudo privileges set by make_me_sudo
+# Revokes sudo privileges set by make_me_sudo (przy zagnieżdżeniu tylko zmniejsza licznik)
 ##
 function unmake_me_sudo() {
+    if ((${_SUDO_DEPTH:-0} > 1)); then
+        _SUDO_DEPTH=$((_SUDO_DEPTH - 1))
+        return 0
+    fi
+    _SUDO_DEPTH=0
     if ((RESET_SUDO != 0)); then
         $SUDO -K
     fi
