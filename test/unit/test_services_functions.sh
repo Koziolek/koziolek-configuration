@@ -286,5 +286,70 @@ testComposeIsValidYaml() {
     assertTrue "python3 -c \"import yaml; yaml.safe_load(open('$_COMPOSE'))\""
 }
 
+# --- list_services (#180) ---
+_setup_compose_mock() {
+    # $1 = serwisy z compose (spacje), $2 = działające (spacje)
+    export MOCK_ALL="$1" MOCK_RUNNING="$2"
+    cat >"$_TEST_DIR/bin/mycompose" <<'EOF2'
+#!/usr/bin/env bash
+if [[ " $* " == *" config "* ]]; then
+    [ -n "$MOCK_CONFIG_FAIL" ] && exit 1
+    for s in $MOCK_ALL; do echo "$s"; done
+elif [[ " $* " == *" ps "* ]]; then
+    for s in $MOCK_RUNNING; do echo "$s"; done
+fi
+exit 0
+EOF2
+    chmod +x "$_TEST_DIR/bin/mycompose"
+    export DOCKER_COMPOSE=mycompose
+}
+
+testListServicesRunning() {
+    _setup_compose_mock "nginx postgres" "nginx postgres"
+    assertEquals "$(printf 'nginx running\npostgres running')" "$(list_services)"
+}
+
+testListServicesStopped() {
+    _setup_compose_mock "nginx postgres" "nginx"
+    assertEquals "$(printf 'nginx running\npostgres stopped')" "$(list_services)"
+}
+
+testListServicesNoContainerIsStopped() {
+    _setup_compose_mock "nginx" ""
+    assertEquals "nginx stopped" "$(list_services)"
+}
+
+testListServicesPicksUpNewService() {
+    _setup_compose_mock "nginx brandnew" "brandnew"
+    assertContains "$(list_services)" "brandnew running"
+    assertContains "$(list_services)" "nginx stopped"
+}
+
+testListServicesDoesNotMatchPrefix() {
+    _setup_compose_mock "nginx nginx-proxy" "nginx-proxy"
+    assertEquals "$(printf 'nginx stopped\nnginx-proxy running')" "$(list_services)"
+}
+
+testListServicesMissingComposeFile() {
+    rm -f "$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
+    local out rc
+    out="$(list_services)"
+    rc=$?
+    assertEquals 1 "$rc"
+    assertContains "$out" "Brak pliku docker-compose"
+}
+
+testListServicesConfigFailure() {
+    _setup_compose_mock "nginx" "nginx"
+    export MOCK_CONFIG_FAIL=1
+    local out rc
+    out="$(list_services)"
+    rc=$?
+    unset MOCK_CONFIG_FAIL
+    assertEquals 1 "$rc"
+    assertContains "$out" "ERROR"
+}
+# --- /list_services ---
+
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

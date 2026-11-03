@@ -186,11 +186,45 @@ function restart_service() {
     return $rc
 }
 
+# --- list_services (#180) ---
+# Wypisuje linie "nazwa status" (running|stopped) dla serwisów z docker-compose.yaml.
+# Lista pochodzi z `compose config --services` (nowe serwisy pojawiają się same);
+# serwis bez kontenera ma status stopped.
+function list_services() {
+    local compose_file="$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
+
+    if [ ! -f "$compose_file" ]; then
+        log_error services.compose_missing "$compose_file"
+        return 1
+    fi
+
+    local all running
+    # shellcheck disable=SC2086
+    all="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services)" || {
+        log_error services.list_failed
+        return 1
+    }
+    # shellcheck disable=SC2086
+    running="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" ps --status running --services 2>/dev/null)"
+
+    local name
+    while IFS= read -r name; do
+        [ -z "$name" ] && continue
+        if grep -qxF -- "$name" <<<"$running"; then
+            echo "$name running"
+        else
+            echo "$name stopped"
+        fi
+    done <<<"$all"
+}
+# --- /list_services ---
+
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configurate_services
     export -f start_services
     export -f restart_service
     export -f _restart_service_running
+    export -f list_services
     export -f configurate_nginx
     export -f configurate_postgres
     export -f configurate_nexus
