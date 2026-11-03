@@ -12,6 +12,10 @@ SELECT 'CREATE DATABASE home'
 SELECT 'CREATE DATABASE sonar'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sonar')\gexec
 
+-- Tworzenie bazy danych 'jenkins' (Jenkins)
+SELECT 'CREATE DATABASE jenkins'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'jenkins')\gexec
+
 -- Informacje o utworzonych bazach
     \echo 'Inicjalizacja baz danych zakończona.'
     \echo 'Dostępne bazy danych:'

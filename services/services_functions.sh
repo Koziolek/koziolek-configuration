@@ -239,16 +239,14 @@ function list_services() {
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configurate_services
-    export -f start_services
-    export -f restart_service
-    export -f _restart_service_running
-    export -f list_services
-    export -f _services_copy_dir
     export -f configurate_nginx
     export -f configurate_postgres
     export -f configurate_nexus
     export -f configurate_sonar
     export -f update_sdkman_jdk_certs
+    export -f list_services
+    export -f start_services
+    export -f restart_service
 else
     configurate_services "$@"
 fi
