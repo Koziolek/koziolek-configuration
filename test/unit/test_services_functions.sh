@@ -10,6 +10,8 @@ export C_RED='' C_GREEN='' C_ORANGE='' C_BLUE='' C_LBLUE=''
 export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 
 # shellcheck source=/dev/null
+. "$PROJECT_ROOT/bash/functions.d/005_function_messages.sh"
+# shellcheck source=/dev/null
 . "$PROJECT_ROOT/bash/functions.d/010_function_log.sh"
 # shellcheck source=/dev/null
 . "$PROJECT_ROOT/services/services_functions.sh"
@@ -350,6 +352,126 @@ testListServicesConfigFailure() {
     assertContains "$out" "ERROR"
 }
 # --- /list_services ---
+
+# --- configurate_nginx / configurate_postgres / configurate_nexus (#183) ---
+# SUDO wykonuje polecenia naprawdę (bez sudo); ścieżki celowo ze spacjami.
+_real_sudo() { "$@"; }
+_failing_cp_sudo() {
+    [ "$1" = cp ] && return 1
+    "$@"
+}
+
+_setup_copy_dirs() {
+    export SERVICES_CONFIGURATION_DIR="$_TEST_DIR/my services"
+    export NGINX_DATA="$_TEST_DIR/data dir/nginx"
+    export POSTGRES_DATA="$_TEST_DIR/data dir/postgres"
+    export NEXUS_DATA="$_TEST_DIR/data dir/nexus"
+    mkdir -p "$SERVICES_CONFIGURATION_DIR"/{nginx/config,nginx/www,postgres,nexus/etc}
+    echo main >"$SERVICES_CONFIGURATION_DIR/nginx/config/main.conf"
+    echo html >"$SERVICES_CONFIGURATION_DIR/nginx/www/index.html"
+    echo sql >"$SERVICES_CONFIGURATION_DIR/postgres/init.sql"
+    echo hidden >"$SERVICES_CONFIGURATION_DIR/postgres/.hidden"
+    echo nexus >"$SERVICES_CONFIGURATION_DIR/nexus/etc/nexus.properties"
+    SUDO=_real_sudo
+}
+
+testConfigurateNginxCopiesWithSpacesAndCreatesMissingDirs() {
+    _setup_copy_dirs
+    rm -rf "$NGINX_DATA" # czysta maszyna: brak $NGINX_DATA i ssl/
+    configurate_nginx >/dev/null
+    assertEquals 0 $?
+    assertTrue "config" "[ -f '$NGINX_DATA/config/main.conf' ]"
+    assertTrue "www" "[ -f '$NGINX_DATA/www/index.html' ]"
+    assertTrue "ssl dir (potrzebny prepare_cert)" "[ -d '$NGINX_DATA/ssl' ]"
+}
+
+testConfigurateNginxNoCertsDirIsNotAnError() {
+    _setup_copy_dirs
+    local out
+    out="$(configurate_nginx)"
+    assertEquals 0 $?
+    assertNotContains "$out" "ERROR"
+}
+
+testConfigurateNginxCopiesCertsWhenPresent() {
+    _setup_copy_dirs
+    mkdir -p "$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs"
+    echo ca >"$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs/ca.crt"
+    configurate_nginx >/dev/null
+    assertEquals 0 $?
+    assertTrue "certs" "[ -f '$NGINX_DATA/ssl/certs/ca.crt' ]"
+}
+
+testConfigurateNginxCertCopyFailureIsReported() {
+    _setup_copy_dirs
+    mkdir -p "$SERVICES_CONFIGURATION_DIR/nginx/ssl/certs"
+    SUDO=_failing_cp_sudo
+    local out
+    out="$(configurate_nginx)"
+    assertEquals 1 $?
+    assertContains "$out" "ERROR"
+    assertContains "$out" "Nie udało się skopiować"
+}
+
+testConfigurateNginxFailsWhenSourceMissing() {
+    _setup_copy_dirs
+    rm -rf "$SERVICES_CONFIGURATION_DIR/nginx/www"
+    local out
+    out="$(configurate_nginx)"
+    assertEquals 1 $?
+    assertContains "$out" "ERROR"
+}
+
+testConfigurateNginxCreatesDirsAndStillRunsPrepareCertTarget() {
+    _setup_copy_dirs
+    rm -rf "$NGINX_DATA"
+    configurate_nginx >/dev/null
+    # prepare_cert zapisuje tutaj - katalog musi istnieć
+    assertTrue "zapis do ssl" "echo x > '$NGINX_DATA/ssl/nginx.crt'"
+}
+
+testConfiguratePostgresCopiesHiddenFilesAndCreatesDir() {
+    _setup_copy_dirs
+    configurate_postgres >/dev/null
+    assertEquals 0 $?
+    assertTrue "init.sql" "[ -f '$POSTGRES_DATA/init.sql' ]"
+    assertTrue "plik ukryty" "[ -f '$POSTGRES_DATA/.hidden' ]"
+}
+
+testConfiguratePostgresEmptySourceDoesNotCopyLiteralGlob() {
+    _setup_copy_dirs
+    rm -rf "$SERVICES_CONFIGURATION_DIR/postgres"/* "$SERVICES_CONFIGURATION_DIR/postgres"/.hidden
+    configurate_postgres >/dev/null
+    assertEquals 0 $?
+    assertFalse "literalna gwiazdka" "[ -e '$POSTGRES_DATA/*' ]"
+}
+
+testConfiguratePostgresCopyFailureReturnsError() {
+    _setup_copy_dirs
+    SUDO=_failing_cp_sudo
+    local out
+    out="$(configurate_postgres)"
+    assertEquals 1 $?
+    assertContains "$out" "ERROR"
+}
+
+testConfigurateNexusCopiesWithSpacesAndChowns() {
+    _setup_copy_dirs
+    SUDO=_nexus_sudo
+    configurate_nexus >/dev/null
+    assertEquals 0 $?
+    assertTrue "etc" "[ -f '$NEXUS_DATA/etc/nexus.properties' ]"
+    assertContains "$(cat "$ORDER_LOG")" "chown -R 200:200 $NEXUS_DATA/etc/"
+}
+_nexus_sudo() {
+    # chown tylko logowany (bez roota), reszta naprawdę
+    if [ "$1" = chown ]; then
+        echo "chown $*" >>"$ORDER_LOG"
+        return 0
+    fi
+    "$@"
+}
+# --- /configurate_* (#183) ---
 
 # shellcheck source=/dev/null
 . "${SHUNIT2:-/opt/shunit2/shunit2}"

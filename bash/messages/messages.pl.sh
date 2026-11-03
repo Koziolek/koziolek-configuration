@@ -269,6 +269,7 @@ MSG_ERROR[diagnostic.run_missing_script]="run_diagnostic: brak %s (fix-comp nies
 MSG_ERROR[certs.import_failed]="Nie udało się zaimportować certyfikatu do %s"
 MSG_ERROR[services.compose_missing]="Brak pliku docker-compose: %s"
 MSG_ERROR[services.compose_failed]="docker compose zakończył się błędem"
+MSG_ERROR[services.copy_failed]="Nie udało się skopiować %s do %s"
 MSG_ERROR[services.restart_usage]="Użycie: restart_service <serwis>..."
 MSG_ERROR[services.unknown_service]="Nieznany serwis: %s"
 MSG_ERROR[services.stop_failed]="Nie udało się zatrzymać serwisu %s"
