@@ -34,7 +34,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8081/service/rest/v1/status || exit 1"]
+      # prefiks /nexus pochodzi z nexus-context-path w nexus/etc/nexus.properties - zmieniając jedno, zmień drugie
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/nexus/service/rest/v1/status || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -119,7 +120,9 @@ services:
         condition: service_healthy
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost/ || exit 1"]
+      # w obrazie dpage/pgadmin4 nie ma curl ani wget; python3 jest. urlopen rzuca wyjątek przy 4xx/5xx
+      # (jak curl -f). Prefiks /pgadmin dokłada dopiero nginx-proxy, aplikacja odpowiada na /misc/ping
+      test: ["CMD", "python3", "-c", "import urllib.request as u; u.urlopen('http://localhost/misc/ping')"]
       interval: 15s
       timeout: 5s
       retries: 3
