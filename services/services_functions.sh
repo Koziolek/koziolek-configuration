@@ -67,17 +67,25 @@ function update_sdkman_jdk_certs() {
         return 1
     fi
 
+    # sdkman jest opcjonalny - jego brak to nie awaria
     if [ ! -d "$sdkman_java_dir" ]; then
         log_warn certs.no_sdkman_jdks "$sdkman_java_dir"
-        return 1
+        return 0
     fi
 
-    local jdk_dir cacerts
+    local jdk_dir cacerts failed=0
     for jdk_dir in "$sdkman_java_dir"/*/; do
+        # niedopasowany glob (pusty katalog) zostaje dosłownym łańcuchem z gwiazdką
+        [ -d "$jdk_dir" ] || continue
         [ -L "${jdk_dir%/}" ] && continue
         cacerts="${jdk_dir}lib/security/cacerts"
         if [ ! -f "$cacerts" ]; then
             log_warn certs.no_cacerts "$jdk_dir"
+            continue
+        fi
+        if [ ! -w "$cacerts" ]; then
+            log_error certs.not_writable "$cacerts"
+            failed=$((failed + 1))
             continue
         fi
 
@@ -90,20 +98,31 @@ function update_sdkman_jdk_certs() {
             log_info certs.imported "$(basename "${jdk_dir%/}")"
         else
             log_error certs.import_failed "$jdk_dir"
+            failed=$((failed + 1))
         fi
     done
+    [ "$failed" -eq 0 ]
 }
 
+# Konfiguruje wszystkie serwisy. Każdy krok krytyczny, który się nie powiedzie, loguje błąd
+# i podnosi kod wyjścia, ale pozostałe kroki nadal lecą. Import certyfikatu do JDK z sdkman
+# jest krokiem miękkim - jego porażka to ostrzeżenie, bez wpływu na kod wyjścia.
 function configurate_services() {
-    source_if_exists ssl_setup $SERVICES_CONFIGURATION_DIR/nginx/ssl/
-    source_if_exists key_setup $SERVICES_CONFIGURATION_DIR/nexus/
-    configurate_postgres
-    configurate_nginx
-    prepare_cert
-    configurate_nexus
-    prepare_key
-    update_sdkman_jdk_certs
-    configurate_sonar
+    local rc=0 step
+    source_if_exists ssl_setup "$SERVICES_CONFIGURATION_DIR/nginx/ssl/"
+    source_if_exists key_setup "$SERVICES_CONFIGURATION_DIR/nexus/"
+    for step in configurate_postgres configurate_nginx prepare_cert configurate_nexus prepare_key; do
+        "$step" || {
+            log_error services.configure_step_failed "$step"
+            rc=1
+        }
+    done
+    update_sdkman_jdk_certs || log_warn services.optional_step_failed update_sdkman_jdk_certs
+    configurate_sonar || {
+        log_error services.configure_step_failed configurate_sonar
+        rc=1
+    }
+    return "$rc"
 }
 
 # Konfiguruje serwisy, a potem startuje kontenery. `up -d` odtwarza tylko serwisy
