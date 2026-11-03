@@ -10,7 +10,7 @@ function _services_copy_dir() {
     fi
 }
 
-function configurate_nginx() {
+function configure_nginx() {
     make_me_sudo
     local src="$SERVICES_CONFIGURATION_DIR/nginx" rc=0
     _services_copy_dir "$src/config" "$NGINX_DATA/config" || rc=1
@@ -24,14 +24,14 @@ function configurate_nginx() {
     unmake_me_sudo
     return "$rc"
 }
-function configurate_postgres() {
+function configure_postgres() {
     make_me_sudo
     local rc=0
     _services_copy_dir "$SERVICES_CONFIGURATION_DIR/postgres" "$POSTGRES_DATA" || rc=1
     unmake_me_sudo
     return "$rc"
 }
-function configurate_nexus() {
+function configure_nexus() {
     make_me_sudo
     local rc=0
     _services_copy_dir "$SERVICES_CONFIGURATION_DIR/nexus/etc" "$NEXUS_DATA/etc" || rc=1
@@ -39,7 +39,7 @@ function configurate_nexus() {
     unmake_me_sudo
     return "$rc"
 }
-function configurate_sonar() {
+function configure_sonar() {
     make_me_sudo
     $SUDO mkdir -p "$SONAR_DATA"/{data,extensions,logs}
     # obraz sonarqube działa jako uid 1000
@@ -107,22 +107,22 @@ function update_sdkman_jdk_certs() {
 # Konfiguruje wszystkie serwisy. Każdy krok krytyczny, który się nie powiedzie, loguje błąd
 # i podnosi kod wyjścia, ale pozostałe kroki nadal lecą. Import certyfikatu do JDK z sdkman
 # jest krokiem miękkim - jego porażka to ostrzeżenie, bez wpływu na kod wyjścia.
-function configurate_services() {
+function configure_services() {
     local rc=0 step
     # jedna sesja sudo na cały przebieg (make/unmake w krokach są zagnieżdżone, więc sudo -K
     # leci raz, na końcu); jeden punkt wyjścia, żeby sesja zawsze się zamknęła
     make_me_sudo
     source_if_exists ssl_setup "$SERVICES_CONFIGURATION_DIR/nginx/ssl/"
     source_if_exists key_setup "$SERVICES_CONFIGURATION_DIR/nexus/"
-    for step in configurate_postgres configurate_nginx prepare_cert configurate_nexus prepare_key; do
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key; do
         "$step" || {
             log_error services.configure_step_failed "$step"
             rc=1
         }
     done
     update_sdkman_jdk_certs || log_warn services.optional_step_failed update_sdkman_jdk_certs
-    configurate_sonar || {
-        log_error services.configure_step_failed configurate_sonar
+    configure_sonar || {
+        log_error services.configure_step_failed configure_sonar
         rc=1
     }
     unmake_me_sudo
@@ -173,7 +173,7 @@ function start_services() {
         return 1
     fi
 
-    configurate_services || return $?
+    configure_services || return $?
 
     _services_compose -f "$compose_file" up -d "$@" || {
         log_error services.compose_failed
@@ -296,8 +296,44 @@ function list_services() {
 }
 # --- /list_services ---
 
+# Stare nazwy (kalka "configurate") - cienkie wrappery dla nawyków i skryptów spoza repo.
+# To funkcje, nie aliasy: aliasy nie przechodzą przez `export -f`. DO USUNIĘCIA w kolejnej wersji.
+function _services_deprecated_name() {
+    log_warn services.deprecated_name "$1" "$2"
+}
+function configurate_services() {
+    _services_deprecated_name configurate_services configure_services
+    configure_services "$@"
+}
+function configurate_nginx() {
+    _services_deprecated_name configurate_nginx configure_nginx
+    configure_nginx "$@"
+}
+function configurate_postgres() {
+    _services_deprecated_name configurate_postgres configure_postgres
+    configure_postgres "$@"
+}
+function configurate_nexus() {
+    _services_deprecated_name configurate_nexus configure_nexus
+    configure_nexus "$@"
+}
+function configurate_sonar() {
+    _services_deprecated_name configurate_sonar configure_sonar
+    configure_sonar "$@"
+}
+
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f _services_compose
+    export -f _services_copy_dir
+    export -f _services_container_running
+    export -f _services_reload_nginx
+    export -f _restart_service_running
+    export -f configure_services
+    export -f configure_nginx
+    export -f configure_postgres
+    export -f configure_nexus
+    export -f configure_sonar
+    export -f _services_deprecated_name
     export -f configurate_services
     export -f configurate_nginx
     export -f configurate_postgres
@@ -308,5 +344,5 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f start_services
     export -f restart_service
 else
-    configurate_services "$@"
+    configure_services "$@"
 fi
