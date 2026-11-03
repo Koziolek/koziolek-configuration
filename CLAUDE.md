@@ -396,6 +396,14 @@ Test: `test/unit/test_git_exterminatus_worktree.sh` (prawdziwy git na bare origi
 Interaktywne narzędzie do przełączania `user.name`/`user.email` git per-repozytorium, sterowane plikiem
 `~/.config/git-context` (format INI z sekcjami `[nazwa_kontekstu]`, kluczami `name =`, `email =`).
 
+### Funkcja `restart_service`
+
+`restart_service <serwis>...` (`services/services_functions.sh`) restartuje serwisy z `docker-compose.yaml` przez restart
+kontenera (`${DOCKER_COMPOSE:-docker compose}`, bez twardej listy — nazwy walidowane przez `config --services`). Nie działa →
+`up -d` + `log_warn services.restart_not_running`; działa → `stop`, czekanie aż stanie (`RESTART_SERVICE_WAIT_INTERVAL`=1 s,
+`RESTART_SERVICE_WAIT_RETRIES`=60), `up -d`. Timeout/nieznany serwis = błąd i kod 1, pozostałe serwisy lecą dalej. Test:
+`test/unit/test_restart_service.sh` (mock `docker`, interwał 0).
+
 ### Sekrety
 
 Wrażliwe zmienne środowiskowe trafiają do `~/.senv` (tworzony automatycznie przy pierwszym załadowaniu, tryb 400). Nigdy

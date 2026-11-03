@@ -115,10 +115,82 @@ function start_services() {
         log_warn services.nginx_reload_failed
 }
 
+# Restartuje serwisy z docker-compose przez restart kontenera. Bez twardej listy - nazwy
+# sprawdzane względem `compose config --services`.
+# Serwis nie działa -> tylko start (+ ostrzeżenie). Działa -> stop, czekanie aż stanie
+# (co RESTART_SERVICE_WAIT_INTERVAL s, maks. RESTART_SERVICE_WAIT_RETRIES prób), potem start.
+# Zwraca 1, jeśli któryś serwis się nie powiódł (pozostałe są i tak przetwarzane).
+RESTART_SERVICE_WAIT_INTERVAL="${RESTART_SERVICE_WAIT_INTERVAL:-1}"
+RESTART_SERVICE_WAIT_RETRIES="${RESTART_SERVICE_WAIT_RETRIES:-60}"
+
+function _restart_service_running() {
+    # shellcheck disable=SC2086
+    [ -n "$(${DOCKER_COMPOSE:-docker compose} -f "$1" ps -q --status running "$2" 2>/dev/null)" ]
+}
+
+function restart_service() {
+    local compose_file="$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
+
+    if [ $# -eq 0 ]; then
+        log_error services.restart_usage
+        return 1
+    fi
+    if [ ! -f "$compose_file" ]; then
+        log_error services.compose_missing "$compose_file"
+        return 1
+    fi
+
+    local known svc attempt rc=0
+    # shellcheck disable=SC2086
+    known="$(${DOCKER_COMPOSE:-docker compose} -f "$compose_file" config --services 2>/dev/null)"
+
+    for svc in "$@"; do
+        if ! printf '%s\n' "$known" | grep -qx -- "$svc"; then
+            log_error services.unknown_service "$svc"
+            rc=1
+            continue
+        fi
+
+        if ! _restart_service_running "$compose_file" "$svc"; then
+            log_warn services.restart_not_running "$svc"
+        else
+            log_info services.stopping "$svc"
+            # shellcheck disable=SC2086
+            if ! ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" stop "$svc" >/dev/null; then
+                log_error services.stop_failed "$svc"
+                rc=1
+                continue
+            fi
+            attempt=1
+            while _restart_service_running "$compose_file" "$svc" &&
+                [ "$attempt" -lt "$RESTART_SERVICE_WAIT_RETRIES" ]; do
+                attempt=$((attempt + 1))
+                sleep "$RESTART_SERVICE_WAIT_INTERVAL"
+            done
+            if _restart_service_running "$compose_file" "$svc"; then
+                log_error services.stop_timeout "$svc" "$RESTART_SERVICE_WAIT_RETRIES"
+                rc=1
+                continue
+            fi
+            log_info services.stopped "$svc"
+        fi
+
+        # shellcheck disable=SC2086
+        if ${DOCKER_COMPOSE:-docker compose} -f "$compose_file" up -d "$svc" >/dev/null; then
+            log_info services.started "$svc"
+        else
+            log_error services.start_failed "$svc"
+            rc=1
+        fi
+    done
+    return $rc
+}
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configurate_services
     export -f start_services
+    export -f restart_service
+    export -f _restart_service_running
     export -f configurate_nginx
     export -f configurate_postgres
     export -f configurate_nexus
