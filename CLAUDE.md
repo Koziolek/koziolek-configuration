@@ -381,6 +381,12 @@ zwykły `git push -u origin <gałąź>` (także w `git bleeh` — bez `--force-w
 przepisywano), nie ma → koniec z kodem 0. Są zmiany → działanie jak dotąd. Helpery:
 `__git_has_changes_or_push`, `__git_has_unpushed` (niewyeksportowane).
 
+### Funkcja `list_services`
+
+`list_services` (`services/services_functions.sh`) wypisuje na stdout linie `nazwa status` (`running`/`stopped`, brak kontenera = `stopped`)
+dla serwisów z `services/docker/docker-compose.yaml`. Lista z `${DOCKER_COMPOSE:-docker compose} config --services` (bez twardej listy),
+działające z `ps --status running --services`. Test: `test/unit/test_services_functions.sh` (mock compose).
+
 ### Funkcja `git_exterminatus_worktree`
 
 `git exterminatus-worktree [-n|--dry-run]` (`git/git_functions.sh`) usuwa worktree, których gałąź jest już zmergowana do
@@ -395,6 +401,14 @@ Test: `test/unit/test_git_exterminatus_worktree.sh` (prawdziwy git na bare origi
 
 Interaktywne narzędzie do przełączania `user.name`/`user.email` git per-repozytorium, sterowane plikiem
 `~/.config/git-context` (format INI z sekcjami `[nazwa_kontekstu]`, kluczami `name =`, `email =`).
+
+### Funkcja `restart_service`
+
+`restart_service <serwis>...` (`services/services_functions.sh`) restartuje serwisy z `docker-compose.yaml` przez restart
+kontenera (`${DOCKER_COMPOSE:-docker compose}`, bez twardej listy — nazwy walidowane przez `config --services`). Nie działa →
+`up -d` + `log_warn services.restart_not_running`; działa → `stop`, czekanie aż stanie (`RESTART_SERVICE_WAIT_INTERVAL`=1 s,
+`RESTART_SERVICE_WAIT_RETRIES`=60), `up -d`. Timeout/nieznany serwis = błąd i kod 1, pozostałe serwisy lecą dalej. Test:
+`test/unit/test_restart_service.sh` (mock `docker`, interwał 0).
 
 ### Sekrety
 
