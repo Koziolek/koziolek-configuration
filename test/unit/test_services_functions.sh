@@ -89,7 +89,12 @@ EOF
 _fake_sudo() {
     case "$1" in
     mkdir) "$@" ;;
-    tee) echo "tee $2: $(cat)" >>"$ORDER_LOG" ;;
+    tee)
+        local _c
+        _c="$(cat)"
+        echo "tee $2: $_c" >>"$ORDER_LOG"
+        printf '%s\n' "$_c" >"$2"
+        ;;
     *) echo "sudo $*" >>"$ORDER_LOG" ;;
     esac
 }
@@ -261,6 +266,111 @@ testStartServicesInvalidNginxConfigErrorsWithoutReload() {
     assertContains "$out" "bad directive"
     assertFalse "błędny config = brak reloadu" "grep -q 'nginx -s reload' '$ORDER_LOG'"
 }
+
+# --- reload tylko po zmianie configu (#200) ---
+_nginx_config_setup() {
+    mkdir -p "$NGINX_DATA/config/conf.d"
+    printf 'server {}\n' >"$NGINX_DATA/config/conf.d/a b.conf"
+    printf 'hidden\n' >"$NGINX_DATA/config/.hidden"
+}
+_reload_count() { grep -c 'nginx -s reload' "$ORDER_LOG"; }
+
+testNginxFirstStartReloadsAndSavesChecksum() {
+    _nginx_config_setup
+    start_services >/dev/null
+    assertEquals 1 "$(_reload_count)"
+    assertTrue "zapis sumy" "[ -s '$NGINX_DATA/.config.sha256' ]"
+}
+
+testNginxSecondStartWithoutChangeSkipsReload() {
+    _nginx_config_setup
+    start_services >/dev/null
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertEquals 0 "$(_reload_count)"
+    assertFalse "bez reloadu brak też nginx -t" "grep -q 'nginx -t' '$ORDER_LOG'"
+}
+
+testNginxChangedVhostReloads() {
+    _nginx_config_setup
+    start_services >/dev/null
+    printf 'server { listen 81; }\n' >"$NGINX_DATA/config/conf.d/a b.conf"
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertEquals 1 "$(_reload_count)"
+}
+
+testNginxChangedHiddenFileReloads() {
+    _nginx_config_setup
+    start_services >/dev/null
+    printf 'changed\n' >"$NGINX_DATA/config/.hidden"
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertEquals 1 "$(_reload_count)"
+}
+
+testNginxFailedConfigTestDoesNotSaveChecksum() {
+    _nginx_config_setup
+    export DOCKER_FAIL_NGINX_T=1
+    start_services >/dev/null
+    assertFalse "nginx -t padł = brak zapisu" "[ -e '$NGINX_DATA/.config.sha256' ]"
+    unset DOCKER_FAIL_NGINX_T
+    : >"$ORDER_LOG"
+    start_services >/dev/null
+    assertEquals "kolejny start próbuje ponownie" 1 "$(_reload_count)"
+}
+
+testNginxFailedReloadDoesNotSaveChecksum() {
+    _nginx_config_setup
+    export DOCKER_FAIL_EXEC=1
+    start_services >/dev/null
+    assertFalse "reload padł = brak zapisu" "[ -e '$NGINX_DATA/.config.sha256' ]"
+}
+
+testNginxForceReloadOverridesUnchanged() {
+    _nginx_config_setup
+    start_services >/dev/null
+    : >"$ORDER_LOG"
+    NGINX_FORCE_RELOAD=1 start_services >/dev/null
+    assertEquals 1 "$(_reload_count)"
+}
+
+testNginxNotRunningDoesNotSaveChecksum() {
+    _nginx_config_setup
+    export DOCKER_NGINX_DOWN=1
+    start_services >/dev/null
+    assertFalse "kontener nie działa = brak zapisu" "[ -e '$NGINX_DATA/.config.sha256' ]"
+}
+
+testNginxMissingConfigDirStillReloadsWithoutSaving() {
+    start_services >/dev/null
+    assertEquals 1 "$(_reload_count)"
+    assertFalse "[ -e '$NGINX_DATA/.config.sha256' ]"
+}
+
+testDirChecksumIsDeterministicAndContentSensitive() {
+    _nginx_config_setup
+    local a b c
+    a="$(_services_dir_checksum "$NGINX_DATA/config")"
+    b="$(_services_dir_checksum "$NGINX_DATA/config")"
+    assertEquals "$a" "$b"
+    assertEquals 64 "${#a}"
+    # ta sama zawartość pod inną nazwą = inna suma (ścieżki wchodzą do sumy)
+    mv "$NGINX_DATA/config/.hidden" "$NGINX_DATA/config/.hidden2"
+    c="$(_services_dir_checksum "$NGINX_DATA/config")"
+    assertNotEquals "$a" "$c"
+}
+
+testSha256FallsBackToShasum() {
+    mkdir -p "$_TEST_DIR/nobin"
+    printf '#!/bin/sh\necho "shasum $*"\n' >"$_TEST_DIR/nobin/shasum"
+    chmod +x "$_TEST_DIR/nobin/shasum"
+    local out
+    # PATH tylko z atrapą shasum (bez sha256sum); builtin command -v nie potrzebuje zewnętrznych poleceń
+    out="$(PATH="$_TEST_DIR/nobin" _services_sha256 x)"
+    assertEquals "shasum -a 256 x" "$out"
+}
+# --- /reload tylko po zmianie configu ---
 
 # ---------------------------------------------------------------------------
 # configure_sonar
@@ -682,7 +792,7 @@ testBothNamesAreFunctionsAndExported() {
     # eksport: proces potomny widzi obie nazwy oraz funkcje pomocnicze, od których zależą
     local out
     out="$(bash -c 'for f in configure_services configurate_services configure_nginx configurate_nginx \
-        _services_copy_dir _services_deprecated_name _services_reload_nginx _services_container_running \
+        _services_copy_dir _services_deprecated_name _services_reload_nginx _services_container_running _services_sha256 _services_dir_checksum \
         _restart_service_running _services_compose; do declare -F "$f" >/dev/null || echo "BRAK:$f"; done')"
     assertEquals "" "$out"
 }

@@ -433,6 +433,15 @@ do nowej nazwy; **do usunięcia w kolejnej wersji**. Nowy serwis z compose obsł
 musi być wyeksportowana razem z prywatnymi helperami `_services_*`/`_restart_service_running` — pilnuje tego
 `testBothNamesAreFunctionsAndExported`. Test: `test/unit/test_services_functions.sh`, `test/unit/test_restart_service.sh`.
 
+Reload nginx-proxy (#200): `start_services` kończy `_services_reload_nginx`, który przeładowuje `nginx-proxy` tylko gdy
+kontener działa **i** config się zmienił. Suma kontrolna wdrożonego `$NGINX_DATA/config` (`_services_dir_checksum`:
+posortowane w locale C ścieżki względne + zawartość, pliki ukryte i spacje w nazwach obsłużone; `_services_sha256` wybiera
+`sha256sum` albo `shasum -a 256` przez `command -v`, bez `uname`) jest porównywana z zapisem w `$NGINX_DATA/.config.sha256`.
+Brak zapisu (pierwszy start) lub inna suma = `nginx -t` + `nginx -s reload`; równa = pominięcie (`services.nginx_reload_unchanged`,
+DEBUG). `NGINX_FORCE_RELOAD=1` wymusza reload. Zapis (przez `$SUDO tee`) następuje dopiero po udanym `nginx -t` **i** reloadzie —
+nieudany test/reload nie „zużywa” zmiany, kolejny start spróbuje ponownie; błąd zapisu to `services.nginx_checksum_save_failed`
+(WARN). Gdy sumy nie da się policzyć (brak katalogu config) reload leci jak dawniej, bez zapisu.
+
 `prepare_cert` (`services/nginx/ssl/ssl_setup.sh`, krok `configure_services`) jest **idempotentny** (#199): gdy w
 `$NGINX_DATA/ssl` są `nginx.crt` i `nginx.key`, a cert jest ważny jeszcze `PREPARE_CERT_MIN_DAYS` dni (domyślnie 30,
 `openssl x509 -checkend`), nic nie generuje (`ssl.cert_up_to_date`) — wcześniej każde `start_services` podmieniało
