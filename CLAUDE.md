@@ -113,6 +113,18 @@ Odpowiedzialność kluczowych plików funkcji:
   `messages_ensure_loaded` (patrz „Komunikaty (i18n)" niżej)
 - `functions.d/010_*` — logowanie (`log_info`, `log_error`, `log_warn`, `log_man`, `log_debug`)
 - `functions.d/015_*` — prompt PS1
+- `functions.d/030_function_java.sh` — `turn_async_profiler_on/off`, `java_clear` oraz **`jhot`**
+  (diagnoza "gorących" wątków JVM, Linux-only: `/proc`; na macOS zwraca błąd z guardu `/proc/self/task`).
+  Opcje: `-p/--pid`, `--all` (równolegle, wyniki w `<PID>/`), `-n` (ile wątków), `-s` (próbki jstack), `-i`
+  (odstęp), `-d` (głębokość stosu), `-o` (katalog wyników), `--app` (prefiks pakietu aplikacji), `-a/--arthas`,
+  `-h`; długie także jako `--opcja=wartość`; kody 0/1/2 (2 = zły argument). Mierzy CPU per wątek z
+  `/proc/PID/task/*/stat` uśrednione z całego okna, dopasowuje TID do `nid` z jstacka (hex i dziesiętny),
+  zestawia rozkład APP/GC/JIT/VM, `jstat -gcutil`, throttling cgroup, blokady/deadlocki i kończy sekcją
+  DIAGNOZA (reguły + wzorce znanych problemów). Wymaga `jstack` (opcjonalnie `jstat`) z JDK i bash ≥ 4.4.
+  **Własny logger** `_jhot_log/_jhot_warn/_jhot_err` (stderr, kolor tylko na TTY) zamiast `log_*` — świadomy
+  wyjątek: narzędzie zostało przeniesione 1:1 ze skryptu i ma zachować identyczne komunikaty (nie podlega migracji
+  i18n). Wszystkie `jhot` i `_jhot_*` są `export -f` (subshell `--all`, procesy potomne). Test: `test/unit/test_jhot.sh`
+  (syntetyczne zrzuty jstack, test dymny na prawdziwej JVM — pomijany bez JDK).
 - `functions.d/040_*` — helpery Docker
 - `functions.d/096_function_apt_trust.sh` — `refresh_apt_gpg_keys` (naprawa `NO_PUBKEY`/martwych
   repo apt, kluczy przypina `signed-by=` do konkretnego repo, nigdy `trusted.gpg.d`). Domena

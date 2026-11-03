@@ -6,6 +6,7 @@
 # log_error → MSG_ERROR, log_man → MSG_MAN. Klucze: <obszar>.<nazwa>.
 
 # --- MSG_DEBUG ---
+MSG_DEBUG[services.nginx_reload_skipped]="Pomijam reload nginx-proxy: kontener nie działa"
 
 # --- MSG_INFO ---
 MSG_INFO[cron.already_exists]="Wpis już istnieje: %s"
@@ -274,6 +275,7 @@ MSG_ERROR[certs.not_writable]="Brak prawa zapisu do cacerts: %s"
 MSG_ERROR[services.configure_step_failed]="Krok konfiguracji nie powiódł się: %s"
 MSG_ERROR[services.compose_missing]="Brak pliku docker-compose: %s"
 MSG_ERROR[services.compose_failed]="docker compose zakończył się błędem"
+MSG_ERROR[services.nginx_config_invalid]="Konfiguracja nginx-proxy jest niepoprawna, pomijam reload: %s"
 MSG_ERROR[services.copy_failed]="Nie udało się skopiować %s do %s"
 MSG_ERROR[services.restart_usage]="Użycie: restart_service <serwis>..."
 MSG_ERROR[services.unknown_service]="Nieznany serwis: %s"

@@ -3,6 +3,7 @@
 # Same layout: one array per log level, values are printf templates.
 
 # --- MSG_DEBUG ---
+MSG_DEBUG[services.nginx_reload_skipped]="Skipping nginx-proxy reload: container is not running"
 
 # --- MSG_INFO ---
 MSG_INFO[cron.already_exists]="Entry already exists: %s"
@@ -271,6 +272,7 @@ MSG_ERROR[certs.not_writable]="No write permission for cacerts: %s"
 MSG_ERROR[services.configure_step_failed]="Configuration step failed: %s"
 MSG_ERROR[services.compose_missing]="Docker compose file is missing: %s"
 MSG_ERROR[services.compose_failed]="docker compose failed"
+MSG_ERROR[services.nginx_config_invalid]="nginx-proxy configuration is invalid, skipping reload: %s"
 MSG_ERROR[services.copy_failed]="Failed to copy %s to %s"
 MSG_ERROR[services.restart_usage]="Usage: restart_service <service>..."
 MSG_ERROR[services.unknown_service]="Unknown service: %s"

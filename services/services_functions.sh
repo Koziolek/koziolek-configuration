@@ -138,6 +138,29 @@ function _services_compose() {
     "${cmd[@]}" "$@"
 }
 
+# Czy kontener o dokładnej nazwie <nazwa> działa.
+function _services_container_running() {
+    [ -n "$("${DOCKER_CLI:-docker}" ps -q --filter "name=^$1\$" --filter status=running 2>/dev/null)" ]
+}
+
+# nginx-proxy czyta conf.d z zamontowanego katalogu, więc zmiana configu nie odtwarza
+# kontenera - bez reloadu nowe vhosty nie zadziałają. Reload tylko, gdy kontener działa
+# (inaczej brak szumu w logu), i dopiero po `nginx -t`: błędny config = log_error z wyjściem
+# testu, bez reloadu (nginx i tak zostawiłby stary config, ale teraz widać powód).
+function _services_reload_nginx() {
+    if ! _services_container_running nginx-proxy; then
+        log_debug services.nginx_reload_skipped
+        return 0
+    fi
+    local test_out
+    if ! test_out="$("${DOCKER_CLI:-docker}" exec nginx-proxy nginx -t 2>&1)"; then
+        log_error services.nginx_config_invalid "$test_out"
+        return 0
+    fi
+    "${DOCKER_CLI:-docker}" exec nginx-proxy nginx -s reload >/dev/null 2>&1 ||
+        log_warn services.nginx_reload_failed
+}
+
 # Konfiguruje serwisy, a potem startuje kontenery. `up -d` odtwarza tylko serwisy
 # ze zmienioną konfiguracją - już działające i niezmienione zostają nietknięte; na końcu
 # przeładowuje nginx-proxy.
@@ -157,11 +180,7 @@ function start_services() {
         return 1
     }
 
-    # nginx-proxy czyta conf.d z zamontowanego katalogu, więc zmiana configu nie odtwarza
-    # kontenera - bez reloadu nowe vhosty nie zadziałają. configurate_services kopiuje config
-    # zawsze, więc reload też jest bezwarunkowy (nawet przy starcie wybranych serwisów).
-    "${DOCKER_CLI:-docker}" exec nginx-proxy nginx -s reload >/dev/null 2>&1 ||
-        log_warn services.nginx_reload_failed
+    _services_reload_nginx
 }
 
 # Restartuje serwisy z docker-compose przez restart kontenera. Bez twardej listy - nazwy
