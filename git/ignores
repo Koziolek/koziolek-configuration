@@ -15,7 +15,6 @@ VAADIN/
 build/
 settings.xml
 .jekyll-metadata
-.tool-versions
 .env
 .claude
 CLAUDE.md
@@ -31,3 +30,8 @@ code-review/
 commit-message.txt
 .linthis/
 [Tt][Oo][Dd][Oo].[Mm][Dd]
+*.exe
+*.o
+*.obj
+*.a
+

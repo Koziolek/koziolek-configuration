@@ -10,3 +10,4 @@ export GPG_PUBKEY_URL=
 export SSH_SK_VERIFY=
 export JAR_PKCS11_MODULE=
 export JAR_PKCS11_ALIAS=
+export SONAR_TOKEN=
