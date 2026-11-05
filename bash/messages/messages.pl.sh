@@ -35,6 +35,7 @@ MSG_INFO[ssl.generated]="
     Klucz prywatny: %s
   "
 MSG_INFO[ssl.cert_up_to_date]="Certyfikat %s jest ważny jeszcze co najmniej %s dni - pomijam generowanie (wymuś: prepare_cert --force)"
+MSG_INFO[nexus.secret_up_to_date]="Klucz sekretów Nexusa %s już istnieje - pomijam generowanie (rotacja: prepare_key --force)"
 MSG_INFO[ssl.next_steps]="
   Następne kroki:
   1. Dodaj '127.0.0.1 koziolek.home' do pliku /etc/hosts
@@ -192,6 +193,7 @@ MSG_WARN[darwin.netconf_diag_unavailable]="netconf_diag: wymaga narzędzi Linux 
 MSG_WARN[darwin.refresh_apt_gpg_keys_unavailable]="refresh_apt_gpg_keys: apt niedostępne na macOS"
 MSG_WARN[darwin.pinentry_missing]="gpg: brak pinentry-mac (brew install pinentry-mac)"
 MSG_WARN[nexus.secret_template_missing]="Nie znaleziono pliku %s"
+MSG_WARN[nexus.secret_rotated]="Rotacja klucza sekretów Nexusa %s: sekrety zapisane w Nexusie starym kluczem przestaną działać i trzeba je wpisać od nowa"
 MSG_WARN[certs.cert_missing]="Certyfikat %s nie istnieje - uruchom najpierw prepare_cert"
 MSG_WARN[certs.no_sdkman_jdks]="Brak katalogu %s - sdkman nie ma zainstalowanych JDK"
 MSG_WARN[certs.no_cacerts]="Brak cacerts w %s, pomijam"
@@ -422,6 +424,7 @@ MSG_ERROR[maven_signing.gpg_sw_revocation_certificate_import_failed]="gpg_sw: im
 MSG_ERROR[maven_signing.gpg_sw_revoking_failed_skipping_deletion]="gpg_sw: odwołanie %s nie powiodło się — pomijam usuwanie tego klucza"
 MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: nie udało się usunąć %s"
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: imię i nazwisko oraz email są wymagane"
+MSG_ERROR[nexus.secret_generate_failed]="Nie udało się wygenerować klucza sekretów Nexusa (openssl rand)"
 
 # --- MSG_MAN ---
 MSG_MAN[cron.add_usage]="Użycie: cron_add [-n nazwa] [--no-log] <harmonogram> <polecenie...>\n  harmonogram: '*/5 * * * *', @daily, 'co 5 min', 'codziennie o 03:00', 'w poniedziałek o 08:00'"

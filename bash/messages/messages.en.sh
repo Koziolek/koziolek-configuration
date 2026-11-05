@@ -32,6 +32,7 @@ MSG_INFO[ssl.generated]="
     Private key: %s
   "
 MSG_INFO[ssl.cert_up_to_date]="Certificate %s is valid for at least %s more days - skipping generation (force: prepare_cert --force)"
+MSG_INFO[nexus.secret_up_to_date]="Nexus secrets key %s already exists - skipping generation (rotate: prepare_key --force)"
 MSG_INFO[ssl.next_steps]="
   Next steps:
   1. Add '127.0.0.1 koziolek.home' to your /etc/hosts file
@@ -189,6 +190,7 @@ MSG_WARN[darwin.netconf_diag_unavailable]="netconf_diag: requires Linux tools (i
 MSG_WARN[darwin.refresh_apt_gpg_keys_unavailable]="refresh_apt_gpg_keys: apt unavailable on macOS"
 MSG_WARN[darwin.pinentry_missing]="gpg: pinentry-mac missing (brew install pinentry-mac)"
 MSG_WARN[nexus.secret_template_missing]="%s file not found"
+MSG_WARN[nexus.secret_rotated]="Rotating Nexus secrets key %s: secrets stored in Nexus with the old key will stop working and must be re-entered"
 MSG_WARN[certs.cert_missing]="Certificate %s does not exist - run prepare_cert first"
 MSG_WARN[certs.no_sdkman_jdks]="Directory %s is missing - sdkman has no JDKs installed"
 MSG_WARN[certs.no_cacerts]="No cacerts in %s, skipping"
@@ -418,6 +420,7 @@ MSG_ERROR[maven_signing.gpg_sw_revocation_certificate_import_failed]="gpg_sw: re
 MSG_ERROR[maven_signing.gpg_sw_revoking_failed_skipping_deletion]="gpg_sw: revoking %s failed — skipping deletion of this key"
 MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: failed to delete %s"
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: full name and email are required"
+MSG_ERROR[nexus.secret_generate_failed]="Failed to generate the Nexus secrets key (openssl rand)"
 
 # --- MSG_MAN ---
 MSG_MAN[cron.add_usage]="Usage: cron_add [-n name] [--no-log] <schedule> <command...>\n  schedule: '*/5 * * * *', @daily, 'every 5 min', 'daily at 03:00', 'on monday at 08:00'"
