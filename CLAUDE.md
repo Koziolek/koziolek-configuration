@@ -450,6 +450,15 @@ regeneruje. Sprawdzenia idą przez `$SUDO` (klucz ma 600 root). Ścieżki są cy
 samej funkcji. `update_sdkman_jdk_certs` dalej importuje aktualny cert (przy niezmienionym — no-op). Test:
 `test/unit/test_ssl_setup.sh` (atrapa `openssl`).
 
+`prepare_key` (`services/nexus/key_setup.sh`, krok `configure_services`) jest **idempotentny** (#208): Nexus szyfruje kluczem z
+`$NEXUS_DATA/etc/keystore/nexus.secrets.json` sekrety w bazie (hasła proxy/SMTP/LDAP, tokeny), a szablon ma stałe id `home`,
+więc podmiana wartości unieważniała zapisane sekrety (skutek dopiero po restarcie kontenera). Gdy plik istnieje i ma niepustą
+wartość `"key"` (bez niepodstawionego `%%BASED_KEY%%`), nic nie jest generowane (`nexus.secret_up_to_date`); brak pliku, pusty
+plik albo plik bez klucza → generowanie. Rotacja jest jawna: `prepare_key --force|-f` lub `PREPARE_KEY_FORCE=1` (ostrzeżenie
+`nexus.secret_rotated`: sekrety zapisane starym kluczem przestają działać). Brak szablonu lub błąd `openssl rand` = kod 1,
+istniejący plik zostaje nietknięty. Plik (600, `200:200`) czytany jest przez `$SUDO`; sekret nie trafia do argv żadnego
+procesu. Test: `test/unit/test_key_setup.sh` (atrapy `openssl`/`sudo`/`chown`).
+
 ### Jenkins (lokalny serwer CI, `services/jenkins/`)
 
 Kontener `jenkins` w `services/docker/docker-compose.yaml`, dostępny przez nginx pod `/jenkins/` (vhost
