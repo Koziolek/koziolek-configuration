@@ -393,6 +393,17 @@ zwykły `git push -u origin <gałąź>` (także w `git bleeh` — bez `--force-w
 przepisywano), nie ma → koniec z kodem 0. Są zmiany → działanie jak dotąd. Helpery:
 `__git_has_changes_or_push`, `__git_has_unpushed` (niewyeksportowane).
 
+### Funkcja `hub_mass_merge` (alias `git hmm`)
+
+`git hmm` (`hub_mass_merge` w `git/hub_functions.sh`, alias w `git/aliases`: `hmm = fun hub_mass_merge`) hurtowo scala (squash) wszystkie
+otwarte pull requesty repozytorium: `gh pr list --state open --limit 100 --json number` (same numery, bez `#`), potem dla każdego
+`gh pr merge NUMER -s`, w kolejności listy. Limit listy: `HUB_MASS_MERGE_LIMIT` (domyślnie 100; sam `gh pr list` zwraca 30).
+Błąd scalenia jednego PR (konflikt, nieprzeszedł wymagany check, draft) nie przerywa pozostałych — na końcu podsumowanie
+(`Scalono: N, nieudane: M`), lista nieudanych i kod 1. `-n`/`--dry-run` tylko wypisuje numery, `-h`/`--help` pokazuje użycie, zła opcja = kod 2,
+brak `gh` w PATH lub błąd listowania = kod 1, brak otwartych PR = informacja i kod 0. O tym, czy PR da się scalić, decyduje GitHub
+(`gh pr merge`); funkcja niczego nie sprawdza ani nie usuwa gałęzi. Wołana przez dispatcher `git fun` (prefiks `hub_`). Komunikaty:
+`hub.mass_merge_*`, `hub.gh_missing` (pl/en). Test: `test/unit/test_hub_mass_merge.sh` (atrapa `gh` w PATH).
+
 ### Funkcja `list_services`
 
 `list_services` (`services/services_functions.sh`) wypisuje na stdout linie `nazwa status` (`running`/`stopped`, brak kontenera = `stopped`)

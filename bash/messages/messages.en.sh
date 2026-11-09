@@ -171,6 +171,9 @@ MSG_INFO[maven_signing.gpg_sw_cancelled]="gpg_sw: cancelled"
 MSG_INFO[maven_signing.gpg_sw_deleted]="gpg_sw: deleted %s"
 MSG_INFO[maven_signing.gpg_sw_key_generated]="gpg_sw: key %s generated"
 MSG_INFO[maven_signing.gpg_sw_maven_configuration_skipped_run]="gpg_sw: Maven configuration skipped — run later: gpg_maven_setup %s"
+MSG_INFO[hub.mass_merge_summary]="Merged: %d, failed: %d"
+MSG_INFO[hub.mass_merge_dry_run]="Open pull requests (not merging): %s"
+MSG_INFO[hub.mass_merge_none]="No open pull requests to merge"
 
 # --- MSG_WARN ---
 MSG_WARN[cron.no_daemon]="No running cron daemon detected — entries will not run (Vanilla OS/apx: use systemd --user timers)"
@@ -421,6 +424,11 @@ MSG_ERROR[maven_signing.gpg_sw_revoking_failed_skipping_deletion]="gpg_sw: revok
 MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: failed to delete %s"
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: full name and email are required"
 MSG_ERROR[nexus.secret_generate_failed]="Failed to generate the Nexus secrets key (openssl rand)"
+MSG_ERROR[hub.mass_merge_unknown_option]="Unknown option: %s"
+MSG_ERROR[hub.mass_merge_failed_list]="Failed pull requests: %s"
+MSG_ERROR[hub.mass_merge_failed]="Failed to merge pull request %s"
+MSG_ERROR[hub.mass_merge_list_failed]="Failed to list pull requests (gh pr list)"
+MSG_ERROR[hub.gh_missing]="gh not found in PATH - install GitHub CLI"
 
 # --- MSG_MAN ---
 MSG_MAN[cron.add_usage]="Usage: cron_add [-n name] [--no-log] <schedule> <command...>\n  schedule: '*/5 * * * *', @daily, 'every 5 min', 'daily at 03:00', 'on monday at 08:00'"
@@ -447,3 +455,4 @@ MSG_MAN[git_context.current_local_repository_configuration]="\\n%sCurrent local 
 MSG_MAN[git_context.default_profile_data]="\\n%sData for profile 'default':%s"
 MSG_MAN[git_context.profile_data]="\\n%sData for profile '%s':%s"
 MSG_MAN[git.would_you_like_to_use_multi]="%sWould you like to use multi-hooks?%s "
+MSG_MAN[hub.mass_merge_usage]="Usage: hub_mass_merge [-n|--dry-run] [-h]\n  Squash-merges all open pull requests: gh pr merge NUMBER -s\n  -n, --dry-run  only print the numbers, merge nothing"
