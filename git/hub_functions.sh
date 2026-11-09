@@ -29,7 +29,8 @@ function hub_merge_pr() {
     git push
 }
 
-# Hurtowy squash merge wszystkich otwartych pull requestów (gh pr merge NUMER -s).
+# Hurtowy squash merge wszystkich otwartych pull requestów (gh pr merge NUMER -s),
+# w kolejności tworzenia: od najmniejszego numeru do największego.
 # Użycie: hub_mass_merge [-n|--dry-run] [-h|--help]
 #   -n, --dry-run  tylko wypisz numery PR, niczego nie scalaj
 # Limit listy: HUB_MASS_MERGE_LIMIT (domyślnie 100; gh domyślnie zwraca 30).
@@ -73,6 +74,10 @@ function hub_mass_merge() {
         log_info hub.mass_merge_none
         return 0
     fi
+
+    # Kolejność scalania = kolejność tworzenia PR (rosnąco po numerze): wcześniejsze zmiany
+    # trafiają do mastera pierwsze, a późniejsze (często oparte na nich) dopiero po nich.
+    mapfile -t prs < <(printf '%s\n' "${prs[@]}" | sort -n)
 
     if ((dry_run)); then
         log_info hub.mass_merge_dry_run "${prs[*]}"

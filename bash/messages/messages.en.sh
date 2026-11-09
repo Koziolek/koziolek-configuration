@@ -455,4 +455,4 @@ MSG_MAN[git_context.current_local_repository_configuration]="\\n%sCurrent local 
 MSG_MAN[git_context.default_profile_data]="\\n%sData for profile 'default':%s"
 MSG_MAN[git_context.profile_data]="\\n%sData for profile '%s':%s"
 MSG_MAN[git.would_you_like_to_use_multi]="%sWould you like to use multi-hooks?%s "
-MSG_MAN[hub.mass_merge_usage]="Usage: hub_mass_merge [-n|--dry-run] [-h]\n  Squash-merges all open pull requests: gh pr merge NUMBER -s\n  -n, --dry-run  only print the numbers, merge nothing"
+MSG_MAN[hub.mass_merge_usage]="Usage: hub_mass_merge [-n|--dry-run] [-h]\n  Squash-merges all open pull requests, lowest number first: gh pr merge NUMBER -s\n  -n, --dry-run  only print the numbers, merge nothing"

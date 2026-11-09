@@ -459,4 +459,4 @@ MSG_MAN[git_context.current_local_repository_configuration]="\\n%sAktualna konfi
 MSG_MAN[git_context.default_profile_data]="\\n%sDane dla profilu 'default':%s"
 MSG_MAN[git_context.profile_data]="\\n%sDane dla profilu '%s':%s"
 MSG_MAN[git.would_you_like_to_use_multi]="%sCzy chcesz użyć multi-hooków?%s "
-MSG_MAN[hub.mass_merge_usage]="Użycie: hub_mass_merge [-n|--dry-run] [-h]\n  Scala (squash) wszystkie otwarte pull requesty: gh pr merge NUMER -s\n  -n, --dry-run  tylko wypisz numery, niczego nie scalaj"
+MSG_MAN[hub.mass_merge_usage]="Użycie: hub_mass_merge [-n|--dry-run] [-h]\n  Scala (squash) wszystkie otwarte pull requesty od najmniejszego numeru: gh pr merge NUMER -s\n  -n, --dry-run  tylko wypisz numery, niczego nie scalaj"

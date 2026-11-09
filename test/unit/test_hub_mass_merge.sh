@@ -50,12 +50,18 @@ tearDown() {
 
 _merges() { grep '^pr merge' "$GH_LOG"; }
 
-testMergesEveryOpenPrWithSquashInListOrder() {
-    export GH_PR_NUMBERS=$'205\n204\n203\n'
+testMergesEveryOpenPrWithSquashInAscendingOrder() {
+    export GH_PR_NUMBERS=$'205\n203\n204\n'
     hub_mass_merge
     assertEquals "rc" 0 $?
-    assertEquals "kolejność i flagi" $'pr merge 205 -s\npr merge 204 -s\npr merge 203 -s' "$(_merges)"
+    assertEquals "kolejność rosnąca i flagi" $'pr merge 203 -s\npr merge 204 -s\npr merge 205 -s' "$(_merges)"
     assertContains "podsumowanie" "$_LOG" "INFO hub.mass_merge_summary 3 0"
+}
+
+testOrderIsNumericNotLexicographic() {
+    export GH_PR_NUMBERS=$'100\n9\n20\n'
+    hub_mass_merge
+    assertEquals "9, 20, 100" $'pr merge 9 -s\npr merge 20 -s\npr merge 100 -s' "$(_merges)"
 }
 
 testNumbersPassedWithoutHash() {
@@ -100,7 +106,7 @@ testDryRunListsAndDoesNotMerge() {
     hub_mass_merge --dry-run
     assertEquals "rc" 0 $?
     assertEquals "brak merge" "" "$(_merges)"
-    assertContains "lista" "$_LOG" "INFO hub.mass_merge_dry_run 5 4"
+    assertContains "lista rosnąco" "$_LOG" "INFO hub.mass_merge_dry_run 4 5"
 }
 
 testShortDryRunFlag() {
