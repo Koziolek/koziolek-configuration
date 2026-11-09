@@ -26,7 +26,6 @@ _run_if_dir() {
 
 create_window_server() {
     local ghost_dir="$HOME/workspace/java/ghost-track"
-    local pansa_dir="$HOME/workspace/pansa/local-env-manager"
 
     tmux new-session -d -s "$SESSION" -n "$WIN_SERVER" \
         -c "$(_dir_or_home "$ghost_dir")"
@@ -36,7 +35,7 @@ create_window_server() {
     tmux select-pane -t "$SESSION:$WIN_SERVER" -U
     tmux split-window -t "$SESSION:$WIN_SERVER" -h \
         -c "$(_dir_or_home "$pansa_dir")"
-    _run_if_dir "$SESSION:$WIN_SERVER" "$pansa_dir" "python3 jacoco_servery.py"
+    _run_if_dir "$SESSION:$WIN_SERVER" "$HOME" "glances"
     tmux select-pane -t "$SESSION:$WIN_SERVER" -L
     _run_if_dir "$SESSION:$WIN_SERVER" "$ghost_dir" "./start.sh"
 }
