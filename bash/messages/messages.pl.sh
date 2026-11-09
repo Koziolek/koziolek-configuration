@@ -174,6 +174,9 @@ MSG_INFO[maven_signing.gpg_sw_cancelled]="gpg_sw: anulowano"
 MSG_INFO[maven_signing.gpg_sw_deleted]="gpg_sw: usunięto %s"
 MSG_INFO[maven_signing.gpg_sw_key_generated]="gpg_sw: wygenerowano klucz %s"
 MSG_INFO[maven_signing.gpg_sw_maven_configuration_skipped_run]="gpg_sw: pominięto konfigurację Mavena — uruchom później: gpg_maven_setup %s"
+MSG_INFO[hub.mass_merge_summary]="Scalono: %d, nieudane: %d"
+MSG_INFO[hub.mass_merge_dry_run]="Otwarte pull requesty (bez scalania): %s"
+MSG_INFO[hub.mass_merge_none]="Brak otwartych pull requestów do scalenia"
 
 # --- MSG_WARN ---
 MSG_WARN[cron.no_daemon]="Nie wykryto działającego demona cron — wpisy nie będą wykonywane (Vanilla OS/apx: użyj timerów systemd --user)"
@@ -425,6 +428,11 @@ MSG_ERROR[maven_signing.gpg_sw_revoking_failed_skipping_deletion]="gpg_sw: odwo�
 MSG_ERROR[maven_signing.gpg_sw_failed_to_delete]="gpg_sw: nie udało się usunąć %s"
 MSG_ERROR[maven_signing.gpg_sw_full_name_and_email]="gpg_sw: imię i nazwisko oraz email są wymagane"
 MSG_ERROR[nexus.secret_generate_failed]="Nie udało się wygenerować klucza sekretów Nexusa (openssl rand)"
+MSG_ERROR[hub.mass_merge_unknown_option]="Nieznana opcja: %s"
+MSG_ERROR[hub.mass_merge_failed_list]="Nieudane pull requesty: %s"
+MSG_ERROR[hub.mass_merge_failed]="Nie udało się scalić pull requesta %s"
+MSG_ERROR[hub.mass_merge_list_failed]="Nie udało się pobrać listy pull requestów (gh pr list)"
+MSG_ERROR[hub.gh_missing]="Brak polecenia gh w PATH - zainstaluj GitHub CLI"
 
 # --- MSG_MAN ---
 MSG_MAN[cron.add_usage]="Użycie: cron_add [-n nazwa] [--no-log] <harmonogram> <polecenie...>\n  harmonogram: '*/5 * * * *', @daily, 'co 5 min', 'codziennie o 03:00', 'w poniedziałek o 08:00'"
@@ -451,3 +459,4 @@ MSG_MAN[git_context.current_local_repository_configuration]="\\n%sAktualna konfi
 MSG_MAN[git_context.default_profile_data]="\\n%sDane dla profilu 'default':%s"
 MSG_MAN[git_context.profile_data]="\\n%sDane dla profilu '%s':%s"
 MSG_MAN[git.would_you_like_to_use_multi]="%sCzy chcesz użyć multi-hooków?%s "
+MSG_MAN[hub.mass_merge_usage]="Użycie: hub_mass_merge [-n|--dry-run] [-h]\n  Scala (squash) wszystkie otwarte pull requesty: gh pr merge NUMER -s\n  -n, --dry-run  tylko wypisz numery, niczego nie scalaj"
