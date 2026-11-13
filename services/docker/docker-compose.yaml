@@ -78,6 +78,9 @@ services:
     # Przebudowa po zmianie plugins.txt / tagu: docker compose build jenkins
     build:
       context: ../jenkins
+      # build na sieci hosta: kontenery na mostach docker nie mają wyjścia do sieci (zob. awaria-docker.md);
+      # dotyczy tylko budowania obrazu, nie działającego kontenera
+      network: host
     image: koziolek/jenkins:2.580.2-lts-jdk21
     container_name: jenkins
     # tylko to, czego Jenkins potrzebuje - bez env_file (nie wpuszczamy całego ~/.senv do kontenera CI)

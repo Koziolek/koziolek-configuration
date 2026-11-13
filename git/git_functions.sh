@@ -272,6 +272,11 @@ function git_new_experimental_branch() {
     git_new_branch experimental $*
 }
 
+# Wrapper: git_new_branch with type=epic
+function git_new_epic_branch() {
+    git_new_branch epic $*
+}
+
 # Derives conventional commit prefix (type + ticket ref) from branch name; empty string if branch type unknown
 function git_commit_message_prefix() {
     local branch

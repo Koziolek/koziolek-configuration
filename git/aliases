@@ -32,7 +32,8 @@
     nb = fun git_new_feature_branch
     nv = fun git_new_version_branch
     nf = fun git_new_fix_branch
-    ne = fun git_new_experimental_branch
+    nep = fun git_new_epic_branch
+    nex = fun git_new_experimental_branch
     mrg = "!f() { B_NAME=`git rev-parse --abbrev-ref HEAD`; git co $1; git pull; git co $B_NAME; git merge $1; }; f"
     go = "!f(){  P_NAME=`git config project.name`; git co $1/$P_NAME-$2; }; f"
     vomit = fun git_vomit
@@ -50,3 +51,4 @@
     merge-hub= fun hub_merge_pr
     amen-hub= fun hub_amen
     hmm = fun hub_mass_merge
+    hst = fun hub_pr_status

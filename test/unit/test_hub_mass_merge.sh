@@ -32,6 +32,12 @@ if [[ "$1 $2" == "pr list" ]]; then
     printf '%s' "${GH_PR_NUMBERS:-}"
     exit 0
 fi
+if [[ "$1 $2" == "pr checks" ]]; then
+    echo "checks of $3"
+    for f in ${GH_CHECKS_FAIL_FOR:-}; do [[ "$3" == "$f" ]] && exit 1; done
+    for f in ${GH_CHECKS_PENDING_FOR:-}; do [[ "$3" == "$f" ]] && exit 8; done
+    exit 0
+fi
 if [[ "$1 $2" == "pr merge" ]]; then
     for f in ${GH_FAIL_FOR:-}; do [[ "$3" == "$f" ]] && exit 1; done
     exit 0
@@ -39,7 +45,7 @@ fi
 S
     chmod +x "$_T/bin/gh"
     PATH="$_T/bin:$PATH"
-    unset GH_PR_NUMBERS GH_FAIL_FOR GH_LIST_RC HUB_MASS_MERGE_LIMIT
+    unset GH_PR_NUMBERS GH_FAIL_FOR GH_LIST_RC GH_CHECKS_FAIL_FOR GH_CHECKS_PENDING_FOR HUB_MASS_MERGE_LIMIT
     _LOG=''
 }
 
@@ -155,6 +161,67 @@ testDispatcherAllowsFunctionViaGitFun() {
     # `git fun hub_mass_merge` przechodzi dispatcher (hub_*) - help nie woła gh
     out="$(SUPPRESS_SOURCING=1 GIT_CONFIGURATION_DIR="$PROJECT_ROOT/git" bash "$PROJECT_ROOT/git/git_functions.sh" hub_mass_merge --help 2>&1)"
     assertNotContains "nie odrzucone" "$out" "unknown_function"
+}
+
+_checks() { grep '^pr checks' "$GH_LOG"; }
+
+testPrStatusChecksEveryOpenPrAscending() {
+    export GH_PR_NUMBERS=$'12\n3\n7\n'
+    out="$(hub_pr_status)"
+    assertEquals "rc" 0 $?
+    assertEquals "kolejność rosnąca" $'pr checks 3\npr checks 7\npr checks 12' "$(_checks)"
+    assertContains "wynik gh na stdout" "$out" "checks of 7"
+}
+
+testPrStatusSummaryCountsPassedPendingAndFailed() {
+    export GH_PR_NUMBERS=$'1\n2\n3\n4\n'
+    export GH_CHECKS_FAIL_FOR="3" GH_CHECKS_PENDING_FOR="2"
+    hub_pr_status >/dev/null
+    assertEquals "rc 1 przy błędnym checku" 1 $?
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 2 1 1"
+    assertContains "lista błędnych" "$_LOG" "ERROR hub.pr_status_failed_list 3"
+}
+
+testPrStatusPendingIsNotAFailure() {
+    export GH_PR_NUMBERS=$'5\n'
+    export GH_CHECKS_PENDING_FOR="5"
+    hub_pr_status >/dev/null
+    assertEquals "rc" 0 $?
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 0 1 0"
+}
+
+testPrStatusNoOpenPrs() {
+    export GH_PR_NUMBERS=''
+    hub_pr_status
+    assertEquals "rc" 0 $?
+    assertContains "info" "$_LOG" "INFO hub.pr_status_none"
+    assertEquals "brak checks" "" "$(_checks)"
+}
+
+testPrStatusListFailureReturns1() {
+    GH_LIST_RC=1 hub_pr_status
+    assertEquals "rc" 1 $?
+    assertContains "błąd" "$_LOG" "ERROR hub.mass_merge_list_failed"
+}
+
+testPrStatusHelpAndUnknownOption() {
+    hub_pr_status -h
+    assertEquals "help rc" 0 $?
+    assertContains "usage" "$_LOG" "MAN hub.pr_status_usage"
+    hub_pr_status --nope
+    assertEquals "rc" 2 $?
+    assertContains "błąd" "$_LOG" "ERROR hub.pr_status_unknown_option --nope"
+    assertEquals "gh nie wołane" "" "$(cat "$GH_LOG")"
+}
+
+testAliasHstPointsToFunction() {
+    grep -qE '^[[:space:]]*hst[[:space:]]*=[[:space:]]*fun hub_pr_status[[:space:]]*$' "$PROJECT_ROOT/git/aliases"
+    assertEquals "alias hst" 0 $?
+}
+
+testMassMergeAndPrStatusShareTheListHelper() {
+    # listowanie PR tylko w _hub_open_prs (kod bez komentarzy)
+    assertEquals "jedno wywołanie gh pr list" 1 "$(grep -v '^[[:space:]]*#' "$PROJECT_ROOT/git/hub_functions.sh" | grep -c 'gh pr list')"
 }
 
 # shellcheck source=/dev/null
