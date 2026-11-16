@@ -51,4 +51,4 @@
     merge-hub= fun hub_merge_pr
     amen-hub= fun hub_amen
     hmm = fun hub_mass_merge
-    hst = fun hub_pr_status
+    hst = fun hub_pr_status -q

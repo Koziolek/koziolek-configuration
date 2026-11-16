@@ -418,7 +418,7 @@ gałęzi domyślnej (`origin/HEAD`, domyślnie `master`): worktree, lokalną ga�
 rozpoznaje zwykły/ff merge (`merge-base --is-ancestor`) **i squash/rebase merge** — `git branch --merged` tego nie widzi, więc
 tworzy tymczasowy commit z drzewem gałęzi na `merge-base` i sprawdza `git cherry` (zmiana ma odpowiednik po patch-id; nie
 potrzebuje `gh`). Zostają: niezmergowane, brudne (`git worktree remove` bez `--force`), bieżące oraz świeże gałęzie bez własnych
-commitów (jeden wpis w reflogu — inaczej wyglądałyby na zmergowane). `-n` tylko pokazuje. Główny checkout nigdy nie jest ruszany.
+commitów (jeden wpis w reflogu — inaczej wyglądałyby na zmergowane). `-n` tylko pokazuje. Główny checkout nigdy nie jest ruszany. Przegląda też zmergowane gałęzie lokalne **bez** worktree (lokalna + zdalna) oraz uznaje za zmergowaną gałąź, której czubek jest `headRefOid` zmergowanego PR-a (`gh pr list --state merged --head`; łapie gałęzie scalone do gałęzi epika, a epik wpada do mastera squashem — sama zawartość gita tego nie rozpozna; bez `gh` kryterium pomijane). `git exterminatus` dodatkowo woła `git_exterminatus_gone_branches`: lokalne gałęzie, których upstream zniknął (wykrywane przez `for-each-ref %(upstream)`, nie przez tekst `branch -vv`), usuwane razem z worktree; bieżąca, domyślna i brudny worktree zostają.
 Test: `test/unit/test_git_exterminatus_worktree.sh` (prawdziwy git na bare origin w `mktemp`).
 
 ### Funkcja `git_context`

@@ -41,10 +41,51 @@ function git_exterminatus() {
     git_delete_merged_remote
     git_exterminatus_worktree
     git p
-    gone_branches=$(LANG=en_GB git br -vv | grep ': gone]' | awk '{print $1}')
-    if [ -n "$gone_branches" ]; then
-        echo "$gone_branches" | xargs git br -D
-    fi
+    git_exterminatus_gone_branches
+}
+
+# Lokalne gałęzie, których upstream zniknął ze zdalnego (po prune). Bez parsowania tekstu
+# `git branch -vv` (zależy od locale, a gałęzie z worktree mają tam `+` zamiast nazwy):
+# gałąź ma skonfigurowany upstream, a ref zdalny już nie istnieje.
+function __git_gone_branches() {
+    local b up
+    while IFS=' ' read -r b up; do
+        [ -n "$up" ] || continue
+        git show-ref --verify -q "$up" || echo "$b"
+    done < <(git for-each-ref --format='%(refname:short) %(upstream)' refs/heads)
+}
+
+# Usuwa lokalne gałęzie bez zdalnego odpowiednika (upstream zniknął), razem z ich worktree.
+# Bieżąca gałąź, gałąź domyślna i gałęzie z brudnym worktree zostają.
+function git_exterminatus_gone_branches() {
+    local default_branch current_branch main_wt b wt line path
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+    default_branch="${default_branch:-master}"
+    current_branch=$(git symbolic-ref -q --short HEAD 2>/dev/null)
+    main_wt=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+
+    while IFS= read -r b; do
+        [ -n "$b" ] || continue
+        [ "$b" = "$default_branch" ] || [ "$b" = "$current_branch" ] && continue
+        wt=""
+        path=""
+        while IFS= read -r line; do
+            case "$line" in
+            "worktree "*) path="${line#worktree }" ;;
+            "branch refs/heads/$b") wt="$path" ;;
+            esac
+        done < <(git worktree list --porcelain)
+        if [ -n "$wt" ] && [ "$wt" != "$main_wt" ]; then
+            git worktree remove "$wt" || {
+                log_warn git.worktree_remove_failed "$wt" "$b"
+                continue
+            }
+        elif [ -n "$wt" ]; then
+            continue
+        fi
+        git branch -D "$b" >/dev/null && log_info git.gone_branch_removed "$b" ||
+            log_warn git.worktree_branch_delete_failed "$b"
+    done < <(__git_gone_branches)
 }
 
 # True gdy zmiany gałęzi są już w <base>: zwykły/fast-forward merge (gałąź jest przodkiem)
@@ -57,6 +98,22 @@ function __git_branch_merged_into() {
     tree=$(GIT_AUTHOR_NAME=x GIT_AUTHOR_EMAIL=x@x GIT_COMMITTER_NAME=x GIT_COMMITTER_EMAIL=x@x \
         git commit-tree "${branch}^{tree}" -p "$mb" -m squashed) || return 1
     [ "$(git cherry "$base" "$tree" | cut -c1)" = "-" ]
+}
+
+# True gdy gałąź ma zmergowany PR na GitHubie, a jej czubek jest dokładnie tym, co zmergowano.
+# Łapie gałęzie scalone do gałęzi epika (epik wpada do mastera squashem, więc sama zawartość
+# gita tego nie rozpozna). Wymaga `gh`; bez niego albo przy błędzie = false.
+function __git_branch_pr_merged() {
+    local branch="$1" tip heads
+    command -v gh >/dev/null 2>&1 || return 1
+    tip=$(git rev-parse -q --verify "refs/heads/$branch") || return 1
+    heads=$(gh pr list --state merged --head "$branch" --json headRefOid --jq '.[].headRefOid' 2>/dev/null) || return 1
+    grep -qx "$tip" <<<"$heads"
+}
+
+# Merge wg gita (zwykły/squash/rebase) albo wg zmergowanego PR-a (patrz wyżej).
+function __git_branch_is_merged() {
+    __git_branch_merged_into "$1" "$2" || __git_branch_pr_merged "$1"
 }
 
 # Usuwa worktree (z .worktrees/ itp.), których gałąź jest już zmergowana do gałęzi domyślnej:
@@ -132,7 +189,7 @@ function git_exterminatus_worktree() {
             log_debug git.worktree_skip_no_commits "$p" "$b"
             continue
         fi
-        if ! __git_branch_merged_into "$b" "$base"; then
+        if ! __git_branch_is_merged "$b" "$base"; then
             log_debug git.worktree_skip_unmerged "$p" "$b"
             continue
         fi
@@ -157,6 +214,31 @@ function git_exterminatus_worktree() {
         fi
         log_info git.worktree_removed "$p" "$b"
     done
+
+    # Zmergowane gałęzie lokalne bez worktree (np. po usunięciu katalogu albo pracy w głównym checkoucie).
+    local current_branch
+    current_branch=$(git symbolic-ref -q --short HEAD 2>/dev/null)
+    while IFS= read -r b; do
+        [ -n "$b" ] && [ "$b" != "$default_branch" ] && [ "$b" != "$current_branch" ] || continue
+        case " ${wt_branches[*]} " in *" $b "*) continue ;; esac
+        own_commits=$(git reflog show --format=%H "refs/heads/$b" 2>/dev/null | wc -l)
+        [ "$own_commits" -eq 1 ] && continue
+        __git_branch_is_merged "$b" "$base" || continue
+        removed=$((removed + 1))
+        if [ "$dry_run" = 1 ]; then
+            log_info git.branch_would_remove "$b"
+            continue
+        fi
+        git branch -D "$b" >/dev/null || {
+            log_warn git.worktree_branch_delete_failed "$b"
+            removed=$((removed - 1))
+            continue
+        }
+        if [ "$has_remote" = 1 ] && git show-ref --verify -q "refs/remotes/$remote/$b"; then
+            git push -q "$remote" --delete "$b" || log_warn git.worktree_remote_delete_failed "$remote" "$b"
+        fi
+        log_info git.branch_removed "$b"
+    done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 
     if [ "$removed" -eq 0 ]; then
         log_info git.worktree_nothing_to_remove

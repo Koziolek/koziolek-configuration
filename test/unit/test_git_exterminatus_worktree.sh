@@ -193,6 +193,72 @@ testLocalOnlyBranchWithoutRemoteIsRemovedLocally() {
     assertNotContains "$(cat "$_LOG")" "git.worktree_remote_delete_failed"
 }
 
+testGoneUpstreamBranchesRemovedWithAndWithoutWorktree() {
+    _new_wt feat-gw
+    git branch feat-gn origin/master
+    git push -q origin feat-gn
+    git branch -q --set-upstream-to=origin/feat-gn feat-gn
+    git push -q origin --delete feat-gw feat-gn
+    git fetch -q --prune
+    git_exterminatus_gone_branches
+    assertFalse "_wt_exists feat-gw"
+    assertFalse "_local_branch feat-gw"
+    assertFalse "_local_branch feat-gn"
+    assertTrue "_local_branch master"
+}
+
+testGoneBranchKeepsCurrentAndDirtyWorktree() {
+    _new_wt feat-dirty
+    echo d >.worktrees/feat-dirty/dirty.txt
+    git -C .worktrees/feat-dirty add dirty.txt
+    git push -q origin --delete feat-dirty
+    git fetch -q --prune
+    git_exterminatus_gone_branches
+    assertTrue "_local_branch feat-dirty"
+    assertTrue "_wt_exists feat-dirty"
+}
+
+testRemovesSquashMergedBranchWithoutWorktree() {
+    _new_wt feat-nw
+    git worktree remove .worktrees/feat-nw
+    _squash_merge feat-nw
+    git_exterminatus_worktree
+    assertFalse "_local_branch feat-nw"
+    assertFalse "_remote_branch feat-nw"
+}
+
+testKeepsUnmergedBranchWithoutWorktree() {
+    _new_wt feat-nu
+    git worktree remove .worktrees/feat-nu
+    git_exterminatus_worktree
+    assertTrue "_local_branch feat-nu"
+    assertTrue "_remote_branch feat-nu"
+}
+
+testRemovesBranchWithMergedPullRequest() {
+    _new_wt feat-pr
+    git worktree remove .worktrees/feat-pr
+    mkdir -p "$_TMP/bin"
+    cat >"$_TMP/bin/gh" <<EOF
+#!/usr/bin/env bash
+git rev-parse refs/heads/feat-pr
+EOF
+    chmod +x "$_TMP/bin/gh"
+    PATH="$_TMP/bin:$PATH" git_exterminatus_worktree
+    assertFalse "_local_branch feat-pr"
+    assertFalse "_remote_branch feat-pr"
+}
+
+testKeepsBranchWhenPrHeadDiffers() {
+    _new_wt feat-pd
+    git worktree remove .worktrees/feat-pd
+    mkdir -p "$_TMP/bin"
+    printf '#!/usr/bin/env bash\necho 0000000000000000000000000000000000000000\n' >"$_TMP/bin/gh"
+    chmod +x "$_TMP/bin/gh"
+    PATH="$_TMP/bin:$PATH" git_exterminatus_worktree
+    assertTrue "_local_branch feat-pd"
+}
+
 testBadArgumentReturns2() {
     git_exterminatus_worktree --nope
     assertEquals 2 "$?"

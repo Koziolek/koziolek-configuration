@@ -18,6 +18,7 @@ system_tools=(
     openssh
     opensc
     git-bug
+    python
 )
 
 shell_tools=(
@@ -32,6 +33,12 @@ shell_tools=(
 image_tools=(
     libheif
     imagemagick
+    poppler
+)
+
+# python3 -> formuła `python`. wl-clipboard/xclip pominięte celowo: macOS ma pbcopy/pbpaste.
+clipboard_tools=(
+    python
 )
 
 diag_tools=(

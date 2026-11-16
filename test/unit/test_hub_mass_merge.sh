@@ -34,6 +34,7 @@ if [[ "$1 $2" == "pr list" ]]; then
 fi
 if [[ "$1 $2" == "pr checks" ]]; then
     echo "checks of $3"
+    for f in ${GH_CHECKS_NONE_FOR:-}; do [[ "$3" == "$f" ]] && { echo "no checks reported on the 'x' branch" >&2; exit 1; }; done
     for f in ${GH_CHECKS_FAIL_FOR:-}; do [[ "$3" == "$f" ]] && exit 1; done
     for f in ${GH_CHECKS_PENDING_FOR:-}; do [[ "$3" == "$f" ]] && exit 8; done
     exit 0
@@ -45,7 +46,7 @@ fi
 S
     chmod +x "$_T/bin/gh"
     PATH="$_T/bin:$PATH"
-    unset GH_PR_NUMBERS GH_FAIL_FOR GH_LIST_RC GH_CHECKS_FAIL_FOR GH_CHECKS_PENDING_FOR HUB_MASS_MERGE_LIMIT
+    unset GH_PR_NUMBERS GH_FAIL_FOR GH_LIST_RC GH_CHECKS_FAIL_FOR GH_CHECKS_PENDING_FOR GH_CHECKS_NONE_FOR HUB_MASS_MERGE_LIMIT
     _LOG=''
 }
 
@@ -178,7 +179,7 @@ testPrStatusSummaryCountsPassedPendingAndFailed() {
     export GH_CHECKS_FAIL_FOR="3" GH_CHECKS_PENDING_FOR="2"
     hub_pr_status >/dev/null
     assertEquals "rc 1 przy błędnym checku" 1 $?
-    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 2 1 1"
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 4 2 1 1 0"
     assertContains "lista błędnych" "$_LOG" "ERROR hub.pr_status_failed_list 3"
 }
 
@@ -187,7 +188,34 @@ testPrStatusPendingIsNotAFailure() {
     export GH_CHECKS_PENDING_FOR="5"
     hub_pr_status >/dev/null
     assertEquals "rc" 0 $?
-    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 0 1 0"
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 1 0 1 0 0"
+}
+
+testPrStatusNoChecksIsFailureByDefault() {
+    export GH_PR_NUMBERS=$'1\n2\n'
+    export GH_CHECKS_NONE_FOR="2"
+    hub_pr_status >/dev/null 2>&1
+    assertEquals "rc" 1 $?
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 2 1 0 0 1"
+    assertContains "lista" "$_LOG" "ERROR hub.pr_status_failed_list 2"
+}
+
+testPrStatusQuietIgnoresPrsWithoutChecks() {
+    export GH_PR_NUMBERS=$'1\n2\n3\n'
+    export GH_CHECKS_NONE_FOR="2"
+    hub_pr_status -q >/dev/null 2>&1
+    assertEquals "rc" 0 $?
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 3 2 0 0 1"
+    assertNotContains "brak listy błędów" "$_LOG" "failed_list"
+}
+
+testPrStatusQuietStillFailsOnRealFailure() {
+    export GH_PR_NUMBERS=$'1\n2\n3\n'
+    export GH_CHECKS_NONE_FOR="2" GH_CHECKS_FAIL_FOR="3"
+    hub_pr_status -q >/dev/null 2>&1
+    assertEquals "rc" 1 $?
+    assertContains "podsumowanie" "$_LOG" "INFO hub.pr_status_summary 3 1 0 1 1"
+    assertContains "lista" "$_LOG" "ERROR hub.pr_status_failed_list 3"
 }
 
 testPrStatusNoOpenPrs() {

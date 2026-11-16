@@ -14,6 +14,7 @@
 
 system_tools=(
     git vim-enhanced unzip zip tree tmux htop thefuck neofetch hub xdotool util-linux iproute postgresql nmap
+    python3 wl-clipboard xclip
 )
 
 security_tools=(
@@ -30,7 +31,12 @@ gui_libs=(
 )
 
 image_tools=(
-    libheif-tools
+    libheif-tools ImageMagick poppler-utils
+)
+
+# Python i schowek: wl-clipboard (Wayland), xclip (X11) — mirror apt_packages.sh.
+clipboard_tools=(
+    python3 wl-clipboard xclip
 )
 
 diag_tools=(

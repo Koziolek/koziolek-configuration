@@ -9,6 +9,7 @@
 system_tools=(
     git vim unzip zip tree tmux htop thefuck neofetch hub xdotool lsb-release iproute2 nmap
     postgresql-client-common postgresql-client-16
+    python3 wl-clipboard xclip
 )
 
 security_tools=(
@@ -32,7 +33,7 @@ gui_libs=(
 )
 
 image_tools=(
-    libheif-examples
+    libheif-examples imagemagick poppler-utils
 )
 
 diag_tools=(

@@ -120,13 +120,17 @@ function hub_mass_merge() {
 }
 
 # Stan checków (gh pr checks) każdego otwartego pull requesta, rosnąco po numerze.
-# Użycie: hub_pr_status [-h|--help]
-# Kod wyjścia gh: 0 = wszystkie przeszły, 8 = trwają, inny (1) = błąd checka albo brak checków.
-# Kod 1, gdy którykolwiek PR ma kod inny niż 0/8; trwające checki nie są błędem.
+# Użycie: hub_pr_status [-q] [-h|--help]
+#   -q, --quiet-no-checks  PR bez checków (lub bez informacji o nich) nie jest błędem
+# Kod wyjścia gh: 0 = wszystkie przeszły, 8 = trwają, inny (1) = błąd checka albo brak checków;
+# brak checków rozpoznajemy po komunikacie gh "no checks reported" na stderr.
+# Kod 1, gdy którykolwiek PR ma błąd checka (bez -q także gdy nie ma checków); trwające nie są błędem.
+# Na końcu podsumowanie: ile PR, ile przeszło, ile w toku, ile z błędem, ile bez checków.
 function hub_pr_status() {
-    local arg
+    local arg skip_none=0
     for arg in "$@"; do
         case "$arg" in
+        -q | --quiet-no-checks) skip_none=1 ;;
         -h | --help)
             log_man hub.pr_status_usage
             return 0
@@ -147,25 +151,32 @@ function hub_pr_status() {
         return 0
     fi
 
-    local n rc passed=0 pending=0 failed_count=0
-    local -a failed_prs=()
+    local n rc err passed=0 pending=0 failed_count=0 none_count=0
+    local -a bad_prs=()
     for n in "${prs[@]}"; do
         log_info hub.pr_status_header "$n"
-        gh pr checks "$n"
+        # stdout gh idzie wprost na ekran (fd 3), stderr łapiemy do rozpoznania "brak checków".
+        { err="$(gh pr checks "$n" 2>&1 1>&3)"; } 3>&1
         rc=$?
+        [[ -n "$err" ]] && printf '%s\n' "$err" >&2
         case "$rc" in
         0) passed=$((passed + 1)) ;;
         8) pending=$((pending + 1)) ;;
         *)
-            failed_count=$((failed_count + 1))
-            failed_prs+=("$n")
+            if [[ "$err" == *"no checks reported"* ]]; then
+                none_count=$((none_count + 1))
+                ((skip_none)) || bad_prs+=("$n")
+            else
+                failed_count=$((failed_count + 1))
+                bad_prs+=("$n")
+            fi
             ;;
         esac
     done
 
-    log_info hub.pr_status_summary "$passed" "$pending" "$failed_count"
-    if ((failed_count > 0)); then
-        log_error hub.pr_status_failed_list "${failed_prs[*]}"
+    log_info hub.pr_status_summary "${#prs[@]}" "$passed" "$pending" "$failed_count" "$none_count"
+    if ((${#bad_prs[@]} > 0)); then
+        log_error hub.pr_status_failed_list "${bad_prs[*]}"
         return 1
     fi
 }
