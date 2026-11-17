@@ -627,6 +627,20 @@ przed `apply_fixes pre-apt`); `apply_fixes` uzupełnia `REPOS_DEAD` z raportu. D
 `096_function_apt_trust.sh` (interaktywna, `are_you_sure`, i18n) i ta bootstrapowa (bez pytań) — różnią się UX i zależnościami; zmiana
 algorytmu wymaga poprawki w obu. Test: `test/unit/test_gpg_fix.sh`.
 
+Claude Desktop (beta): `install_claude_desktop` w `ubuntu/install.sh` (zaraz po `install_claude`) i `update_claude_desktop` w
+`ubuntu/update.sh` (po `update_claude`), wspólne `packages/commons/claude_desktop.sh` (sourcowane przez `$COMMONS_DIR`). Tylko Debian-based
+(apt) na amd64/arm64 — inne systemy/architektury = `info` i pominięcie; Vanilla/redhat/mac nie są podpięte (Fedora/RHEL/Arch nieobsługiwane
+przez Anthropic, Vanilla = subsystem `apx` bez pewnego keyringa/KVM). Funkcja sama dodaje repo apt Anthropic (idempotentnie, gdy brak
+`claude-desktop.list` albo klucza): klucz z `downloads.claude.ai` pobierany do pliku tymczasowego i **weryfikowany po fingerprincie**
+(`31DDDE24…ECACE`, wszystkie `fpr` z pliku muszą być tym jednym) przed wpięciem do `/usr/share/keyrings/claude-desktop-archive-keyring.asc`;
+niezgodny = brak repo i brak instalacji. Zanim zainstaluje, sprawdza `apt-cache policy claude-desktop` — brak kandydata (beta, np. inna
+architektura) = ostrzeżenie `niedostępny w apt`, nie błąd. Install pomija zainstalowany pakiet (`dpkg-query`); update to jedna ścieżka
+„zainstaluj lub zaktualizuj” (`apt-get install -y claude-desktop`, bez warunku „czy zainstalowany”). Nieinteraktywne, zawsze `return 0`.
+Wymaga `curl` i `gpg` (`minimal_tools`/`security_tools`) oraz `$SUDO`, `ok/warn/info` od skryptu. Zmienne dla testów:
+`CLAUDE_DESKTOP_KEY_URL`, `CLAUDE_DESKTOP_KEYRING`, `CLAUDE_DESKTOP_LIST`. Poza pakietem (opcjonalnie): Cowork wymaga KVM
+(`usermod -aG kvm`) i `/dev/vhost-vsock`, a logowanie — odblokowanego keyringa (GNOME Keyring/KDE Wallet) — to konfiguracja maszyny, nie tego
+skryptu. Test: `test/unit/test_claude_desktop.sh` (mocki `apt-get`/`apt-cache`/`dpkg`/`dpkg-query`/`curl`/`gpg`).
+
 calibre: `install_calibre` w każdym `*/install.sh` (po `install_claude`) i `update_calibre` w
 `*/update.sh` (po `update_claude`). Linux (ubuntu/vanilla/redhat): oficjalny instalator binarny
 `wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | $SUDO sh /dev/stdin` (strona calibre
