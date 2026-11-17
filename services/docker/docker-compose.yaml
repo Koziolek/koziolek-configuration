@@ -110,6 +110,51 @@ services:
       start_period: 120s
     networks:
       - service-network
+  forgejo:
+    # Lokalny serwer git (#212). Przypięty wariant 11.0.3 (LTS), nie latest. Konfiguracja jako kod (app.ini) przez
+    # zmienne FORGEJO__<sekcja>__<klucz>; dane (repozytoria, LFS, avatary) w $FORGEJO_DATA, metadane w bazie `forgejo` w home-db.
+    image: codeberg.org/forgejo/forgejo:11.0.3
+    container_name: forgejo
+    # tylko to, czego Forgejo potrzebuje - bez env_file (nie wpuszczamy całego ~/.senv)
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: home-db:5432
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: ${DB_USERNAME}
+      FORGEJO__database__PASSWD: ${DB_PASSWORD}
+      FORGEJO__server__ROOT_URL: https://koziolek.home/forgejo/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: "true"
+      FORGEJO__mirror__ENABLED: "true"
+      FORGEJO__mirror__DEFAULT_INTERVAL: 8h
+      FORGEJO__mirror__MIN_INTERVAL: 10m
+      FORGEJO__repository__DISABLE_MIGRATIONS: "false"
+      FORGEJO__migrations__ALLOW_LOCALNETWORKS: "true"
+      # webhooki do Jenkinsa (kontener w tej samej sieci docker, bez TLS)
+      FORGEJO__webhook__ALLOWED_HOST_LIST: jenkins,sonarqube
+      FORGEJO__webhook__SKIP_TLS_VERIFY: "true"
+    depends_on:
+      home-db:
+        condition: service_healthy
+    volumes:
+      - $FORGEJO_DATA:/data
+    expose:
+      - "3000"
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/healthz > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - service-network
   pgadmin:
     image: dpage/pgadmin4:9.4
     container_name: pgadmin

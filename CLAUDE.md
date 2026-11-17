@@ -437,7 +437,7 @@ kontenera (`${DOCKER_COMPOSE:-docker compose}`, bez twardej listy — nazwy wali
 ### Funkcje serwisów (`services/services_functions.sh`)
 
 Konfiguracja i obsługa kontenerów z `services/docker/docker-compose.yaml`: `configure_services` (+ `configure_nginx`/
-`configure_postgres`/`configure_nexus`/`configure_sonar`), `start_services`, `restart_service`, `list_services`,
+`configure_postgres`/`configure_nexus`/`configure_sonar`/`configure_forgejo`), `start_services`, `restart_service`, `list_services`,
 `update_sdkman_jdk_certs`. Nazewnictwo: `configure_*` (angielski czasownik); dawne `configurate_*` zostały jako cienkie
 funkcje-wrappery (nie aliasy — aliasy nie przechodzą przez `export -f`), które logują `services.deprecated_name` i delegują
 do nowej nazwy; **do usunięcia w kolejnej wersji**. Nowy serwis z compose obsługują bez zmian `restart_service` i
@@ -493,6 +493,24 @@ logi konsoli i credentials zostają w `$JENKINS_DATA`, więc backup = snapshot `
 Zweryfikowane na prawdziwej instancji (kontener tymczasowy): obraz buduje się z `plugins.txt`, JCasC się ładuje (admin,
 narzędzia, `jdbcUrl`, storage JUnit). Test: `test/unit/test_services_functions.sh` (sekcja „Jenkins”: `configure_jenkins`, statyczne
 sprawdzenie compose/vhosta/JCasC/plugins).
+
+### Forgejo (lokalny serwer git, #212)
+
+Kontener `forgejo` (`codeberg.org/forgejo/forgejo:11.0.3`, przypięty LTS, nie `latest`) w `services/docker/docker-compose.yaml`, pod nginx na
+`/forgejo/` (vhost `nginx/config/includes/forgejo.conf`: nginx zdejmuje prefiks `rewrite`, bo Forgejo serwuje od korzenia, a `ROOT_URL` ma
+podścieżkę; upstream w zmiennej + `resolver 127.0.0.11`). Dane w `$FORGEJO_DATA` (`services/main.sh`) → `/data`, uid 1000 (`configure_forgejo`
+tworzy katalog i robi `chown`). Metadane w bazie `forgejo` w `home-db` (`postgres/init.sql`, te same `DB_USERNAME`/`DB_PASSWORD`).
+`app.ini` jako kod: zmienne `FORGEJO__<sekcja>__<klucz>` w compose (`INSTALL_LOCK`, rejestracja wyłączona, wymagane logowanie, pull/push mirrory
+włączone, webhooki dozwolone do `jenkins`/`sonarqube`); do kontenera nie trafia `~/.senv`.
+**Wymaga w `~/.senv`:** `FORGEJO_ADMIN_USER`, `FORGEJO_ADMIN_PASSWORD`, `FORGEJO_ADMIN_EMAIL` — bez nich `configure_forgejo` zwraca błąd (rejestracja
+jest wyłączona, więc bez admina serwer byłby bezużyteczny). Konto zakłada po pierwszym starcie `forgejo_create_admin` (idempotentne; hasło idzie
+przez środowisko `exec`, nie w argv).
+Integracja: Jenkins ma wtyczkę `gitea` (`jenkins/plugins.txt`) i serwer `http://forgejo:3000` w JCasC (`giteaServers`, bez zarządzania hookami —
+webhook push dodaje się w repo Forgejo, wskazując Jenkinsa). Sonar: token (`SONAR_TOKEN`) + webhook z Forgejo/Jenkinsa. Nexus nie integruje się
+z git bezpośrednio — artefakty publikuje build w Jenkinsie. Replikacja na GitHub = **push mirror**, śledzenie zdalnych = **pull mirror** (UI Forgejo,
+ustawienia repo; interwał `FORGEJO__mirror__DEFAULT_INTERVAL`). Ograniczenie: tylko git (brak HG/SVN). Zmiana wtyczek/wersji obrazu:
+`docker compose -f services/docker/docker-compose.yaml build jenkins` / `pull forgejo`. Backup = snapshot `$FORGEJO_DATA` **oraz** `pg_dump forgejo`.
+Nie zweryfikowano na prawdziwej instancji (tylko testy statyczne/atrapy). Test: `test/unit/test_services_functions.sh` (sekcja „Forgejo”).
 
 ### Baza `home-db` i wersja collation (glibc, #201)
 

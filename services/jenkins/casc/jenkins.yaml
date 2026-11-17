@@ -28,6 +28,12 @@ unclassified:
         username: "${DB_USERNAME}"
         password: "${DB_PASSWORD}"
         validationQuery: "SELECT 1"
+  # Lokalny Forgejo (wtyczka Gitea): adres wewnątrz sieci docker; hooków nie zarządzamy (webhook push dodaje się w repo Forgejo)
+  giteaServers:
+    servers:
+      - displayName: "Forgejo (lokalny)"
+        serverUrl: "http://forgejo:3000"
+        manageHooks: false
   # Wyniki testów JUnit w bazie zamiast junitResult.xml w $JENKINS_HOME
   junitTestResultStorage:
     storage: "database"

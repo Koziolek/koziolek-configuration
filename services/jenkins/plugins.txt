@@ -6,6 +6,8 @@ configuration-as-code:2144.ve8c697101488
 workflow-aggregator:608.v67378e9d3db_1
 git:5.11.0
 credentials-binding:728.v902a_273b_8947
+# Forgejo/Gitea: źródło repozytoriów, webhook push -> build
+gitea:286.v0740a_413c1eb_
 # Narzędzia buildowe pobierane przez JCasC: Maven (maven-plugin) i JDK Temurin (jdk-tool + adoptopenjdk)
 maven-plugin:3.28
 jdk-tool:83.v417146707a_3d
