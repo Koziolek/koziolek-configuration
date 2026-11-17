@@ -315,6 +315,10 @@ update_claude() {
 # shellcheck source=packages/commons/git_bug.sh
 source "$COMMONS_DIR/git_bug.sh"
 
+# update_claude_desktop — repo apt Anthropic (packages/commons/claude_desktop.sh).
+# shellcheck source=packages/commons/claude_desktop.sh
+source "$COMMONS_DIR/claude_desktop.sh"
+
 # calibre_install_deps — libxcb-cursor (Qt xcb) przed instalatorem calibre
 # shellcheck source=packages/commons/calibre_deps.sh
 source "$COMMONS_DIR/calibre_deps.sh"
@@ -431,6 +435,7 @@ update_asdf_tools
 update_lang_packages
 update_sdkman
 update_claude
+update_claude_desktop
 update_calibre
 update_git_bug
 

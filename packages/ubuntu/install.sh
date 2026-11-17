@@ -186,6 +186,10 @@ install_claude() {
     }
 }
 
+# install_claude_desktop — repo apt Anthropic (packages/commons/claude_desktop.sh).
+# shellcheck source=packages/commons/claude_desktop.sh
+source "$COMMONS_DIR/claude_desktop.sh"
+
 # calibre_install_deps — libxcb-cursor (Qt xcb) przed instalatorem calibre
 # shellcheck source=packages/commons/calibre_deps.sh
 source "$COMMONS_DIR/calibre_deps.sh"
@@ -444,6 +448,7 @@ install_sdkman
 install_apps
 install_gh
 install_claude
+install_claude_desktop
 install_calibre
 install_git_bug
 link_claude_skills
