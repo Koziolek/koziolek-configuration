@@ -89,10 +89,13 @@ testWlrootsOffCallsWlopmPerOutput() {
 # --- watcher: zależności (libinput-tools + grupa input) ---------------------
 
 testOffWithoutLibinputWarns() {
+    # Prawdziwy libinput może być na hoście (libinput-tools z diag_tools) — `command -v libinput`
+    # ukrywamy mockiem `command`, żeby test nie zależał od zainstalowanych pakietów.
     local out
     out="$(_run 'WAYLAND_DISPLAY=wayland-0 XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=sway' \
         'swaymsg() { :; }; export -f swaymsg
-         wlopm() { :; }; export -f wlopm' \
+         wlopm() { :; }; export -f wlopm
+         command() { if [ "$1" = "-v" ] && [ "$2" = "libinput" ]; then return 1; fi; builtin command "$@"; }' \
         off)"
     assertContains 'brak libinput musi dać ostrzeżenie o libinput-tools' "$out" 'libinput-tools'
 }
