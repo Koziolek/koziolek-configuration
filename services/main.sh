@@ -8,6 +8,7 @@ export POSTGRES_DATA=${SERVICES_DATA}/postgres_data
 export NEXUS_DATA=${SERVICES_DATA}/nexus_data
 export SONAR_DATA=${SERVICES_DATA}/sonar_data
 export JENKINS_DATA=${SERVICES_DATA}/jenkins_data
+export FORGEJO_DATA=${SERVICES_DATA}/forgejo_data
 
 function load_config() {
     for conf_file in services_functions; do
