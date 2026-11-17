@@ -959,6 +959,21 @@ testComposeForgejoAppIniAsCode() {
     assertContains "$block" "FORGEJO__server__ROOT_URL: https://koziolek.home/forgejo/"
 }
 
+testComposeForgejoExposesSshOnHostPort2222() {
+    local block
+    block="$(_forgejo_block)"
+    assertContains "$block" '"2222:22"'
+    assertContains "$block" "FORGEJO__server__SSH_DOMAIN: koziolek.home"
+    assertContains "$block" 'FORGEJO__server__SSH_PORT: "2222"'
+    assertContains "$block" 'FORGEJO__server__SSH_LISTEN_PORT: "22"'
+}
+
+testComposeForgejoSshDoesNotTakeHostPort22() {
+    local block
+    block="$(_forgejo_block)"
+    assertNotContains "$block" '"22:22"'
+}
+
 testForgejoVhostStripsPrefixAndResolvesLazily() {
     local conf
     conf="$(cat "$PROJECT_ROOT/services/nginx/config/includes/forgejo.conf")"

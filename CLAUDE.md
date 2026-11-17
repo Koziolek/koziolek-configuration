@@ -505,6 +505,9 @@ włączone, webhooki dozwolone do `jenkins`/`sonarqube`); do kontenera nie trafi
 **Wymaga w `~/.senv`:** `FORGEJO_ADMIN_USER`, `FORGEJO_ADMIN_PASSWORD`, `FORGEJO_ADMIN_EMAIL` — bez nich `configure_forgejo` zwraca błąd (rejestracja
 jest wyłączona, więc bez admina serwer byłby bezużyteczny). Konto zakłada po pierwszym starcie `forgejo_create_admin` (idempotentne; hasło idzie
 przez środowisko `exec`, nie w argv).
+SSH: wbudowany sshd kontenera (port 22) jest wystawiony na hoście jako **2222** (`ports: "2222:22"`; 22 zostaje dla sshd hosta),
+`SSH_DOMAIN=koziolek.home`, `SSH_PORT=2222` (UI pokazuje poprawne URL-e klonowania). URL remote: `ssh://git@koziolek.home:2222/<właściciel>/<repo>.git`
+— bez prefiksu `/forgejo/` (to tylko ścieżka nginx dla HTTP); klucz publiczny dodaje się w Forgejo (Ustawienia → Klucze SSH).
 Integracja: Jenkins ma wtyczkę `gitea` (`jenkins/plugins.txt`) i serwer `http://forgejo:3000` w JCasC (`giteaServers`, bez zarządzania hookami —
 webhook push dodaje się w repo Forgejo, wskazując Jenkinsa). Sonar: token (`SONAR_TOKEN`) + webhook z Forgejo/Jenkinsa. Nexus nie integruje się
 z git bezpośrednio — artefakty publikuje build w Jenkinsie. Replikacja na GitHub = **push mirror**, śledzenie zdalnych = **pull mirror** (UI Forgejo,
