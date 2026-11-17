@@ -54,6 +54,45 @@ function configure_jenkins() {
     unmake_me_sudo
     return "$rc"
 }
+function configure_forgejo() {
+    # Konto admina (forgejo_create_admin) wymaga danych z ~/.senv; rejestracja jest wyłączona, więc bez
+    # admina serwer byłby bezużyteczny - to błąd, a nie ostrzeżenie.
+    if [ -z "${FORGEJO_ADMIN_USER:-}" ] || [ -z "${FORGEJO_ADMIN_PASSWORD:-}" ] || [ -z "${FORGEJO_ADMIN_EMAIL:-}" ]; then
+        log_error services.forgejo_admin_missing
+        return 1
+    fi
+    make_me_sudo
+    local rc=0
+    $SUDO mkdir -p "$FORGEJO_DATA" || rc=1
+    # obraz forgejo działa jako USER_UID/USER_GID z docker-compose.yaml (1000)
+    $SUDO chown -R 1000:1000 "$FORGEJO_DATA" || rc=1
+    unmake_me_sudo
+    return "$rc"
+}
+# Tworzy konto admina w działającym kontenerze forgejo (idempotentne: istniejący użytkownik = bez zmian).
+# Hasło przekazywane przez środowisko procesu w kontenerze, nie w argv hosta.
+function forgejo_create_admin() {
+    if [ -z "${FORGEJO_ADMIN_USER:-}" ] || [ -z "${FORGEJO_ADMIN_PASSWORD:-}" ] || [ -z "${FORGEJO_ADMIN_EMAIL:-}" ]; then
+        log_error services.forgejo_admin_missing
+        return 1
+    fi
+    if ! _services_container_running forgejo; then
+        log_error services.forgejo_not_running
+        return 1
+    fi
+    local cli="${DOCKER_CLI:-docker}"
+    if "$cli" exec -u 1000 forgejo forgejo admin user list 2>/dev/null | awk 'NR>1{print $2}' | grep -qx -- "$FORGEJO_ADMIN_USER"; then
+        log_debug services.forgejo_admin_exists "$FORGEJO_ADMIN_USER"
+        return 0
+    fi
+    if ! FORGEJO_ADMIN_PASSWORD="$FORGEJO_ADMIN_PASSWORD" "$cli" exec -u 1000 -e FORGEJO_ADMIN_PASSWORD forgejo \
+        sh -c 'forgejo admin user create --admin --username "$1" --email "$2" --password "$FORGEJO_ADMIN_PASSWORD" --must-change-password=false' _ \
+        "$FORGEJO_ADMIN_USER" "$FORGEJO_ADMIN_EMAIL"; then
+        log_error services.forgejo_admin_create_failed "$FORGEJO_ADMIN_USER"
+        return 1
+    fi
+    log_info services.forgejo_admin_created "$FORGEJO_ADMIN_USER"
+}
 function configure_sonar() {
     make_me_sudo
     $SUDO mkdir -p "$SONAR_DATA"/{data,extensions,logs}
@@ -129,7 +168,7 @@ function configure_services() {
     make_me_sudo
     source_if_exists ssl_setup "$SERVICES_CONFIGURATION_DIR/nginx/ssl/"
     source_if_exists key_setup "$SERVICES_CONFIGURATION_DIR/nexus/"
-    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins; do
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins configure_forgejo; do
         "$step" || {
             log_error services.configure_step_failed "$step"
             rc=1
@@ -391,6 +430,8 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f configure_postgres
     export -f configure_nexus
     export -f configure_jenkins
+    export -f configure_forgejo
+    export -f forgejo_create_admin
     export -f configure_sonar
     export -f _services_deprecated_name
     export -f configurate_services

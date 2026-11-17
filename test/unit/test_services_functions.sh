@@ -19,7 +19,7 @@ export C_PURPLE='' C_CYAN='' C_WHITE='' C_YELLOW='' C_BOLD='' C_NC=''
 _REAL_CONFIGURE_SERVICES="$(declare -f configure_services)"
 # prawdziwe funkcje kroków - testy z atrapami (_use_real_configure_services) nadpisują je globalnie,
 # więc przywracamy po każdym teście (kolejność testów nie może mieć znaczenia)
-_REAL_STEP_FUNCS="$(declare -f configure_postgres configure_nginx configure_nexus configure_jenkins configure_sonar update_sdkman_jdk_certs)"
+_REAL_STEP_FUNCS="$(declare -f configure_postgres configure_nginx configure_nexus configure_jenkins configure_forgejo forgejo_create_admin configure_sonar update_sdkman_jdk_certs)"
 _TEST_DIR=''
 _ORIG_PATH=''
 
@@ -56,6 +56,7 @@ EOF
     export SERVICES_CONFIGURATION_DIR="$_TEST_DIR/services"
     export SONAR_DATA="$_TEST_DIR/sonar_data"
     export JENKINS_DATA="$_TEST_DIR/jenkins_data"
+    export FORGEJO_DATA="$_TEST_DIR/forgejo_data"
     mkdir -p "$SERVICES_CONFIGURATION_DIR/docker"
     : >"$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
 
@@ -669,24 +670,24 @@ _use_real_configure_services() {
     : >"$STEPS_LOG"
     local s
     for s in configure_postgres configure_nginx prepare_cert configure_nexus \
-        prepare_key configure_jenkins update_sdkman_jdk_certs configure_sonar; do
+        prepare_key configure_jenkins configure_forgejo update_sdkman_jdk_certs configure_sonar; do
         eval "$s() { echo $s >>\"\$STEPS_LOG\"; return \"\${RC_$s:-0}\"; }"
     done
     unset RC_configure_postgres RC_configure_nginx RC_prepare_cert RC_configure_nexus \
-        RC_prepare_key RC_configure_jenkins RC_update_sdkman_jdk_certs RC_configure_sonar
+        RC_prepare_key RC_configure_jenkins RC_configure_forgejo RC_update_sdkman_jdk_certs RC_configure_sonar
 }
 
 testConfigurateServicesSucceedsWhenAllStepsSucceed() {
     _use_real_configure_services
     configure_services >/dev/null
     assertEquals 0 $?
-    assertEquals 8 "$(wc -l <"$STEPS_LOG")"
+    assertEquals 9 "$(wc -l <"$STEPS_LOG")"
 }
 
 testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
     _use_real_configure_services
     local step
-    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins configure_sonar; do
+    for step in configure_postgres configure_nginx prepare_cert configure_nexus prepare_key configure_jenkins configure_forgejo configure_sonar; do
         _use_real_configure_services
         eval "RC_$step=1"
         export "RC_$step"
@@ -694,7 +695,7 @@ testConfigurateServicesReturnsErrorWhenCriticalStepFailsButRunsRest() {
         out="$(configure_services)"
         assertEquals "rc dla $step" 1 $?
         assertContains "$out" "Krok konfiguracji nie powiódł się: $step"
-        assertEquals "pozostałe kroki lecą ($step)" 8 "$(wc -l <"$STEPS_LOG")"
+        assertEquals "pozostałe kroki lecą ($step)" 9 "$(wc -l <"$STEPS_LOG")"
         unset "RC_$step"
     done
 }
@@ -734,7 +735,7 @@ _use_real_sudo_session() {
     # każdy krok sam otwiera i zamyka sesję sudo, jak prawdziwe configure_*
     local s
     for s in configure_postgres configure_nginx prepare_cert configure_nexus \
-        prepare_key configure_jenkins configure_sonar; do
+        prepare_key configure_jenkins configure_forgejo configure_sonar; do
         eval "$s() { make_me_sudo; echo $s >>\"\$STEPS_LOG\"; local r=\"\${RC_$s:-0}\"; unmake_me_sudo; return \"\$r\"; }"
     done
 }
@@ -894,6 +895,93 @@ testNginxJenkinsUpstreamIsResolvedLazily() {
 testJenkinsLinkOnIndexPage() {
     assertContains "$(cat "$PROJECT_ROOT/services/nginx/www/index.html")" "/jenkins"
 }
+
+# --- Forgejo (#212) ---
+_forgejo_block() { sed -n '/^  forgejo:/,/^  [a-z-]*:$/p' "$_COMPOSE"; }
+
+_setup_forgejo_env() {
+    export FORGEJO_ADMIN_USER=admin FORGEJO_ADMIN_PASSWORD=s3cret FORGEJO_ADMIN_EMAIL=a@b.c
+    SUDO=_jenkins_sudo
+}
+
+testConfigureForgejoCreatesDataDirAndChownsToUid1000() {
+    _setup_forgejo_env
+    configure_forgejo >/dev/null
+    assertEquals 0 $?
+    assertTrue "katalog danych" "[ -d '$FORGEJO_DATA' ]"
+    assertContains "$(cat "$ORDER_LOG")" "sudo chown -R 1000:1000 $FORGEJO_DATA"
+}
+
+testConfigureForgejoFailsWithoutAdminCredentials() {
+    local var out
+    for var in FORGEJO_ADMIN_USER FORGEJO_ADMIN_PASSWORD FORGEJO_ADMIN_EMAIL; do
+        _setup_forgejo_env
+        unset "$var"
+        out="$(configure_forgejo)"
+        assertEquals "rc bez $var" 1 $?
+        assertContains "$out" "FORGEJO_ADMIN_USER"
+        assertFalse "nic nie tworzy bez poświadczeń" "[ -e '$FORGEJO_DATA' ]"
+    done
+}
+
+testForgejoCreateAdminFailsWhenContainerNotRunning() {
+    _setup_forgejo_env
+    export DOCKER_NGINX_DOWN=1
+    local out
+    out="$(forgejo_create_admin)"
+    assertEquals 1 $?
+    assertContains "$out" "forgejo nie działa"
+    unset DOCKER_NGINX_DOWN
+}
+
+testComposeForgejoPinsVersionAndDoesNotUseLatest() {
+    local block
+    block="$(_forgejo_block)"
+    assertContains "$block" "image: codeberg.org/forgejo/forgejo:11.0.3"
+    assertNotContains "$block" ":latest"
+}
+
+testComposeForgejoUsesDataVolumeHomeDbAndNoSenvFile() {
+    local block
+    block="$(_forgejo_block)"
+    assertContains "$block" '$FORGEJO_DATA:/data'
+    assertContains "$block" "FORGEJO__database__NAME: forgejo"
+    assertContains "$block" "FORGEJO__database__HOST: home-db:5432"
+    assertContains "$block" "condition: service_healthy"
+    assertNotContains "$block" "env_file:"
+}
+
+testComposeForgejoAppIniAsCode() {
+    local block
+    block="$(_forgejo_block)"
+    assertContains "$block" 'FORGEJO__service__DISABLE_REGISTRATION: "true"'
+    assertContains "$block" 'FORGEJO__mirror__ENABLED: "true"'
+    assertContains "$block" "FORGEJO__server__ROOT_URL: https://koziolek.home/forgejo/"
+}
+
+testForgejoVhostStripsPrefixAndResolvesLazily() {
+    local conf
+    conf="$(cat "$PROJECT_ROOT/services/nginx/config/includes/forgejo.conf")"
+    assertContains "$conf" "location /forgejo/"
+    assertContains "$conf" "set \$forgejo_upstream http://forgejo:3000"
+    assertContains "$conf" "resolver 127.0.0.11"
+    assertContains "$conf" 'rewrite ^/forgejo/(.*)$ /$1 break;'
+}
+
+testForgejoDatabaseCreatedInInitSql() {
+    assertContains "$(cat "$PROJECT_ROOT/services/postgres/init.sql")" "CREATE DATABASE forgejo"
+}
+
+testForgejoJenkinsIntegrationPluginAndServer() {
+    assertContains "$(cat "$_JENKINS_DIR/plugins.txt")" "gitea:"
+    assertContains "$(cat "$_JENKINS_DIR/casc/jenkins.yaml")" 'serverUrl: "http://forgejo:3000"'
+}
+
+testForgejoSenvTemplateAndDataVariable() {
+    assertContains "$(cat "$PROJECT_ROOT/.senv.template")" "FORGEJO_ADMIN_PASSWORD"
+    assertContains "$(cat "$PROJECT_ROOT/services/main.sh")" 'export FORGEJO_DATA=${SERVICES_DATA}/forgejo_data'
+}
+# --- /Forgejo (#212) ---
 
 testPluginsArePinnedAndIncludeDatabasePlugins() {
     local plugins

@@ -16,6 +16,10 @@ SELECT 'CREATE DATABASE sonar'
 SELECT 'CREATE DATABASE jenkins'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'jenkins')\gexec
 
+-- Tworzenie bazy danych 'forgejo' (Forgejo)
+SELECT 'CREATE DATABASE forgejo'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'forgejo')\gexec
+
 -- Informacje o utworzonych bazach
     \echo 'Inicjalizacja baz danych zakończona.'
     \echo 'Dostępne bazy danych:'
