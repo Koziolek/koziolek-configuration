@@ -430,6 +430,15 @@ testComposeSonarContextMatchesNginxVhost() {
     assertContains "$(cat "$conf")" "location /sonar/"
 }
 
+# 413 przy wysyłce analizy do Sonara: domyślny limit nginx to 1 MB
+testVhostsAllowLargeUploads() {
+    local v
+    for v in sonar nexus pgadmin jenkins forgejo; do
+        assertContains "vhost $v bez client_max_body_size" \
+            "$(cat "$PROJECT_ROOT/services/nginx/config/includes/$v.conf")" "client_max_body_size"
+    done
+}
+
 testComposeIsValidYaml() {
     { command -v python3 >/dev/null && python3 -c 'import yaml' 2>/dev/null; } || startSkipping
     assertTrue "python3 -c \"import yaml; yaml.safe_load(open('$_COMPOSE'))\""
