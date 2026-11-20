@@ -873,6 +873,66 @@ testComposeJenkinsPinsLtsTagAndDoesNotUseLatest() {
     assertContains "$(cat "$_JENKINS_DIR/Dockerfile")" "FROM jenkins/jenkins:2.580.2-lts-jdk21"
 }
 
+testJenkinsImageHasAsdfAndSdkmanWithDataInVolume() {
+    local df
+    df="$(cat "$_JENKINS_DIR/Dockerfile")"
+    assertContains "asdf w obrazie" "$df" "asdf-vm/asdf/releases"
+    assertContains "asdf: dane w wolumenie" "$df" "ASDF_DATA_DIR=/var/jenkins_home/.asdf"
+    assertContains "asdf: shimy w PATH" "$df" "/var/jenkins_home/.asdf/shims"
+    assertContains "SDKMAN w obrazie" "$df" "get.sdkman.io"
+    assertContains "SDKMAN: kandydaci w wolumenie" "$df" "SDKMAN_CANDIDATES_HOME=/var/jenkins_home/sdkman/candidates"
+    assertContains "SDKMAN: JDK w PATH" "$df" "sdkman/candidates/java/current/bin"
+    assertContains "kompilatory do budowy języków" "$df" "build-essential"
+    assertContains "$df" "USER jenkins"
+    assertNotContains "Ruby nie jest na sztywno z apt" "$df" " ruby-dev"
+}
+
+testJenkinsImageShipsToolInstallJobs() {
+    local df sdk asdf
+    df="$(cat "$_JENKINS_DIR/Dockerfile")"
+    sdk="$_JENKINS_DIR/jobs/narzedzia-sdkman/config.xml.override"
+    asdf="$_JENKINS_DIR/jobs/narzedzia-asdf/config.xml.override"
+    assertContains "joby kopiowane do ref/jobs" "$df" "/usr/share/jenkins/ref/jobs/"
+    assertTrue "job sdkman istnieje" "[ -f '$sdk' ]"
+    assertTrue "job asdf istnieje" "[ -f '$asdf' ]"
+    assertContains "$(cat "$sdk")" "<name>NARZEDZIE</name>"
+    assertContains "$(cat "$sdk")" "<name>WERSJA</name>"
+    assertContains "$(cat "$sdk")" 'sdk install "$NARZEDZIE" "$WERSJA"'
+    assertContains "sdkman: cofnięcie ustawienia wersji domyślnej" "$(cat "$sdk")" 'ln -sfn "$before" "$cur"'
+    assertContains "$(cat "$asdf")" "<name>TRYB</name>"
+    assertContains "$(cat "$asdf")" "<string>plugin</string>"
+    assertContains "$(cat "$asdf")" "<string>narzedzie</string>"
+    assertContains "$(cat "$asdf")" 'asdf plugin add "$NAZWA"'
+    assertContains "$(cat "$asdf")" 'asdf install "$NAZWA" "$ver"'
+}
+
+testJenkinsToolJobsDoNotSetDefaultVersionAndAreValidXml() {
+    local f code
+    for f in "$_JENKINS_DIR"/jobs/*/config.xml.override; do
+        code="$(grep -v '^//' "$f")" # komentarze Groovy wolno wspominać o asdf set
+        assertNotContains "asdf set" "$code" "asdf set"
+        assertNotContains "asdf global" "$code" "asdf global"
+        assertNotContains "sdk default" "$code" "sdk default"
+        if command -v python3 >/dev/null 2>&1; then
+            python3 -I -c 'import sys,xml.dom.minidom as m; m.parse(sys.argv[1])' "$f"
+            assertEquals "poprawny XML: $f" 0 $?
+        fi
+    done
+}
+
+testJenkinsControllerKeepsOwnJdkAndEntrypointPreparesToolDirs() {
+    local df ep
+    df="$(cat "$_JENKINS_DIR/Dockerfile")"
+    ep="$(cat "$_JENKINS_DIR/tools-entrypoint.sh")"
+    assertContains "kontroler na JDK obrazu" "$df" "exec /opt/java/openjdk/bin/java"
+    assertContains "$df" "ENTRYPOINT"
+    assertContains "$df" "tools-entrypoint.sh"
+    assertContains "fallback JDK, gdy SDKMAN nic nie ma" "$ep" "/opt/java/openjdk"
+    assertContains "$ep" 'exec /usr/bin/tini -- /usr/local/bin/jenkins.sh'
+    bash -n "$_JENKINS_DIR/tools-entrypoint.sh"
+    assertEquals "składnia entrypointu" 0 $?
+}
+
 testComposeJenkinsStoresDataInJenkinsDataAndWaitsForHealthyDb() {
     local block
     block="$(_jenkins_block)"

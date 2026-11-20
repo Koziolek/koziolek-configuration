@@ -1,0 +1,95 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job">
+  <description>Instaluje narzędzie SDKMAN w podanej wersji (sdk install NARZEDZIE WERSJA) do $JENKINS_HOME/sdkman/candidates. Nie ustawia wersji domyślnej. Zarządzany z obrazu Jenkinsa.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>NARZEDZIE</name>
+          <description>Kandydat SDKMAN, np. java, maven, gradle, kotlin (sdk list)</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>WERSJA</name>
+          <description>Dokładny identyfikator wersji z SDKMAN, np. 21.0.5-tem, 3.9.9 (sdk list &lt;narzędzie&gt;)</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>30</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+    <script>// Instalacja narzędzia SDKMAN w podanej wersji. NIE ustawia wersji domyślnej (symlink `current` zostaje jak był).
+// Zarządzane z obrazu (services/jenkins/jobs/) - ręczne zmiany w UI zostaną nadpisane przy starcie kontenera.
+pipeline {
+    agent any
+    options {
+        disableConcurrentBuilds()
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    stages {
+        stage('Instalacja') {
+            steps {
+                sh '''#!/bin/bash
+set -u
+re='^[A-Za-z0-9._+-]+$'
+if [[ ! "${NARZEDZIE:-}" =~ $re ]]; then echo "BŁĄD: niepoprawne NARZEDZIE: '${NARZEDZIE:-}'" &gt;&amp;2; exit 1; fi
+if [[ ! "${WERSJA:-}" =~ $re ]]; then echo "BŁĄD: niepoprawna WERSJA: '${WERSJA:-}'" &gt;&amp;2; exit 1; fi
+
+# sdkman-init.sh nie znosi `set -u`
+set +u
+# shellcheck source=/dev/null
+source "$SDKMAN_DIR/bin/sdkman-init.sh"
+
+cand_dir="$SDKMAN_CANDIDATES_HOME/$NARZEDZIE"
+cur="$cand_dir/current"
+had_current=0
+before=''
+if [ -L "$cur" ]; then
+    had_current=1
+    before="$(readlink "$cur")"
+fi
+
+# sdkman_auto_answer=true (obraz) ustawia świeżo zainstalowaną wersję jako domyślną - cofamy to niezależnie od zachowania sdk
+rc=0
+sdk install "$NARZEDZIE" "$WERSJA" || rc=$?
+if [ "$had_current" = 1 ]; then
+    ln -sfn "$before" "$cur"
+elif [ -L "$cur" ]; then
+    rm -f "$cur"
+fi
+if [ "$rc" -ne 0 ]; then echo "BŁĄD: sdk install zakończył się kodem $rc" &gt;&amp;2; exit "$rc"; fi
+
+dir="$cand_dir/$WERSJA"
+if [ ! -d "$dir" ]; then echo "BŁĄD: po instalacji brak katalogu $dir" &gt;&amp;2; exit 1; fi
+
+echo "=============================================="
+echo "Zainstalowano: $NARZEDZIE $WERSJA"
+echo "Katalog:       $(cd "$dir" &amp;&amp; pwd -P)"
+if [ "$had_current" = 1 ]; then
+    echo "Wersja domyślna bez zmian: $NARZEDZIE -&gt; $before"
+else
+    echo "Wersja domyślna: brak (nie ustawiono)"
+fi
+echo "=============================================="
+'''
+            }
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

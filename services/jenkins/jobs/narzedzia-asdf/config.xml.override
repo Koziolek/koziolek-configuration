@@ -1,0 +1,104 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job">
+  <description>asdf-vm: tryb plugin = asdf plugin add NAZWA; tryb narzedzie = asdf install NAZWA WERSJA. Nie ustawia wersji domyślnej. Zarządzany z obrazu Jenkinsa.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>TRYB</name>
+          <description>plugin = dodaj plugin (wymaga tylko NAZWA); narzedzie = zainstaluj NAZWA WERSJA</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+            <string>plugin</string>
+            <string>narzedzie</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NAZWA</name>
+          <description>Nazwa pluginu / narzędzia asdf, np. ruby, nodejs, python</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>WERSJA</name>
+          <description>Tylko w trybie narzedzie: wersja, np. 3.3.5 albo latest (w trybie plugin ignorowana)</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>30</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+    <script>// asdf-vm: tryb `plugin` = `asdf plugin add &lt;NAZWA&gt;`, tryb `narzedzie` = `asdf install &lt;NAZWA&gt; &lt;WERSJA&gt;`.
+// NIE ustawia wersji domyślnej (`asdf set`/`.tool-versions` nietknięte).
+// Zarządzane z obrazu (services/jenkins/jobs/) - ręczne zmiany w UI zostaną nadpisane przy starcie kontenera.
+pipeline {
+    agent any
+    options {
+        disableConcurrentBuilds()
+        timeout(time: 120, unit: 'MINUTES')
+    }
+    stages {
+        stage('asdf') {
+            steps {
+                sh '''#!/bin/bash
+set -eu
+re='^[A-Za-z0-9._+-]+$'
+if [[ ! "${NAZWA:-}" =~ $re ]]; then echo "BŁĄD: niepoprawna NAZWA: '${NAZWA:-}'" &gt;&amp;2; exit 1; fi
+
+case "${TRYB:-}" in
+plugin)
+    if asdf plugin list 2&gt;/dev/null | grep -qx -- "$NAZWA"; then
+        echo "Plugin '$NAZWA' jest już dodany - nic do zrobienia."
+    else
+        asdf plugin add "$NAZWA"
+    fi
+    echo "=============================================="
+    echo "Plugin:  $NAZWA"
+    echo "Katalog: $ASDF_DATA_DIR/plugins/$NAZWA"
+    echo "=============================================="
+    ;;
+narzedzie)
+    if [[ ! "${WERSJA:-}" =~ $re ]]; then echo "BŁĄD: niepoprawna WERSJA: '${WERSJA:-}'" &gt;&amp;2; exit 1; fi
+    if ! asdf plugin list 2&gt;/dev/null | grep -qx -- "$NAZWA"; then
+        echo "BŁĄD: brak pluginu '$NAZWA' - najpierw uruchom job w trybie 'plugin'." &gt;&amp;2
+        exit 1
+    fi
+    ver="$WERSJA"
+    if [ "$ver" = latest ]; then
+        ver="$(asdf latest "$NAZWA")"
+        echo "latest = $ver"
+    fi
+    asdf install "$NAZWA" "$ver"
+    echo "=============================================="
+    echo "Zainstalowano: $NAZWA $ver"
+    echo "Katalog:       $(asdf where "$NAZWA" "$ver")"
+    echo "Wersja domyślna nie została zmieniona."
+    echo "=============================================="
+    ;;
+*)
+    echo "BŁĄD: nieznany TRYB: '${TRYB:-}' (dozwolone: plugin, narzedzie)" &gt;&amp;2
+    exit 1
+    ;;
+esac
+'''
+            }
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

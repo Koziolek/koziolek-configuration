@@ -360,6 +360,67 @@ function restart_service() {
     return $rc
 }
 
+# --- rebuild_container ---
+# Przebudowuje obraz serwisu z docker-compose.yaml (`compose build <serwis>`) i, tylko gdy build się
+# powiódł, odtwarza kontener (`compose up -d <serwis>`). Porażka buildu = log_error z kodem wyjścia i
+# ostatnimi liniami wyjścia buildu (REBUILD_CONTAINER_TAIL_LINES, domyślnie 20); kontener działający
+# na starym obrazie zostaje nietknięty. Nazwy walidowane przez `compose config --services`.
+# Wyjście buildu idzie na bieżąco na ekran. Zwraca 1, jeśli któryś serwis się nie powiódł
+# (pozostałe są i tak przetwarzane).
+function rebuild_container() {
+    local compose_file="$SERVICES_CONFIGURATION_DIR/docker/docker-compose.yaml"
+
+    if [ $# -eq 0 ]; then
+        log_error services.rebuild_usage
+        return 1
+    fi
+    if [ ! -f "$compose_file" ]; then
+        log_error services.compose_missing "$compose_file"
+        return 1
+    fi
+
+    local tail_lines="${REBUILD_CONTAINER_TAIL_LINES:-20}"
+    if [[ ! "$tail_lines" =~ ^[0-9]+$ ]] || ((10#$tail_lines < 1)); then
+        tail_lines=20
+    fi
+
+    local known svc log build_rc rc=0
+    known="$(_services_compose -f "$compose_file" config --services 2>/dev/null)"
+
+    for svc in "$@"; do
+        if ! printf '%s\n' "$known" | grep -qx -- "$svc"; then
+            log_error services.unknown_service "$svc"
+            rc=1
+            continue
+        fi
+
+        log="$(mktemp)" || {
+            log_error services.rebuild_build_failed "$svc" 1 "mktemp"
+            rc=1
+            continue
+        }
+        log_info services.rebuild_building "$svc"
+        _services_compose -f "$compose_file" build "$svc" 2>&1 | tee "$log"
+        build_rc=${PIPESTATUS[0]}
+        if [ "$build_rc" -ne 0 ]; then
+            log_error services.rebuild_build_failed "$svc" "$build_rc" "$(tail -n "$tail_lines" "$log")"
+            rm -f "$log"
+            rc=1
+            continue
+        fi
+        rm -f "$log"
+
+        if _services_compose -f "$compose_file" up -d "$svc"; then
+            log_info services.rebuild_done "$svc"
+        else
+            log_error services.start_failed "$svc"
+            rc=1
+        fi
+    done
+    return $rc
+}
+# --- /rebuild_container ---
+
 # --- list_services (#180) ---
 # Wypisuje linie "nazwa status" (running|stopped) dla serwisów z docker-compose.yaml.
 # Lista pochodzi z `compose config --services` (nowe serwisy pojawiają się same);
@@ -443,6 +504,7 @@ if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     export -f list_services
     export -f start_services
     export -f restart_service
+    export -f rebuild_container
 else
     configure_services "$@"
 fi
