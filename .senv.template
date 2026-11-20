@@ -16,3 +16,7 @@ export JENKINS_ADMIN_PASSWORD=
 export FORGEJO_ADMIN_USER=
 export FORGEJO_ADMIN_PASSWORD=
 export FORGEJO_ADMIN_EMAIL=
+# token konta serwisowego Forgejo dla Jenkinsa (zakresy: write:repository, read:organization, read:user); opcjonalny
+export FORGEJO_JENKINS_TOKEN=
+# nazwa tego konta (domyślnie jenkins)
+#export FORGEJO_JENKINS_USER=jenkins

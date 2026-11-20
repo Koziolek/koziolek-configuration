@@ -92,6 +92,8 @@ services:
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
+      FORGEJO_JENKINS_USER: ${FORGEJO_JENKINS_USER:-jenkins}
+      FORGEJO_JENKINS_TOKEN: ${FORGEJO_JENKINS_TOKEN:-}
     depends_on:
       home-db:
         condition: service_healthy

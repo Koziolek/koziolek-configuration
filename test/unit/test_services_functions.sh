@@ -1056,6 +1056,30 @@ testForgejoDatabaseCreatedInInitSql() {
     assertContains "$(cat "$PROJECT_ROOT/services/postgres/init.sql")" "CREATE DATABASE forgejo"
 }
 
+testJenkinsForgejoCredentialIsWiredFromSenvToCasc() {
+    local casc
+    casc="$(cat "$_JENKINS_DIR/casc/jenkins.yaml")"
+    assertContains "poświadczenie w JCasC" "$casc" 'id: "forgejo-jenkins"'
+    assertContains "token z env, nie na sztywno" "$casc" '${FORGEJO_JENKINS_TOKEN:-}'
+    assertContains "serwer gitea używa poświadczenia" "$casc" 'credentialsId: "forgejo-jenkins"'
+    assertContains "token przekazany do kontenera" "$(_jenkins_block)" 'FORGEJO_JENKINS_TOKEN: ${FORGEJO_JENKINS_TOKEN:-}'
+    assertContains "$(cat "$PROJECT_ROOT/.senv.template")" "export FORGEJO_JENKINS_TOKEN="
+}
+
+testJenkinsThemePluginsAndLogoAreWired() {
+    local casc b64
+    casc="$(cat "$_JENKINS_DIR/casc/jenkins.yaml")"
+    assertContains "$(cat "$_JENKINS_DIR/plugins.txt")" "theme-manager:"
+    assertContains "$(cat "$_JENKINS_DIR/plugins.txt")" "simple-theme-plugin:"
+    assertContains "$casc" "simpleTheme:"
+    assertContains "$casc" "#jenkins-head-icon"
+    # logo i favicon wbudowane jako data URI (anonim nie czyta /userContent/): muszą zgadzać się z plikami w theme/
+    b64="$(base64 <"$_JENKINS_DIR/theme/logo.png" | tr -d '\n')"
+    assertContains "data URI zgodny z theme/logo.png" "$casc" "data:image/png;base64,$b64"
+    b64="$(base64 <"$_JENKINS_DIR/theme/favicon.png" | tr -d '\n')"
+    assertContains "favicon zgodny z theme/favicon.png" "$casc" "url: \"data:image/png;base64,$b64"
+}
+
 testForgejoJenkinsIntegrationPluginAndServer() {
     assertContains "$(cat "$_JENKINS_DIR/plugins.txt")" "gitea:"
     assertContains "$(cat "$_JENKINS_DIR/casc/jenkins.yaml")" 'serverUrl: "http://forgejo:3000"'

@@ -22,3 +22,6 @@ junit-sql-storage:447.va_3758dd32a_a_e
 # Graf zależności buildów Mavena w bazie
 pipeline-maven:1760.v9a_a_e6dcb_0444
 pipeline-maven-database:1760.v9a_a_e6dcb_0444
+# Wygląd: Theme Manager (motywy) + Simple Theme (własne logo/CSS/favicon, dostarczane z obrazu: userContent/)
+theme-manager:368.v587224fde1f6
+simple-theme-plugin:230.v8b_fd91b_b_800c
